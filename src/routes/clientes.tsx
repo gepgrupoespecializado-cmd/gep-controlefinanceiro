@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Trash2, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, freqColor, freqLabel, type ClienteFreq } from "@/lib/store";
+import { db, useDB, freqColor, freqLabel, type Cliente, type ClienteFreq } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes")({
@@ -21,28 +21,43 @@ export const Route = createFileRoute("/clientes")({
   component: ClientesPage,
 });
 
+type FormState = Omit<Cliente, "id" | "criadoEm">;
+const empty: FormState = { nome: "", telefone: "", whatsapp: "", email: "", endereco: "", observacoes: "", frequencia: "avulso" };
+
 function ClientesPage() {
   const data = useDB();
   const [q, setQ] = useState("");
+  const [freqFilter, setFreqFilter] = useState<ClienteFreq | "todos">("todos");
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
-    nome: "", telefone: "", whatsapp: "", email: "", endereco: "",
-    observacoes: "", frequencia: "avulso" as ClienteFreq,
-  });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(empty);
 
+  const ativos = data.clientes.filter((c) => !c.arquivado);
   const filtrados = useMemo(() => {
     const term = q.trim().toLowerCase();
-    if (!term) return data.clientes;
-    return data.clientes.filter((c) =>
-      [c.nome, c.telefone, c.email, c.endereco].some((v) => v?.toLowerCase().includes(term)),
-    );
-  }, [data.clientes, q]);
+    return ativos.filter((c) => {
+      if (freqFilter !== "todos" && c.frequencia !== freqFilter) return false;
+      if (!term) return true;
+      return [c.nome, c.telefone, c.email, c.endereco].some((v) => v?.toLowerCase().includes(term));
+    });
+  }, [ativos, q, freqFilter]);
 
+  function abrirNovo() {
+    setEditId(null); setForm(empty); setOpen(true);
+  }
+  function abrirEdicao(c: Cliente) {
+    setEditId(c.id);
+    setForm({
+      nome: c.nome, telefone: c.telefone ?? "", whatsapp: c.whatsapp ?? "",
+      email: c.email ?? "", endereco: c.endereco ?? "", observacoes: c.observacoes ?? "",
+      frequencia: c.frequencia,
+    });
+    setOpen(true);
+  }
   function salvar() {
     if (!form.nome.trim()) return toast.error("Informe o nome do cliente");
-    db.addCliente(form);
-    toast.success("Cliente cadastrado");
-    setForm({ nome: "", telefone: "", whatsapp: "", email: "", endereco: "", observacoes: "", frequencia: "avulso" });
+    if (editId) { db.updateCliente(editId, form); toast.success("Cliente atualizado"); }
+    else { db.addCliente(form); toast.success("Cliente cadastrado"); }
     setOpen(false);
   }
 
@@ -51,14 +66,12 @@ function ClientesPage() {
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="min-w-0">
           <h1 className="truncate text-xl sm:text-2xl font-black">Clientes</h1>
-          <p className="text-xs text-muted-foreground">{data.clientes.length} cadastrado(s)</p>
+          <p className="text-xs text-muted-foreground">{ativos.length} ativo(s)</p>
         </div>
+        <Button onClick={abrirNovo}><Plus className="h-4 w-4" />Novo cliente</Button>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4" />Novo cliente</Button>
-          </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Novo cliente</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editId ? "Editar cliente" : "Novo cliente"}</DialogTitle></DialogHeader>
             <div className="grid gap-3">
               <Field label="Nome completo *">
                 <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
@@ -91,9 +104,22 @@ function ClientesPage() {
         </Dialog>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Buscar cliente..." value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Buscar cliente..." value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <Select value={freqFilter} onValueChange={(v) => setFreqFilter(v as typeof freqFilter)}>
+          <SelectTrigger className="sm:w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todas frequências</SelectItem>
+            <SelectItem value="semanal">Semanal</SelectItem>
+            <SelectItem value="quinzenal">Quinzenal</SelectItem>
+            <SelectItem value="mensal">Mensal</SelectItem>
+            <SelectItem value="trimestral">Trimestral</SelectItem>
+            <SelectItem value="avulso">Avulso</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {filtrados.length === 0 ? (
@@ -111,9 +137,14 @@ function ClientesPage() {
                       <p className="truncate font-bold">{c.nome}</p>
                       <Badge className={`mt-1 ${freqColor[c.frequencia]} border-0`}>{freqLabel[c.frequencia]}</Badge>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={() => { if (confirm("Excluir cliente?")) { db.removeCliente(c.id); toast.success("Excluído"); } }}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex">
+                      <Button variant="ghost" size="icon" onClick={() => abrirEdicao(c)} title="Editar">
+                        <Pencil className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => { if (confirm("Arquivar este cliente? Você pode restaurá-lo na Lixeira.")) { db.arquivarCliente(c.id); toast.success("Arquivado"); } }} title="Arquivar">
+                        <Archive className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">
                     {c.telefone && <p className="flex items-center gap-2"><Phone className="h-3 w-3" />{c.telefone}</p>}

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDB, totalOrcamento } from "@/lib/store";
+import { useDB, totalOrcamento, statusPagamento } from "@/lib/store";
 import { brl } from "@/lib/format";
 
 export const Route = createFileRoute("/")({
@@ -31,27 +31,35 @@ function Index() {
   const mes = now.getMonth();
   const ano = now.getFullYear();
 
-  const agendados = db.agendamentos.filter((a) => a.status === "agendado").length;
-  const concluidos = db.agendamentos.filter((a) => a.status === "concluido").length;
+  const ags = db.agendamentos.filter((a) => !a.arquivado);
+  const orcs = db.orcamentos.filter((o) => !o.arquivado);
+  const lans = db.lancamentos.filter((l) => !l.arquivado);
+  const clis = db.clientes.filter((c) => !c.arquivado);
+  const agendados = ags.filter((a) => a.status === "agendado").length;
+  const concluidos = ags.filter((a) => a.status === "concluido").length;
 
-  const receitaMes = db.lancamentos
+  const receitaMes = lans
     .filter((l) => {
       const d = new Date(l.data);
-      return l.tipo === "entrada" && d.getMonth() === mes && d.getFullYear() === ano;
+      return l.tipo === "entrada" && statusPagamento(l) === "recebido" && d.getMonth() === mes && d.getFullYear() === ano;
     })
     .reduce((s, l) => s + l.valor, 0);
 
-  const receitaAno = db.lancamentos
-    .filter((l) => l.tipo === "entrada" && new Date(l.data).getFullYear() === ano)
+  const receitaAno = lans
+    .filter((l) => l.tipo === "entrada" && statusPagamento(l) === "recebido" && new Date(l.data).getFullYear() === ano)
     .reduce((s, l) => s + l.valor, 0);
 
-  const entradas = db.lancamentos.filter((l) => l.tipo === "entrada").reduce((s, l) => s + l.valor, 0);
-  const saidas = db.lancamentos.filter((l) => l.tipo === "saida").reduce((s, l) => s + l.valor, 0);
+  const entradas = lans.filter((l) => l.tipo === "entrada" && statusPagamento(l) === "recebido").reduce((s, l) => s + l.valor, 0);
+  const saidas = lans.filter((l) => l.tipo === "saida" && statusPagamento(l) === "recebido").reduce((s, l) => s + l.valor, 0);
   const saldo = entradas - saidas;
+  const aReceber = lans.filter((l) => l.tipo === "entrada" && statusPagamento(l) !== "recebido").reduce((s, l) => s + l.valor, 0);
+  const faturamentoMes = lans.filter((l) => { const d = new Date(l.data); return l.tipo === "entrada" && d.getMonth() === mes && d.getFullYear() === ano; }).reduce((s, l) => s + l.valor, 0);
+  const saidaMes = lans.filter((l) => { const d = new Date(l.data); return l.tipo === "saida" && statusPagamento(l) === "recebido" && d.getMonth() === mes && d.getFullYear() === ano; }).reduce((s, l) => s + l.valor, 0);
+  const lucroMes = receitaMes - saidaMes;
 
   const stats = [
-    { label: "Clientes", value: db.clientes.length, icon: Users, color: "from-blue-500 to-blue-600" },
-    { label: "Orçamentos emitidos", value: db.orcamentos.length, icon: FileText, color: "from-indigo-500 to-indigo-600" },
+    { label: "Clientes", value: clis.length, icon: Users, color: "from-blue-500 to-blue-600" },
+    { label: "Orçamentos emitidos", value: orcs.length, icon: FileText, color: "from-indigo-500 to-indigo-600" },
     { label: "Serviços agendados", value: agendados, icon: CalendarClock, color: "from-amber-500 to-orange-500" },
     { label: "Serviços concluídos", value: concluidos, icon: CheckCircle2, color: "from-emerald-500 to-emerald-600" },
   ];
@@ -103,12 +111,33 @@ function Index() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Receita do mês</CardTitle></CardHeader>
           <CardContent>
             <p className="text-2xl font-black text-emerald-600">{brl(receitaMes)}</p>
             <p className="mt-1 text-xs text-muted-foreground">{now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Faturamento do mês</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-black text-primary">{brl(faturamentoMes)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Recebido + a receber</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Lucro do mês</CardTitle></CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-black ${lucroMes >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(lucroMes)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Receita − despesas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Contas a receber</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-2xl font-black text-amber-600">{brl(aReceber)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Pendente + vencido</p>
           </CardContent>
         </Card>
         <Card>
@@ -119,7 +148,7 @@ function Index() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Fluxo de caixa (saldo)</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Saldo atual</CardTitle></CardHeader>
           <CardContent>
             <p className={`text-2xl font-black ${saldo >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(saldo)}</p>
             <p className="mt-1 text-xs text-muted-foreground">Entradas {brl(entradas)} · Saídas {brl(saidas)}</p>
@@ -130,11 +159,11 @@ function Index() {
       <Card>
         <CardHeader><CardTitle className="text-base">Últimos orçamentos</CardTitle></CardHeader>
         <CardContent>
-          {db.orcamentos.length === 0 ? (
+          {orcs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum orçamento ainda. <Link className="text-primary underline" to="/orcamentos">Criar o primeiro</Link>.</p>
           ) : (
             <ul className="divide-y">
-              {db.orcamentos.slice(0, 5).map((o) => {
+              {orcs.slice(0, 5).map((o) => {
                 const cli = db.clientes.find((c) => c.id === o.clienteId);
                 return (
                   <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
