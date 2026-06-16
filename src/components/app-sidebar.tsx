@@ -7,6 +7,8 @@ import {
   Calendar,
   Wallet,
   Building2,
+  History,
+  Trash,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +30,8 @@ const items = [
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
+  { title: "Histórico", url: "/historico", icon: History },
+  { title: "Lixeira", url: "/lixeira", icon: Trash },
   { title: "Empresa", url: "/empresa", icon: Building2 },
 ];
 

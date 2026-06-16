@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
+import { Route as LixeiraRouteImport } from './routes/lixeira'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EmpresaRouteImport } from './routes/empresa'
@@ -26,6 +27,11 @@ const ServicosRoute = ServicosRouteImport.update({
 const OrcamentosRoute = OrcamentosRouteImport.update({
   id: '/orcamentos',
   path: '/orcamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LixeiraRoute = LixeiraRouteImport.update({
+  id: '/lixeira',
+  path: '/lixeira',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoricoRoute = HistoricoRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
+  '/lixeira': typeof LixeiraRoute
   '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
+  '/lixeira': typeof LixeiraRoute
   '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
+  '/lixeira': typeof LixeiraRoute
   '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/empresa'
     | '/financeiro'
     | '/historico'
+    | '/lixeira'
     | '/orcamentos'
     | '/servicos'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/empresa'
     | '/financeiro'
     | '/historico'
+    | '/lixeira'
     | '/orcamentos'
     | '/servicos'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/empresa'
     | '/financeiro'
     | '/historico'
+    | '/lixeira'
     | '/orcamentos'
     | '/servicos'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   EmpresaRoute: typeof EmpresaRoute
   FinanceiroRoute: typeof FinanceiroRoute
   HistoricoRoute: typeof HistoricoRoute
+  LixeiraRoute: typeof LixeiraRoute
   OrcamentosRoute: typeof OrcamentosRoute
   ServicosRoute: typeof ServicosRoute
 }
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/orcamentos'
       fullPath: '/orcamentos'
       preLoaderRoute: typeof OrcamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lixeira': {
+      id: '/lixeira'
+      path: '/lixeira'
+      fullPath: '/lixeira'
+      preLoaderRoute: typeof LixeiraRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/historico': {
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresaRoute: EmpresaRoute,
   FinanceiroRoute: FinanceiroRoute,
   HistoricoRoute: HistoricoRoute,
+  LixeiraRoute: LixeiraRoute,
   OrcamentosRoute: OrcamentosRoute,
   ServicosRoute: ServicosRoute,
 }
