@@ -10,7 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as OrcamentosRouteImport } from './routes/orcamentos'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as EmpresaRouteImport } from './routes/empresa'
 import { Route as ClientesRouteImport } from './routes/clientes'
+import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ServicosRoute = ServicosRouteImport.update({
@@ -18,9 +22,29 @@ const ServicosRoute = ServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrcamentosRoute = OrcamentosRouteImport.update({
+  id: '/orcamentos',
+  path: '/orcamentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresaRoute = EmpresaRouteImport.update({
+  id: '/empresa',
+  path: '/empresa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientesRoute = ClientesRouteImport.update({
   id: '/clientes',
   path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,31 +55,69 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/empresa': typeof EmpresaRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/empresa': typeof EmpresaRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/empresa': typeof EmpresaRoute
+  '/financeiro': typeof FinanceiroRoute
+  '/orcamentos': typeof OrcamentosRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/clientes' | '/servicos'
+  fullPaths:
+    | '/'
+    | '/agenda'
+    | '/clientes'
+    | '/empresa'
+    | '/financeiro'
+    | '/orcamentos'
+    | '/servicos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/clientes' | '/servicos'
-  id: '__root__' | '/' | '/clientes' | '/servicos'
+  to:
+    | '/'
+    | '/agenda'
+    | '/clientes'
+    | '/empresa'
+    | '/financeiro'
+    | '/orcamentos'
+    | '/servicos'
+  id:
+    | '__root__'
+    | '/'
+    | '/agenda'
+    | '/clientes'
+    | '/empresa'
+    | '/financeiro'
+    | '/orcamentos'
+    | '/servicos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgendaRoute: typeof AgendaRoute
   ClientesRoute: typeof ClientesRoute
+  EmpresaRoute: typeof EmpresaRoute
+  FinanceiroRoute: typeof FinanceiroRoute
+  OrcamentosRoute: typeof OrcamentosRoute
   ServicosRoute: typeof ServicosRoute
 }
 
@@ -68,11 +130,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServicosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orcamentos': {
+      id: '/orcamentos'
+      path: '/orcamentos'
+      fullPath: '/orcamentos'
+      preLoaderRoute: typeof OrcamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresa': {
+      id: '/empresa'
+      path: '/empresa'
+      fullPath: '/empresa'
+      preLoaderRoute: typeof EmpresaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/clientes': {
       id: '/clientes'
       path: '/clientes'
       fullPath: '/clientes'
       preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgendaRoute: AgendaRoute,
   ClientesRoute: ClientesRoute,
+  EmpresaRoute: EmpresaRoute,
+  FinanceiroRoute: FinanceiroRoute,
+  OrcamentosRoute: OrcamentosRoute,
   ServicosRoute: ServicosRoute,
 }
 export const routeTree = rootRouteImport

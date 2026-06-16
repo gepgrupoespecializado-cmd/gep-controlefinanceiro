@@ -202,5 +202,3 @@ function AgendaPage() {
     </div>
   );
 }
-
-export { Badge as _b };
