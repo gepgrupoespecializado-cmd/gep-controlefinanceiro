@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Pencil, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, statusAgendaLabel, type AgendaStatus } from "@/lib/store";
+import { db, useDB, statusAgendaLabel, type Agendamento, type AgendaStatus } from "@/lib/store";
 import { dateTimeBR } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -32,6 +32,7 @@ const statusColor: Record<AgendaStatus, string> = {
 function AgendaPage() {
   const data = useDB();
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [selDate, setSelDate] = useState<Date | undefined>(new Date());
   const [form, setForm] = useState({
     clienteId: "", servicoId: "", titulo: "", data: "", hora: "09:00",
@@ -40,20 +41,32 @@ function AgendaPage() {
 
   const diasComEvento = useMemo(() => {
     const set = new Set<string>();
-    data.agendamentos.forEach((a) => set.add(new Date(a.data).toDateString()));
+    data.agendamentos.filter((a) => !a.arquivado).forEach((a) => set.add(new Date(a.data).toDateString()));
     return set;
   }, [data.agendamentos]);
 
   const doDia = selDate
-    ? data.agendamentos.filter((a) => new Date(a.data).toDateString() === selDate.toDateString())
+    ? data.agendamentos.filter((a) => !a.arquivado && new Date(a.data).toDateString() === selDate.toDateString())
         .sort((a, b) => +new Date(a.data) - +new Date(b.data))
     : [];
 
   function abrirNovo() {
     const d = selDate ?? new Date();
+    setEditId(null);
     setForm({
       clienteId: "", servicoId: "", titulo: "", data: d.toISOString().slice(0, 10),
       hora: "09:00", observacoes: "", status: "agendado",
+    });
+    setOpen(true);
+  }
+  function abrirEdicao(a: Agendamento) {
+    const dt = new Date(a.data);
+    setEditId(a.id);
+    setForm({
+      clienteId: a.clienteId, servicoId: a.servicoId ?? "", titulo: a.titulo,
+      data: dt.toISOString().slice(0, 10),
+      hora: dt.toTimeString().slice(0, 5),
+      observacoes: a.observacoes ?? "", status: a.status,
     });
     setOpen(true);
   }
@@ -64,12 +77,13 @@ function AgendaPage() {
     if (!form.data) return toast.error("Informe a data");
     const iso = new Date(`${form.data}T${form.hora}:00`).toISOString();
     const serv = data.servicos.find((s) => s.id === form.servicoId);
-    db.addAgendamento({
+    const payload = {
       clienteId: form.clienteId, servicoId: form.servicoId || undefined,
       titulo: form.titulo, data: iso, observacoes: form.observacoes,
       status: form.status, valor: serv?.valor,
-    });
-    toast.success("Agendamento criado");
+    };
+    if (editId) { db.updateAgendamento(editId, payload); toast.success("Agendamento atualizado"); }
+    else { db.addAgendamento(payload); toast.success("Agendamento criado"); }
     setOpen(false);
   }
 
@@ -128,8 +142,11 @@ function AgendaPage() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Excluir?")) db.removeAgendamento(a.id); }}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} title="Editar">
+                          <Pencil className="h-4 w-4 text-primary" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Arquivar agendamento?")) db.arquivarAgendamento(a.id); }} title="Arquivar">
+                          <Archive className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
                     </div>
@@ -143,14 +160,14 @@ function AgendaPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Novo agendamento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editId ? "Editar agendamento" : "Novo agendamento"}</DialogTitle></DialogHeader>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Label className="text-xs">Cliente *</Label>
               <Select value={form.clienteId} onValueChange={(v) => setForm({ ...form, clienteId: v })}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  {data.clientes.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                  {data.clientes.filter((c) => !c.arquivado).map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -162,7 +179,7 @@ function AgendaPage() {
               }}>
                 <SelectTrigger><SelectValue placeholder="Opcional" /></SelectTrigger>
                 <SelectContent>
-                  {data.servicos.map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
+                  {data.servicos.filter((s) => !s.arquivado).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
