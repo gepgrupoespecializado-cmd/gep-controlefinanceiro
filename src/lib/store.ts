@@ -495,6 +495,25 @@ export const db = {
     persist();
   },
 
+  /* Modelos de descrição */
+  addModelo(m: Omit<ModeloDescricao, "id" | "criadoEm">) {
+    const novo: ModeloDescricao = { ...m, id: uid(), criadoEm: new Date().toISOString() };
+    state = { ...state, modelos: [novo, ...state.modelos] };
+    persist();
+  },
+  updateModelo(id: string, patch: Partial<ModeloDescricao>) {
+    state = { ...state, modelos: state.modelos.map((m) => m.id === id ? { ...m, ...patch } : m) };
+    persist();
+  },
+  removeModelo(id: string) {
+    state = { ...state, modelos: state.modelos.filter((m) => m.id !== id) };
+    persist();
+  },
+  toggleFavoritoModelo(id: string) {
+    state = { ...state, modelos: state.modelos.map((m) => m.id === id ? { ...m, favorito: !m.favorito } : m) };
+    persist();
+  },
+
   /* Histórico */
   limparHistorico() {
     state = { ...state, historico: [] };
