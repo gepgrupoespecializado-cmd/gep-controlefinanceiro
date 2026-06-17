@@ -211,7 +211,13 @@ function load(): DB {
     const raw = localStorage.getItem(KEY);
     if (!raw) return seed;
     const parsed = JSON.parse(raw);
-    return { ...seed, ...parsed };
+    const merged: DB = { ...seed, ...parsed };
+    merged.empresa = { ...seed.empresa, ...(parsed.empresa ?? {}) };
+    merged.modelos = (parsed.modelos && parsed.modelos.length ? parsed.modelos : seed.modelos);
+    merged.orcamentos = (parsed.orcamentos ?? []).map((o: any) => ({
+      descricaoServicos: "", validadeDias: 7, ...o,
+    }));
+    return merged;
   } catch {
     return seed;
   }
@@ -523,6 +529,13 @@ export const db = {
 
 export const totalOrcamento = (o: Orcamento) =>
   o.itens.reduce((sum, i) => sum + i.quantidade * i.valorUnit, 0);
+
+export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
+  const emissao = new Date(o.criadoEm);
+  const vencimento = new Date(emissao);
+  vencimento.setDate(vencimento.getDate() + (o.validadeDias ?? 7));
+  return { emissao, vencimento };
+}
 
 export function statusPagamento(l: Lancamento): PagamentoStatus {
   if (l.pago) return "recebido";
