@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Clock, Wrench, Pencil, Archive, Search, Copy } from "lucide-react";
+import { Plus, Clock, Wrench, Pencil, Trash2, Search, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { db, useDB, type Servico } from "@/lib/store";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { brl } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -94,7 +95,11 @@ function ServicosPage() {
                 <div className="flex">
                   <Button variant="ghost" size="icon" onClick={() => abrirEdicao(s)} title="Editar"><Pencil className="h-4 w-4 text-primary" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => duplicar(s)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => { if (confirm("Arquivar serviço?")) { db.arquivarServico(s.id); toast.success("Arquivado"); } }} title="Arquivar"><Archive className="h-4 w-4 text-destructive" /></Button>
+                  <ConfirmDelete
+                    trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                    titulo={`Excluir serviço "${s.nome}"?`}
+                    onConfirm={() => { db.arquivarServico(s.id); toast.success("Serviço excluído"); }}
+                  />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-2 border-t">

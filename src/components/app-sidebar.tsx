@@ -9,6 +9,7 @@ import {
   Building2,
   History,
   Trash,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ const items = [
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Serviços", url: "/servicos", icon: Wrench },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
+  { title: "Modelos", url: "/modelos", icon: BookOpen },
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Histórico", url: "/historico", icon: History },
@@ -36,9 +38,13 @@ const items = [
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  function handleNavigate() {
+    if (isMobile) setOpenMobile(false);
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -70,7 +76,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link to={item.url} className="flex items-center gap-2">
+                      <Link to={item.url} className="flex items-center gap-2" onClick={handleNavigate}>
                         <item.icon className="h-4 w-4 shrink-0" />
                         {!collapsed && <span>{item.title}</span>}
                       </Link>

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Archive, Search } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, totalOrcamento, statusOrcLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus } from "@/lib/store";
+import { ConfirmDelete } from "@/components/confirm-delete";
+import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, type Orcamento, type OrcamentoItem, type OrcamentoStatus } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
 import { gerarOrcamentoPDF, abrirPDF, baixarPDF } from "@/lib/pdf";
 import { toast } from "sonner";
@@ -32,6 +33,9 @@ function OrcamentosPage() {
   const [clienteId, setClienteId] = useState("");
   const [prazo, setPrazo] = useState("");
   const [obs, setObs] = useState("");
+  const [descricaoServicos, setDescricaoServicos] = useState("");
+  const [validadeDias, setValidadeDias] = useState(7);
+  const [modelosOpen, setModelosOpen] = useState(false);
   const [status, setStatus] = useState<OrcamentoStatus>("rascunho");
   const [itens, setItens] = useState<OrcamentoItem[]>([
     { descricao: "", quantidade: 1, valorUnit: 0 },
@@ -39,12 +43,14 @@ function OrcamentosPage() {
 
   function resetForm() {
     setClienteId(""); setPrazo(""); setObs(""); setStatus("rascunho"); setEditId(null);
+    setDescricaoServicos(""); setValidadeDias(7);
     setItens([{ descricao: "", quantidade: 1, valorUnit: 0 }]);
   }
   function abrirNovo() { resetForm(); setOpen(true); }
   function abrirEdicao(o: Orcamento) {
     setEditId(o.id); setClienteId(o.clienteId); setPrazo(o.prazo ?? "");
     setObs(o.observacoes ?? ""); setStatus(o.status); setItens(o.itens.map((i) => ({ ...i })));
+    setDescricaoServicos(o.descricaoServicos ?? ""); setValidadeDias(o.validadeDias ?? 7);
     setOpen(true);
   }
 
@@ -68,11 +74,14 @@ function OrcamentosPage() {
     if (itens.length === 0 || itens.some((i) => !i.descricao.trim())) {
       return toast.error("Adicione ao menos um item com descrição");
     }
+    if (!descricaoServicos.trim()) {
+      return toast.error("Informe a descrição dos serviços a serem prestados");
+    }
     if (editId) {
-      db.updateOrcamento(editId, { clienteId, itens, prazo, observacoes: obs, status });
+      db.updateOrcamento(editId, { clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias });
       toast.success("Orçamento atualizado");
     } else {
-      db.addOrcamento({ clienteId, itens, prazo, observacoes: obs, status });
+      db.addOrcamento({ clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias });
       toast.success("Orçamento criado");
     }
     setOpen(false); resetForm();
@@ -90,7 +99,18 @@ function OrcamentosPage() {
     else if (action === "download") baixarPDF(doc, filename);
     else {
       const tot = totalOrcamento(o);
-      const txt = `*Orçamento ORC-${padNum(o.numero)}*\nCliente: ${cli?.nome ?? ""}\nTotal: ${brl(tot)}\n${o.prazo ? "Prazo: " + o.prazo : ""}`;
+      const { vencimento } = validadeOrcamento(o);
+      const partes = [
+        `*Orçamento ORC-${padNum(o.numero)}*`,
+        `Cliente: ${cli?.nome ?? ""}`,
+        `Total: ${brl(tot)}`,
+        o.prazo ? `Prazo: ${o.prazo}` : "",
+        `Validade até: ${dateBR(vencimento)}`,
+        "",
+        "*DESCRIÇÃO DOS SERVIÇOS:*",
+        o.descricaoServicos,
+      ].filter(Boolean);
+      const txt = partes.join("\n");
       const tel = cli?.whatsapp?.replace(/\D/g, "") || "";
       const url = `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
       window.open(url, "_blank");
@@ -156,6 +176,26 @@ function OrcamentosPage() {
                 </div>
               </div>
 
+              {/* DESCRIÇÃO DOS SERVIÇOS — obrigatório */}
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">Descrição dos serviços a serem prestados *</Label>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setModelosOpen(true)}>
+                    <BookOpen className="h-3.5 w-3.5" />Usar modelo
+                  </Button>
+                </div>
+                <Textarea
+                  value={descricaoServicos}
+                  onChange={(e) => setDescricaoServicos(e.target.value)}
+                  rows={8}
+                  placeholder="Detalhe os serviços contratados de forma profissional. Use bullets, quebras de linha e itens detalhados."
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Este texto aparecerá no PDF e no envio por WhatsApp.
+                </p>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
                 <div className="grid gap-1.5"><Label className="text-xs">Prazo</Label><Input placeholder="ex: 7 dias" value={prazo} onChange={(e) => setPrazo(e.target.value)} /></div>
                 <div className="grid gap-1.5">
@@ -169,7 +209,14 @@ function OrcamentosPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5"><Label className="text-xs">Total</Label><Input value={brl(total)} disabled className="font-bold" /></div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Validade (dias)</Label>
+                  <Input type="number" min={1} value={validadeDias} onChange={(e) => setValidadeDias(Number(e.target.value) || 7)} />
+                </div>
+              </div>
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs flex items-center justify-between">
+                <span>Valor total</span>
+                <span className="font-black text-primary text-base">{brl(total)}</span>
               </div>
               <div className="grid gap-1.5"><Label className="text-xs">Observações</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
             </div>
@@ -177,6 +224,27 @@ function OrcamentosPage() {
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button onClick={salvar}>{editId ? "Atualizar" : "Salvar orçamento"}</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de seleção de modelos */}
+        <Dialog open={modelosOpen} onOpenChange={setModelosOpen}>
+          <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Selecionar modelo</DialogTitle></DialogHeader>
+            <div className="space-y-2">
+              {data.modelos.length === 0 && <p className="text-sm text-muted-foreground">Nenhum modelo cadastrado.</p>}
+              {data.modelos.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { setDescricaoServicos(m.conteudo); setModelosOpen(false); toast.success(`Modelo "${m.nome}" aplicado`); }}
+                  className="w-full text-left rounded-lg border p-3 hover:bg-muted transition-colors"
+                >
+                  <p className="font-semibold text-sm">{m.nome} {m.favorito && <span className="text-amber-500">★</span>}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-wrap">{m.conteudo}</p>
+                </button>
+              ))}
+            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -206,6 +274,7 @@ function OrcamentosPage() {
         <div className="grid gap-3">
           {ativos.map((o) => {
             const cli = data.clientes.find((c) => c.id === o.clienteId);
+            const { vencimento } = validadeOrcamento(o);
             return (
               <Card key={o.id}>
                 <CardContent className="p-4">
@@ -223,7 +292,14 @@ function OrcamentosPage() {
                         </Select>
                       </div>
                       <p className="truncate text-sm text-muted-foreground mt-1">{cli?.nome ?? "Cliente removido"}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{dateBR(o.criadoEm)} · {o.itens.length} item(ns)</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {dateBR(o.criadoEm)} · {o.itens.length} item(ns) · válido até <b className="text-foreground">{dateBR(vencimento)}</b>
+                      </p>
+                      {o.descricaoServicos && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 whitespace-pre-wrap border-l-2 border-primary/30 pl-2 italic">
+                          {o.descricaoServicos}
+                        </p>
+                      )}
                     </div>
                     <p className="text-right text-xl font-black text-primary tabular-nums whitespace-nowrap">{brl(totalOrcamento(o))}</p>
                   </div>
@@ -233,9 +309,11 @@ function OrcamentosPage() {
                     <Button size="sm" variant="outline" onClick={() => pdf(o.id, "share")}><Share2 className="h-3.5 w-3.5" />WhatsApp</Button>
                     <Button size="sm" variant="outline" onClick={() => abrirEdicao(o)}><Pencil className="h-3.5 w-3.5" />Editar</Button>
                     <Button size="sm" variant="outline" onClick={() => { db.duplicarOrcamento(o.id); toast.success("Duplicado"); }}><Copy className="h-3.5 w-3.5" />Duplicar</Button>
-                    <Button size="sm" variant="ghost" onClick={() => { if (confirm("Arquivar orçamento?")) { db.arquivarOrcamento(o.id); toast.success("Arquivado"); } }}>
-                      <Archive className="h-3.5 w-3.5 text-destructive" />Arquivar
-                    </Button>
+                    <ConfirmDelete
+                      trigger={<Button size="sm" variant="ghost"><Trash2 className="h-3.5 w-3.5 text-destructive" />Excluir</Button>}
+                      titulo={`Excluir orçamento ORC-${padNum(o.numero)}?`}
+                      onConfirm={() => { db.arquivarOrcamento(o.id); toast.success("Excluído"); }}
+                    />
                   </div>
                 </CardContent>
               </Card>

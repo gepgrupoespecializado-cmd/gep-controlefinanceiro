@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Calendar as CalendarIcon, Pencil, Archive } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { db, useDB, statusAgendaLabel, type Agendamento, type AgendaStatus } from "@/lib/store";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { dateTimeBR } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -145,9 +146,11 @@ function AgendaPage() {
                         <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} title="Editar">
                           <Pencil className="h-4 w-4 text-primary" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => { if (confirm("Arquivar agendamento?")) db.arquivarAgendamento(a.id); }} title="Arquivar">
-                          <Archive className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <ConfirmDelete
+                          trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                          titulo={`Excluir agendamento "${a.titulo}"?`}
+                          onConfirm={() => { db.arquivarAgendamento(a.id); toast.success("Agendamento excluído"); }}
+                        />
                       </div>
                     </div>
                   </CardContent>

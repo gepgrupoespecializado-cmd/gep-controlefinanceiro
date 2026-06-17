@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Archive } from "lucide-react";
+import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { db, useDB, freqColor, freqLabel, type Cliente, type ClienteFreq } from "@/lib/store";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes")({
@@ -141,9 +142,11 @@ function ClientesPage() {
                       <Button variant="ghost" size="icon" onClick={() => abrirEdicao(c)} title="Editar">
                         <Pencil className="h-4 w-4 text-primary" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { if (confirm("Arquivar este cliente? Você pode restaurá-lo na Lixeira.")) { db.arquivarCliente(c.id); toast.success("Arquivado"); } }} title="Arquivar">
-                        <Archive className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <ConfirmDelete
+                        trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                        titulo={`Excluir cliente "${c.nome}"?`}
+                        onConfirm={() => { db.arquivarCliente(c.id); toast.success("Cliente excluído"); }}
+                      />
                     </div>
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">

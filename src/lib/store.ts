@@ -44,6 +44,8 @@ export interface Orcamento {
   itens: OrcamentoItem[];
   prazo?: string;
   observacoes?: string;
+  descricaoServicos: string;
+  validadeDias: number;
   status: OrcamentoStatus;
   criadoEm: string;
   arquivado?: boolean;
@@ -91,6 +93,18 @@ export interface Empresa {
   endereco?: string;
   redesSociais?: string;
   logoDataUrl?: string;
+  temaPdf?: PdfTema;
+  corPdf?: string; // hex, ex: "#0b1b3d"
+}
+
+export type PdfTema = "classico" | "moderno" | "executivo" | "simples";
+
+export interface ModeloDescricao {
+  id: string;
+  nome: string;
+  conteudo: string;
+  favorito?: boolean;
+  criadoEm: string;
 }
 
 export type HistoricoEntidade =
@@ -118,10 +132,50 @@ export interface DB {
   lancamentos: Lancamento[];
   empresa: Empresa;
   historico: HistoricoEntry[];
+  modelos: ModeloDescricao[];
 }
 
-const KEY = "gep_db_v2";
+const KEY = "gep_db_v3";
 const USUARIO_PADRAO = "Operador";
+
+const modeloPadrao = (nome: string, conteudo: string): ModeloDescricao => ({
+  id: uid(), nome, conteudo, criadoEm: new Date().toISOString(),
+});
+
+const MODELOS_SEED: ModeloDescricao[] = [
+  modeloPadrao(
+    "Limpeza Técnica de Vidros",
+    "• Limpeza técnica de todos os vidros internos e externos.\n• Remoção de manchas de chuva, poeira, gordura e resíduos superficiais.\n• Limpeza de esquadrias e acabamentos próximos aos vidros.\n• Utilização de produtos profissionais específicos para vidros.\n• Execução realizada por equipe especializada utilizando equipamentos adequados e procedimentos seguros.",
+  ),
+  modeloPadrao(
+    "Limpeza Pós-Obra",
+    "• Remoção de poeira, respingos de tinta, cimento e demais resíduos da obra.\n• Limpeza profunda de pisos, paredes, vidros, esquadrias e bancadas.\n• Higienização de banheiros, cozinhas e áreas comuns.\n• Aplicação de produtos profissionais e equipamentos adequados.\n• Equipe técnica especializada com todos os EPIs necessários.",
+  ),
+  modeloPadrao(
+    "Limpeza de Fachadas",
+    "• Limpeza técnica completa da fachada (vidros, pastilhas, ACM e/ou pintura).\n• Remoção de poeira, fuligem e poluição urbana.\n• Trabalho em altura com equipe especializada NR-35 e NR-18.\n• Utilização de cadeiras suspensas, andaimes ou balancins conforme projeto.\n• Produtos específicos para cada tipo de revestimento.",
+  ),
+  modeloPadrao(
+    "Limpeza Comercial",
+    "• Higienização completa de salas, recepção, banheiros e áreas comuns.\n• Limpeza de mobiliário, vidros, pisos e superfícies de contato.\n• Recolhimento e descarte adequado de resíduos.\n• Reposição de materiais de higiene (quando contratado).\n• Equipe uniformizada e treinada.",
+  ),
+  modeloPadrao(
+    "Limpeza Residencial",
+    "• Limpeza geral de todos os cômodos da residência.\n• Higienização de banheiros, cozinha e áreas de serviço.\n• Limpeza de vidros internos, espelhos e superfícies.\n• Aspiração e lavagem de pisos.\n• Organização leve dos ambientes.",
+  ),
+  modeloPadrao(
+    "Limpeza de Sacadas e Varandas",
+    "• Limpeza de pisos, paredes e guarda-corpos.\n• Higienização de vidros e esquadrias.\n• Remoção de poeira, manchas e resíduos externos.\n• Produtos apropriados para áreas externas.",
+  ),
+  modeloPadrao(
+    "Limpeza de Vitrines",
+    "• Limpeza técnica de vitrines internas e externas.\n• Remoção de manchas, gordura, poeira e marcas de chuva.\n• Polimento final para acabamento cristalino.\n• Equipe treinada para atendimento em horários comerciais.",
+  ),
+  modeloPadrao(
+    "Limpeza de Academias",
+    "• Higienização completa de aparelhos, halteres e equipamentos.\n• Limpeza de pisos, espelhos, vidros e bancadas.\n• Desinfecção de banheiros e vestiários.\n• Produtos bactericidas e procedimentos sanitários.",
+  ),
+];
 
 const seed: DB = {
   clientes: [],
@@ -144,8 +198,11 @@ const seed: DB = {
     email: "",
     endereco: "",
     redesSociais: "",
+    temaPdf: "classico",
+    corPdf: "#0b1b3d",
   },
   historico: [],
+  modelos: MODELOS_SEED,
 };
 
 function load(): DB {
@@ -154,7 +211,13 @@ function load(): DB {
     const raw = localStorage.getItem(KEY);
     if (!raw) return seed;
     const parsed = JSON.parse(raw);
-    return { ...seed, ...parsed };
+    const merged: DB = { ...seed, ...parsed };
+    merged.empresa = { ...seed.empresa, ...(parsed.empresa ?? {}) };
+    merged.modelos = (parsed.modelos && parsed.modelos.length ? parsed.modelos : seed.modelos);
+    merged.orcamentos = (parsed.orcamentos ?? []).map((o: any) => ({
+      descricaoServicos: "", validadeDias: 7, ...o,
+    }));
+    return merged;
   } catch {
     return seed;
   }
@@ -438,6 +501,25 @@ export const db = {
     persist();
   },
 
+  /* Modelos de descrição */
+  addModelo(m: Omit<ModeloDescricao, "id" | "criadoEm">) {
+    const novo: ModeloDescricao = { ...m, id: uid(), criadoEm: new Date().toISOString() };
+    state = { ...state, modelos: [novo, ...state.modelos] };
+    persist();
+  },
+  updateModelo(id: string, patch: Partial<ModeloDescricao>) {
+    state = { ...state, modelos: state.modelos.map((m) => m.id === id ? { ...m, ...patch } : m) };
+    persist();
+  },
+  removeModelo(id: string) {
+    state = { ...state, modelos: state.modelos.filter((m) => m.id !== id) };
+    persist();
+  },
+  toggleFavoritoModelo(id: string) {
+    state = { ...state, modelos: state.modelos.map((m) => m.id === id ? { ...m, favorito: !m.favorito } : m) };
+    persist();
+  },
+
   /* Histórico */
   limparHistorico() {
     state = { ...state, historico: [] };
@@ -447,6 +529,13 @@ export const db = {
 
 export const totalOrcamento = (o: Orcamento) =>
   o.itens.reduce((sum, i) => sum + i.quantidade * i.valorUnit, 0);
+
+export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
+  const emissao = new Date(o.criadoEm);
+  const vencimento = new Date(emissao);
+  vencimento.setDate(vencimento.getDate() + (o.validadeDias ?? 7));
+  return { emissao, vencimento };
+}
 
 export function statusPagamento(l: Lancamento): PagamentoStatus {
   if (l.pago) return "recebido";
