@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, ArrowDownCircle, ArrowUpCircle, Pencil, Archive, CheckCircle2, Search } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2, CheckCircle2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,7 @@ import {
   db, useDB, statusPagamento, statusPagLabel, statusPagColor,
   type Lancamento, type LancamentoTipo, type PagamentoStatus,
 } from "@/lib/store";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { brl, dateBR } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -277,9 +278,12 @@ function FinanceiroPage() {
                       <Button variant="ghost" size="icon" title="Editar" onClick={() => abrirEdicao(l)}>
                         <Pencil className="h-4 w-4 text-primary" />
                       </Button>
-                      <Button variant="ghost" size="icon" title="Arquivar" onClick={() => { if (confirm("Arquivar lançamento?")) db.arquivarLancamento(l.id); }}>
-                        <Archive className="h-4 w-4 text-destructive" />
-                      </Button>
+                      <ConfirmDelete
+                        trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                        titulo="Excluir lançamento?"
+                        descricao={l.descricao}
+                        onConfirm={() => { db.arquivarLancamento(l.id); toast.success("Lançamento excluído"); }}
+                      />
                     </div>
                   </li>
                 );
