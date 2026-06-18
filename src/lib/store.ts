@@ -232,7 +232,9 @@ function load(): DB {
     merged.empresa = { ...seed.empresa, ...(parsed.empresa ?? {}) };
     merged.modelos = (parsed.modelos && parsed.modelos.length ? parsed.modelos : seed.modelos);
     merged.orcamentos = (parsed.orcamentos ?? []).map((o: any) => ({
-      descricaoServicos: "", validadeDias: 7, formasPagamento: [], ...o,
+      descricaoServicos: "",
+      validadeDias: 7,
+      ...o,
       formasPagamento: Array.isArray(o.formasPagamento) ? o.formasPagamento : [],
     }));
     return merged;
