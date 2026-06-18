@@ -346,6 +346,15 @@ function OrcamentosPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Cadastro rápido de cliente direto do orçamento */}
+        <ClienteFormDialog
+          open={novoClienteOpen}
+          onOpenChange={setNovoClienteOpen}
+          initialNome={clienteBusca}
+          onCreated={(id) => { setClienteId(id); setClienteBusca(""); }}
+          saveLabel="Salvar cliente e continuar orçamento"
+        />
       </div>
 
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
