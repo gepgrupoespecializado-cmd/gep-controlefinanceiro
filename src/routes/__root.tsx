@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { OnlineStatus } from "@/components/online-status";
 
 function NotFoundComponent() {
   return (
@@ -145,6 +146,9 @@ function RootComponent() {
               <SidebarTrigger />
               <div className="ml-1 min-w-0">
                 <p className="truncate text-sm font-semibold">GEP Controle Pro</p>
+              </div>
+              <div className="ml-auto">
+                <OnlineStatus />
               </div>
             </header>
             <main className="flex-1 p-3 sm:p-6 min-w-0">
