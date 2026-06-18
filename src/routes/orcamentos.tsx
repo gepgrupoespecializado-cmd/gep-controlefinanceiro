@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen, UserPlus, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
 import { gerarOrcamentoPDF, abrirPDF, baixarPDF } from "@/lib/pdf";
@@ -37,6 +38,8 @@ function OrcamentosPage() {
   const [validadeDias, setValidadeDias] = useState(7);
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>(["pix", "dinheiro", "debito", "credito"]);
   const [modelosOpen, setModelosOpen] = useState(false);
+  const [novoClienteOpen, setNovoClienteOpen] = useState(false);
+  const [clienteBusca, setClienteBusca] = useState("");
   const [status, setStatus] = useState<OrcamentoStatus>("rascunho");
   const [itens, setItens] = useState<OrcamentoItem[]>([
     { descricao: "", quantidade: 1, valorUnit: 0 },
@@ -46,6 +49,7 @@ function OrcamentosPage() {
     setClienteId(""); setPrazo(""); setObs(""); setStatus("rascunho"); setEditId(null);
     setDescricaoServicos(""); setValidadeDias(7);
     setFormasPagamento(["pix", "dinheiro", "debito", "credito"]);
+    setClienteBusca("");
     setItens([{ descricao: "", quantidade: 1, valorUnit: 0 }]);
   }
   function abrirNovo() { resetForm(); setOpen(true); }
@@ -71,6 +75,21 @@ function OrcamentosPage() {
     if (!s) return;
     atualizarItem(idx, { servicoId, descricao: s.nome, valorUnit: s.valor });
   }
+
+  const clienteSelecionado = useMemo(
+    () => data.clientes.find((c) => c.id === clienteId),
+    [data.clientes, clienteId],
+  );
+
+  const clientesFiltrados = useMemo(() => {
+    const term = clienteBusca.trim().toLowerCase();
+    const ativos = data.clientes.filter((c) => !c.arquivado);
+    if (!term) return ativos.slice(0, 8);
+    return ativos.filter((c) =>
+      [c.nome, c.telefone, c.whatsapp, c.endereco, c.cidade, c.bairro]
+        .some((v) => v?.toLowerCase().includes(term)),
+    ).slice(0, 12);
+  }, [data.clientes, clienteBusca]);
 
   function salvar() {
     if (!clienteId) return toast.error("Selecione um cliente");
@@ -146,14 +165,67 @@ function OrcamentosPage() {
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{editId ? "Editar orçamento" : "Novo orçamento"}</DialogTitle></DialogHeader>
             <div className="grid gap-3">
-              <div className="grid gap-1.5">
-                <Label className="text-xs">Cliente *</Label>
-                <Select value={clienteId} onValueChange={setClienteId}>
-                  <SelectTrigger><SelectValue placeholder={data.clientes.length ? "Selecione..." : "Cadastre um cliente primeiro"} /></SelectTrigger>
-                  <SelectContent>
-                    {data.clientes.filter((c) => !c.arquivado).map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-2">
+                <Label className="text-xs font-semibold">Cliente *</Label>
+                {clienteSelecionado ? (
+                  <div className="flex items-start justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-2 font-semibold text-sm">
+                        <User className="h-4 w-4 text-primary" />
+                        {clienteSelecionado.nome}
+                      </p>
+                      <div className="mt-1 text-[11px] text-muted-foreground space-y-0.5">
+                        {clienteSelecionado.telefone && <p>Tel: {clienteSelecionado.telefone}</p>}
+                        {clienteSelecionado.whatsapp && <p>WhatsApp: {clienteSelecionado.whatsapp}</p>}
+                        {clienteSelecionado.endereco && <p className="line-clamp-2">{clienteSelecionado.endereco}</p>}
+                      </div>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setClienteId("")}>
+                      <X className="h-3.5 w-3.5" />Trocar
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid gap-2 rounded-lg border bg-muted/30 p-3">
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          autoFocus
+                          className="pl-9"
+                          placeholder="Buscar por nome, telefone, WhatsApp ou endereço..."
+                          value={clienteBusca}
+                          onChange={(e) => setClienteBusca(e.target.value)}
+                        />
+                      </div>
+                      <Button type="button" size="sm" onClick={() => setNovoClienteOpen(true)}>
+                        <UserPlus className="h-4 w-4" />Novo cliente
+                      </Button>
+                    </div>
+                    {clientesFiltrados.length === 0 ? (
+                      <div className="rounded-md border border-dashed p-4 text-center text-xs text-muted-foreground">
+                        {data.clientes.length === 0
+                          ? "Nenhum cliente cadastrado. Clique em \"Novo cliente\" para começar."
+                          : "Nenhum cliente encontrado para esta busca."}
+                      </div>
+                    ) : (
+                      <div className="max-h-56 overflow-y-auto rounded-md border bg-background divide-y">
+                        {clientesFiltrados.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => { setClienteId(c.id); setClienteBusca(""); }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted transition-colors"
+                          >
+                            <p className="text-sm font-semibold truncate">{c.nome}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {[c.telefone, c.whatsapp, c.endereco].filter(Boolean).join(" · ")}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
