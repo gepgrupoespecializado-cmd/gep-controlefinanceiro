@@ -334,11 +334,12 @@ function criarReceitaDeAgendamento(a: Agendamento) {
 /* ---------- Mutations ---------- */
 export const db = {
   /* Clientes */
-  addCliente(c: Omit<Cliente, "id" | "criadoEm">) {
+  addCliente(c: Omit<Cliente, "id" | "criadoEm">): string {
     const novo: Cliente = { ...c, id: uid(), criadoEm: new Date().toISOString() };
     state = { ...state, clientes: [novo, ...state.clientes] };
     logHist({ entidade: "cliente", entidadeId: novo.id, entidadeNome: novo.nome, acao: "criado" });
     persist();
+    return novo.id;
   },
   updateCliente(id: string, patch: Partial<Cliente>) {
     const atual = state.clientes.find((c) => c.id === id);
