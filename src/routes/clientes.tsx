@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +23,17 @@ export const Route = createFileRoute("/clientes")({
 });
 
 type FormState = Omit<Cliente, "id" | "criadoEm">;
-const empty: FormState = { nome: "", telefone: "", whatsapp: "", email: "", endereco: "", observacoes: "", frequencia: "avulso" };
+const empty: FormState = {
+  nome: "", telefone: "", whatsapp: "", email: "",
+  endereco: "", cep: "", rua: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "",
+  observacoes: "", frequencia: "avulso",
+};
+
+function montaEndereco(f: Partial<FormState>) {
+  const linha1 = [f.rua, f.numero].filter(Boolean).join(", ");
+  const partes = [linha1, f.complemento, f.bairro, [f.cidade, f.estado].filter(Boolean).join("/"), f.cep ? `CEP ${f.cep}` : ""].filter(Boolean);
+  return partes.join(" — ");
+}
 
 function ClientesPage() {
   const data = useDB();
@@ -32,6 +42,7 @@ function ClientesPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(empty);
+  const [buscandoCep, setBuscandoCep] = useState(false);
 
   const ativos = data.clientes.filter((c) => !c.arquivado);
   const filtrados = useMemo(() => {
@@ -50,16 +61,45 @@ function ClientesPage() {
     setEditId(c.id);
     setForm({
       nome: c.nome, telefone: c.telefone ?? "", whatsapp: c.whatsapp ?? "",
-      email: c.email ?? "", endereco: c.endereco ?? "", observacoes: c.observacoes ?? "",
+      email: c.email ?? "", endereco: c.endereco ?? "",
+      cep: c.cep ?? "", rua: c.rua ?? "", numero: c.numero ?? "", complemento: c.complemento ?? "",
+      bairro: c.bairro ?? "", cidade: c.cidade ?? "", estado: c.estado ?? "",
+      observacoes: c.observacoes ?? "",
       frequencia: c.frequencia,
     });
     setOpen(true);
   }
   function salvar() {
     if (!form.nome.trim()) return toast.error("Informe o nome do cliente");
-    if (editId) { db.updateCliente(editId, form); toast.success("Cliente atualizado"); }
-    else { db.addCliente(form); toast.success("Cliente cadastrado"); }
+    const payload = { ...form, endereco: montaEndereco(form) || form.endereco };
+    if (editId) { db.updateCliente(editId, payload); toast.success("Cliente atualizado"); }
+    else { db.addCliente(payload); toast.success("Cliente cadastrado"); }
     setOpen(false);
+  }
+
+  async function buscarCep(cep: string) {
+    const limpo = cep.replace(/\D/g, "");
+    if (limpo.length !== 8) return;
+    try {
+      setBuscandoCep(true);
+      const res = await fetch(`https://viacep.com.br/ws/${limpo}/json/`);
+      const json = await res.json();
+      if (json.erro) { toast.error("CEP não encontrado"); return; }
+      setForm((f) => ({
+        ...f,
+        cep: limpo,
+        rua: json.logradouro || f.rua,
+        bairro: json.bairro || f.bairro,
+        cidade: json.localidade || f.cidade,
+        estado: json.uf || f.estado,
+        complemento: f.complemento || json.complemento || "",
+      }));
+      toast.success("Endereço preenchido");
+    } catch {
+      toast.error("Falha ao buscar CEP (verifique a conexão)");
+    } finally {
+      setBuscandoCep(false);
+    }
   }
 
   return (
@@ -82,7 +122,35 @@ function ClientesPage() {
                 <Field label="WhatsApp"><Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} /></Field>
               </div>
               <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-              <Field label="Endereço"><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} /></Field>
+              <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs font-semibold">Endereço</p>
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <Field label="CEP">
+                    <Input
+                      value={form.cep}
+                      placeholder="00000-000"
+                      onChange={(e) => setForm({ ...form, cep: e.target.value })}
+                      onBlur={(e) => buscarCep(e.target.value)}
+                    />
+                  </Field>
+                  <div className="flex items-end">
+                    <Button type="button" variant="outline" size="sm" disabled={buscandoCep} onClick={() => buscarCep(form.cep ?? "")}>
+                      {buscandoCep ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                      Buscar
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-[1fr_100px] gap-2">
+                  <Field label="Rua"><Input value={form.rua} onChange={(e) => setForm({ ...form, rua: e.target.value })} /></Field>
+                  <Field label="Número"><Input value={form.numero} onChange={(e) => setForm({ ...form, numero: e.target.value })} /></Field>
+                </div>
+                <Field label="Complemento"><Input value={form.complemento} onChange={(e) => setForm({ ...form, complemento: e.target.value })} /></Field>
+                <Field label="Bairro"><Input value={form.bairro} onChange={(e) => setForm({ ...form, bairro: e.target.value })} /></Field>
+                <div className="grid grid-cols-[1fr_80px] gap-2">
+                  <Field label="Cidade"><Input value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} /></Field>
+                  <Field label="UF"><Input maxLength={2} value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value.toUpperCase() })} /></Field>
+                </div>
+              </div>
               <Field label="Classificação">
                 <Select value={form.frequencia} onValueChange={(v) => setForm({ ...form, frequencia: v as ClienteFreq })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

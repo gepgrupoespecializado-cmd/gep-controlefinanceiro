@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/confirm-delete";
-import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, type Orcamento, type OrcamentoItem, type OrcamentoStatus } from "@/lib/store";
+import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
 import { gerarOrcamentoPDF, abrirPDF, baixarPDF } from "@/lib/pdf";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ function OrcamentosPage() {
   const [obs, setObs] = useState("");
   const [descricaoServicos, setDescricaoServicos] = useState("");
   const [validadeDias, setValidadeDias] = useState(7);
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>(["pix", "dinheiro", "debito", "credito"]);
   const [modelosOpen, setModelosOpen] = useState(false);
   const [status, setStatus] = useState<OrcamentoStatus>("rascunho");
   const [itens, setItens] = useState<OrcamentoItem[]>([
@@ -44,6 +45,7 @@ function OrcamentosPage() {
   function resetForm() {
     setClienteId(""); setPrazo(""); setObs(""); setStatus("rascunho"); setEditId(null);
     setDescricaoServicos(""); setValidadeDias(7);
+    setFormasPagamento(["pix", "dinheiro", "debito", "credito"]);
     setItens([{ descricao: "", quantidade: 1, valorUnit: 0 }]);
   }
   function abrirNovo() { resetForm(); setOpen(true); }
@@ -51,6 +53,7 @@ function OrcamentosPage() {
     setEditId(o.id); setClienteId(o.clienteId); setPrazo(o.prazo ?? "");
     setObs(o.observacoes ?? ""); setStatus(o.status); setItens(o.itens.map((i) => ({ ...i })));
     setDescricaoServicos(o.descricaoServicos ?? ""); setValidadeDias(o.validadeDias ?? 7);
+    setFormasPagamento(o.formasPagamento?.length ? o.formasPagamento : ["pix", "dinheiro", "debito", "credito"]);
     setOpen(true);
   }
 
@@ -77,11 +80,14 @@ function OrcamentosPage() {
     if (!descricaoServicos.trim()) {
       return toast.error("Informe a descrição dos serviços a serem prestados");
     }
+    if (formasPagamento.length === 0) {
+      return toast.error("Selecione ao menos uma forma de pagamento");
+    }
     if (editId) {
-      db.updateOrcamento(editId, { clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias });
+      db.updateOrcamento(editId, { clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias, formasPagamento });
       toast.success("Orçamento atualizado");
     } else {
-      db.addOrcamento({ clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias });
+      db.addOrcamento({ clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias, formasPagamento });
       toast.success("Orçamento criado");
     }
     setOpen(false); resetForm();
@@ -214,6 +220,27 @@ function OrcamentosPage() {
                   <Input type="number" min={1} value={validadeDias} onChange={(e) => setValidadeDias(Number(e.target.value) || 7)} />
                 </div>
               </div>
+
+              <div className="grid gap-2">
+                <Label className="text-xs font-semibold">Formas de pagamento *</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(Object.keys(formaPagamentoLabel) as FormaPagamento[]).map((f) => {
+                    const ativo = formasPagamento.includes(f);
+                    return (
+                      <button
+                        type="button"
+                        key={f}
+                        onClick={() => setFormasPagamento(ativo ? formasPagamento.filter((x) => x !== f) : [...formasPagamento, f])}
+                        className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${ativo ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                      >
+                        {formaPagamentoLabel[f]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Aparecerá no PDF com texto padrão de condições.</p>
+              </div>
+
               <div className="rounded-md bg-muted/50 px-3 py-2 text-xs flex items-center justify-between">
                 <span>Valor total</span>
                 <span className="font-black text-primary text-base">{brl(total)}</span>

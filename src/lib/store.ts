@@ -11,6 +11,13 @@ export interface Cliente {
   whatsapp?: string;
   email?: string;
   endereco?: string;
+  cep?: string;
+  rua?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
   observacoes?: string;
   frequencia: ClienteFreq;
   criadoEm: string;
@@ -30,6 +37,15 @@ export interface Servico {
 
 export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado";
 
+export type FormaPagamento = "pix" | "dinheiro" | "debito" | "credito";
+
+export const formaPagamentoLabel: Record<FormaPagamento, string> = {
+  pix: "PIX",
+  dinheiro: "Dinheiro",
+  debito: "Cartão de Débito",
+  credito: "Cartão de Crédito",
+};
+
 export interface OrcamentoItem {
   servicoId?: string;
   descricao: string;
@@ -46,6 +62,7 @@ export interface Orcamento {
   observacoes?: string;
   descricaoServicos: string;
   validadeDias: number;
+  formasPagamento: FormaPagamento[];
   status: OrcamentoStatus;
   criadoEm: string;
   arquivado?: boolean;
@@ -215,7 +232,10 @@ function load(): DB {
     merged.empresa = { ...seed.empresa, ...(parsed.empresa ?? {}) };
     merged.modelos = (parsed.modelos && parsed.modelos.length ? parsed.modelos : seed.modelos);
     merged.orcamentos = (parsed.orcamentos ?? []).map((o: any) => ({
-      descricaoServicos: "", validadeDias: 7, ...o,
+      descricaoServicos: "",
+      validadeDias: 7,
+      ...o,
+      formasPagamento: Array.isArray(o.formasPagamento) ? o.formasPagamento : [],
     }));
     return merged;
   } catch {

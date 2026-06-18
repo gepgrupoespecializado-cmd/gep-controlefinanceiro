@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Orcamento, Servico } from "./store";
-import { totalOrcamento, validadeOrcamento } from "./store";
+import { totalOrcamento, validadeOrcamento, formaPagamentoLabel } from "./store";
 import { brl, dateBR, padNum } from "./format";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -184,6 +184,39 @@ export function gerarOrcamentoPDF(
       doc.text(ln, M, y);
       y += 13;
     });
+  }
+
+  // Formas de pagamento
+  {
+    y += 24;
+    if (y > 700) { doc.addPage(); y = M; }
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(M, y - 12, W - M * 2, 22, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text("FORMAS DE PAGAMENTO", M + 8, y + 3);
+    y += 22;
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    const formas = (orc.formasPagamento && orc.formasPagamento.length
+      ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
+      : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
+    doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
+    y += 14;
+    formas.forEach((f) => {
+      if (y > 770) { doc.addPage(); y = M; }
+      doc.text(`• ${f}`, M + 10, y);
+      y += 13;
+    });
+    y += 4;
+    const aviso = "Nos pagamentos realizados por cartão de crédito poderá haver acréscimo referente às taxas da operadora e custos de manutenção da transação. Consulte condições e parcelamentos disponíveis no momento da contratação.";
+    const av = doc.splitTextToSize(aviso, W - M * 2);
+    doc.setFontSize(9); doc.setTextColor(90, 90, 90);
+    av.forEach((ln: string) => {
+      if (y > 770) { doc.addPage(); y = M; }
+      doc.text(ln, M, y); y += 12;
+    });
+    doc.setTextColor(20, 20, 20); doc.setFontSize(10);
   }
 
   // Prazo e observações
