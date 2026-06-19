@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen, UserPlus, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,23 @@ function OrcamentosPage() {
   const [itens, setItens] = useState<OrcamentoItem[]>([
     { descricao: "", quantidade: 1, valorUnit: 0 },
   ]);
+
+  // Recebe rascunho vindo da Calculadora de Precificação
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("gep_precificacao_draft");
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw);
+      resetForm();
+      setItens([{ descricao: d.descricao || "Serviço calculado", quantidade: d.quantidade || 1, valorUnit: Number(d.valorUnit) || 0 }]);
+      setDescricaoServicos(`Valor calculado pela Calculadora de Precificação.\nCusto total: R$ ${Number(d.detalhes?.custo || 0).toFixed(2)}\nLucro estimado: R$ ${Number(d.detalhes?.lucro || 0).toFixed(2)}\nMargem: ${Number(d.detalhes?.margem || 0).toFixed(1)}%`);
+      setOpen(true);
+      toast.success("Valor da calculadora pronto — selecione o cliente para finalizar");
+    } catch {}
+    sessionStorage.removeItem("gep_precificacao_draft");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function resetForm() {
     setClienteId(""); setPrazo(""); setObs(""); setStatus("rascunho"); setEditId(null);
