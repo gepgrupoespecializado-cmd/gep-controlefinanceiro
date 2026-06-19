@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Calendar as CalendarIcon, Pencil, Trash2 } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
@@ -13,8 +14,12 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, statusAgendaLabel, type Agendamento, type AgendaStatus } from "@/lib/store";
+import {
+  db, useDB, statusAgendaLabel, freqLabel, freqColor, recorrenciaLabel,
+  type Agendamento, type AgendaStatus, type Recorrencia, type ClienteFreq,
+} from "@/lib/store";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { RelatorioDialog } from "@/components/relatorio-dialog";
 import { dateTimeBR } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -30,14 +35,26 @@ const statusColor: Record<AgendaStatus, string> = {
   cancelado: "bg-slate-400",
 };
 
+const freqDot: Record<ClienteFreq, string> = {
+  semanal: "bg-emerald-500",
+  quinzenal: "bg-blue-500",
+  mensal: "bg-orange-500",
+  trimestral: "bg-purple-500",
+  avulso: "bg-slate-500",
+};
+
 function AgendaPage() {
   const data = useDB();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [selDate, setSelDate] = useState<Date | undefined>(new Date());
+  const [relatorioOpen, setRelatorioOpen] = useState(false);
+  const [relatorioAg, setRelatorioAg] = useState<Agendamento | null>(null);
   const [form, setForm] = useState({
     clienteId: "", servicoId: "", titulo: "", data: "", hora: "09:00",
+    horaFim: "", responsavel: "", endereco: "",
     observacoes: "", status: "agendado" as AgendaStatus,
+    recorrencia: "nenhuma" as Recorrencia, intervaloDias: 7,
   });
 
   const diasComEvento = useMemo(() => {
@@ -56,7 +73,9 @@ function AgendaPage() {
     setEditId(null);
     setForm({
       clienteId: "", servicoId: "", titulo: "", data: d.toISOString().slice(0, 10),
-      hora: "09:00", observacoes: "", status: "agendado",
+      hora: "09:00", horaFim: "", responsavel: "", endereco: "",
+      observacoes: "", status: "agendado",
+      recorrencia: "nenhuma", intervaloDias: 7,
     });
     setOpen(true);
   }
@@ -66,8 +85,10 @@ function AgendaPage() {
     setForm({
       clienteId: a.clienteId, servicoId: a.servicoId ?? "", titulo: a.titulo,
       data: dt.toISOString().slice(0, 10),
-      hora: dt.toTimeString().slice(0, 5),
+      hora: a.horaInicio || dt.toTimeString().slice(0, 5),
+      horaFim: a.horaFim ?? "", responsavel: a.responsavel ?? "", endereco: a.endereco ?? "",
       observacoes: a.observacoes ?? "", status: a.status,
+      recorrencia: a.recorrencia ?? "nenhuma", intervaloDias: a.intervaloDias ?? 7,
     });
     setOpen(true);
   }
@@ -78,15 +99,44 @@ function AgendaPage() {
     if (!form.data) return toast.error("Informe a data");
     const iso = new Date(`${form.data}T${form.hora}:00`).toISOString();
     const serv = data.servicos.find((s) => s.id === form.servicoId);
+    const cli = data.clientes.find((c) => c.id === form.clienteId);
     const payload = {
       clienteId: form.clienteId, servicoId: form.servicoId || undefined,
       titulo: form.titulo, data: iso, observacoes: form.observacoes,
       status: form.status, valor: serv?.valor,
+      horaInicio: form.hora, horaFim: form.horaFim || undefined,
+      responsavel: form.responsavel || undefined,
+      endereco: form.endereco || cli?.endereco || undefined,
+      recorrencia: form.recorrencia,
+      intervaloDias: form.recorrencia === "personalizada" ? form.intervaloDias : undefined,
     };
     if (editId) { db.updateAgendamento(editId, payload); toast.success("Agendamento atualizado"); }
     else { db.addAgendamento(payload); toast.success("Agendamento criado"); }
     setOpen(false);
   }
+
+  function mudarStatus(a: Agendamento, s: AgendaStatus) {
+    db.updateAgendamento(a.id, { status: s });
+    if (s === "concluido") {
+      setRelatorioAg({ ...a, status: s });
+      setRelatorioOpen(true);
+    }
+  }
+  function abrirRelatorio(a: Agendamento) {
+    setRelatorioAg(a);
+    setRelatorioOpen(true);
+  }
+
+  // Alertas de retorno próximo (próximos 7 dias)
+  const proximosRetornos = useMemo(() => {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const lim = new Date(hoje); lim.setDate(lim.getDate() + 7);
+    return data.agendamentos
+      .filter((a) => !a.arquivado && a.status === "agendado")
+      .filter((a) => { const d = new Date(a.data); return d >= hoje && d <= lim; })
+      .sort((a, b) => +new Date(a.data) - +new Date(b.data))
+      .slice(0, 5);
+  }, [data.agendamentos]);
 
   return (
     <div className="space-y-4">
@@ -107,6 +157,26 @@ function AgendaPage() {
               modifiersClassNames={{ hasEvent: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:h-1 after:w-1 after:rounded-full after:bg-primary" }}
               className="pointer-events-auto"
             />
+            {proximosRetornos.length > 0 && (
+              <div className="mt-3 border-t pt-3 space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground px-1">Próximos retornos (7 dias)</p>
+                {proximosRetornos.map((a) => {
+                  const cli = data.clientes.find((c) => c.id === a.clienteId);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => setSelDate(new Date(a.data))}
+                      className="w-full text-left flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted text-xs"
+                    >
+                      <span className={`h-2 w-2 rounded-full ${cli ? freqDot[cli.frequencia] : "bg-slate-400"}`} />
+                      <span className="truncate flex-1">{cli?.nome ?? "Cliente"}</span>
+                      <span className="text-muted-foreground">{new Date(a.data).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -122,20 +192,43 @@ function AgendaPage() {
           ) : (
             doDia.map((a) => {
               const cli = data.clientes.find((c) => c.id === a.clienteId);
+              const serv = data.servicos.find((s) => s.id === a.servicoId);
+              const dotClass = cli ? freqDot[cli.frequencia] : "bg-slate-400";
+              const endereco = a.endereco || cli?.endereco;
               return (
-                <Card key={a.id}>
+                <Card key={a.id} className="overflow-hidden">
+                  <div className={`h-1 ${dotClass}`} />
                   <CardContent className="p-4">
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`h-2 w-2 rounded-full ${statusColor[a.status]}`} />
+                          <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} title={cli ? freqLabel[cli.frequencia] : ""} />
                           <p className="truncate font-semibold">{a.titulo}</p>
+                          {cli && <Badge variant="outline" className="text-[10px] h-5">{freqLabel[cli.frequencia]}</Badge>}
+                          {a.recorrencia && a.recorrencia !== "nenhuma" && (
+                            <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">↻ {recorrenciaLabel[a.recorrencia]}</Badge>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">{cli?.nome ?? "—"} · {dateTimeBR(a.data)}</p>
+                        <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
+                          <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3" />{cli?.nome ?? "—"}</p>
+                          <p className="flex items-center gap-1.5">
+                            <Clock className="h-3 w-3" />
+                            {dateTimeBR(a.data)}
+                            {a.horaFim && ` – ${a.horaFim}`}
+                          </p>
+                          {serv && <p className="flex items-center gap-1.5">🔧 {serv.nome}</p>}
+                          {endereco && <p className="flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5 shrink-0" /><span className="line-clamp-2">{endereco}</span></p>}
+                        </div>
                         {a.observacoes && <p className="text-xs text-muted-foreground mt-1">{a.observacoes}</p>}
+                        {a.status === "concluido" && (
+                          <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => abrirRelatorio(a)}>
+                            <FileCheck2 className="h-3.5 w-3.5" />
+                            {a.relatorioId ? "Ver/editar relatório" : "Gerar relatório"}
+                          </Button>
+                        )}
                       </div>
                       <div className="flex items-start gap-1">
-                        <Select value={a.status} onValueChange={(v) => db.updateAgendamento(a.id, { status: v as AgendaStatus })}>
+                        <Select value={a.status} onValueChange={(v) => mudarStatus(a, v as AgendaStatus)}>
                           <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {(Object.keys(statusAgendaLabel) as AgendaStatus[]).map((s) => (
@@ -167,7 +260,10 @@ function AgendaPage() {
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Label className="text-xs">Cliente *</Label>
-              <Select value={form.clienteId} onValueChange={(v) => setForm({ ...form, clienteId: v })}>
+              <Select value={form.clienteId} onValueChange={(v) => {
+                const c = data.clientes.find((x) => x.id === v);
+                setForm({ ...form, clienteId: v, endereco: form.endereco || c?.endereco || "" });
+              }}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
                   {data.clientes.filter((c) => !c.arquivado).map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
@@ -187,11 +283,37 @@ function AgendaPage() {
               </Select>
             </div>
             <div className="grid gap-1.5"><Label className="text-xs">Título *</Label><Input value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="grid gap-1.5"><Label className="text-xs">Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
-              <div className="grid gap-1.5"><Label className="text-xs">Hora</Label><Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label className="text-xs">Início</Label><Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label className="text-xs">Término</Label><Input type="time" value={form.horaFim} onChange={(e) => setForm({ ...form, horaFim: e.target.value })} /></div>
             </div>
+            <div className="grid gap-1.5"><Label className="text-xs">Responsável</Label><Input value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} placeholder="Técnico responsável" /></div>
+            <div className="grid gap-1.5"><Label className="text-xs">Endereço do atendimento</Label><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} placeholder="Será preenchido com o endereço do cliente" /></div>
             <div className="grid gap-1.5"><Label className="text-xs">Observações</Label><Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Recorrência (retorno automático)</Label>
+                <Select value={form.recorrencia} onValueChange={(v) => setForm({ ...form, recorrencia: v as Recorrencia })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhuma">Sem recorrência</SelectItem>
+                    <SelectItem value="semanal">Retorno semanal (7 dias)</SelectItem>
+                    <SelectItem value="quinzenal">Retorno quinzenal (14 dias)</SelectItem>
+                    <SelectItem value="mensal">Retorno mensal (30 dias)</SelectItem>
+                    <SelectItem value="trimestral">Retorno trimestral (90 dias)</SelectItem>
+                    <SelectItem value="personalizada">Personalizada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {form.recorrencia === "personalizada" && (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Intervalo (dias)</Label>
+                  <Input type="number" min={1} value={form.intervaloDias} onChange={(e) => setForm({ ...form, intervaloDias: Number(e.target.value) || 7 })} />
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">Ao concluir o serviço, o próximo agendamento será criado automaticamente conforme a recorrência.</p>
             <div className="grid gap-1.5">
               <Label className="text-xs">Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as AgendaStatus })}>
@@ -211,13 +333,20 @@ function AgendaPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        {(Object.keys(statusAgendaLabel) as AgendaStatus[]).map((s) => (
-          <span key={s} className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${statusColor[s]}`} />{statusAgendaLabel[s]}
-          </span>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-3">
+          <p className="text-[11px] font-semibold text-muted-foreground mb-2">Legenda — cor por tipo de cliente</p>
+          <div className="flex flex-wrap gap-3 text-xs">
+            {(Object.keys(freqDot) as ClienteFreq[]).map((f) => (
+              <span key={f} className="flex items-center gap-1.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${freqDot[f]}`} />{freqLabel[f]}
+              </span>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <RelatorioDialog open={relatorioOpen} onOpenChange={setRelatorioOpen} agendamento={relatorioAg} />
     </div>
   );
 }
