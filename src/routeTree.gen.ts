@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as PrecificacaoRouteImport } from './routes/precificacao'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as ModelosRouteImport } from './routes/modelos'
 import { Route as LixeiraRouteImport } from './routes/lixeira'
@@ -23,6 +24,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
   path: '/servicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrecificacaoRoute = PrecificacaoRouteImport.update({
+  id: '/precificacao',
+  path: '/precificacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrcamentosRoute = OrcamentosRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/precificacao'
     | '/servicos'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/precificacao'
     | '/servicos'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/precificacao'
     | '/servicos'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   LixeiraRoute: typeof LixeiraRoute
   ModelosRoute: typeof ModelosRoute
   OrcamentosRoute: typeof OrcamentosRoute
+  PrecificacaoRoute: typeof PrecificacaoRoute
   ServicosRoute: typeof ServicosRoute
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/precificacao': {
+      id: '/precificacao'
+      path: '/precificacao'
+      fullPath: '/precificacao'
+      preLoaderRoute: typeof PrecificacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orcamentos': {
@@ -245,18 +265,9 @@ const rootRouteChildren: RootRouteChildren = {
   LixeiraRoute: LixeiraRoute,
   ModelosRoute: ModelosRoute,
   OrcamentosRoute: OrcamentosRoute,
+  PrecificacaoRoute: PrecificacaoRoute,
   ServicosRoute: ServicosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

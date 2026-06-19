@@ -10,6 +10,7 @@ import {
   History,
   Trash,
   BookOpen,
+  Calculator,
 } from "lucide-react";
 import {
   Sidebar,
@@ -30,6 +31,7 @@ const items = [
   { title: "Serviços", url: "/servicos", icon: Wrench },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Modelos", url: "/modelos", icon: BookOpen },
+  { title: "Precificação", url: "/precificacao", icon: Calculator },
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
   { title: "Histórico", url: "/historico", icon: History },
