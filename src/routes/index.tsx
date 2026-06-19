@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Users,
   FileText,
-  CalendarClock,
   CheckCircle2,
   TrendingUp,
   Wallet,
   Plus,
   UserPlus,
   CalendarPlus,
+  Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,6 @@ function Index() {
   const orcs = db.orcamentos.filter((o) => !o.arquivado);
   const lans = db.lancamentos.filter((l) => !l.arquivado);
   const clis = db.clientes.filter((c) => !c.arquivado);
-  const agendados = ags.filter((a) => a.status === "agendado").length;
   const concluidos = ags.filter((a) => a.status === "concluido").length;
 
   const receitaMes = lans
@@ -58,10 +57,10 @@ function Index() {
   const lucroMes = receitaMes - saidaMes;
 
   const stats = [
-    { label: "Clientes", value: clis.length, icon: Users, color: "from-blue-500 to-blue-600" },
+    { label: "Clientes ativos", value: clis.length, icon: Users, color: "from-blue-500 to-blue-600" },
     { label: "Orçamentos emitidos", value: orcs.length, icon: FileText, color: "from-indigo-500 to-indigo-600" },
-    { label: "Serviços agendados", value: agendados, icon: CalendarClock, color: "from-amber-500 to-orange-500" },
     { label: "Serviços concluídos", value: concluidos, icon: CheckCircle2, color: "from-emerald-500 to-emerald-600" },
+    { label: "Contas a receber", value: brl(aReceber), icon: Clock, color: "from-amber-500 to-orange-500" },
   ];
 
   return (
