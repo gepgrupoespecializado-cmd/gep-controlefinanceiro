@@ -71,6 +71,32 @@ export interface Orcamento {
 
 export type AgendaStatus = "agendado" | "em_andamento" | "concluido" | "cancelado";
 
+export type Recorrencia =
+  | "nenhuma"
+  | "semanal"
+  | "quinzenal"
+  | "mensal"
+  | "trimestral"
+  | "personalizada";
+
+export const recorrenciaDias: Record<Recorrencia, number> = {
+  nenhuma: 0,
+  semanal: 7,
+  quinzenal: 14,
+  mensal: 30,
+  trimestral: 90,
+  personalizada: 0,
+};
+
+export const recorrenciaLabel: Record<Recorrencia, string> = {
+  nenhuma: "Sem recorrência",
+  semanal: "Retorno semanal",
+  quinzenal: "Retorno quinzenal",
+  mensal: "Retorno mensal",
+  trimestral: "Retorno trimestral",
+  personalizada: "Retorno personalizado",
+};
+
 export interface Agendamento {
   id: string;
   clienteId: string;
@@ -80,8 +106,48 @@ export interface Agendamento {
   observacoes?: string;
   status: AgendaStatus;
   valor?: number;
+  horaInicio?: string;
+  horaFim?: string;
+  responsavel?: string;
+  endereco?: string;
+  orcamentoId?: string;
+  recorrencia?: Recorrencia;
+  intervaloDias?: number;
+  relatorioId?: string;
   arquivado?: boolean;
   atualizadoEm?: string;
+}
+
+export type RelatorioStatus = "sucesso" | "observacoes" | "retorno";
+
+export const relatorioStatusLabel: Record<RelatorioStatus, string> = {
+  sucesso: "Concluído com Sucesso",
+  observacoes: "Concluído com Observações",
+  retorno: "Retorno Programado",
+};
+
+export interface Relatorio {
+  id: string;
+  numero: number;
+  agendamentoId: string;
+  clienteId: string;
+  orcamentoId?: string;
+  servicoExecutado: string;
+  descricao: string;
+  observacoes?: string;
+  status: RelatorioStatus;
+  dataExecucao: string;
+  horaInicio?: string;
+  horaFim?: string;
+  responsavel?: string;
+  valor?: number;
+  fotosAntes: string[];
+  fotosDurante: string[];
+  fotosDepois: string[];
+  assinaturaTecnico?: string;
+  assinaturaCliente?: string;
+  criadoEm: string;
+  arquivado?: boolean;
 }
 
 export type LancamentoTipo = "entrada" | "saida";
@@ -150,6 +216,8 @@ export interface DB {
   empresa: Empresa;
   historico: HistoricoEntry[];
   modelos: ModeloDescricao[];
+  relatorios: Relatorio[];
+  proximoRelatorio: number;
 }
 
 const KEY = "gep_db_v3";
@@ -220,6 +288,8 @@ const seed: DB = {
   },
   historico: [],
   modelos: MODELOS_SEED,
+  relatorios: [],
+  proximoRelatorio: 1,
 };
 
 function load(): DB {
@@ -237,6 +307,8 @@ function load(): DB {
       ...o,
       formasPagamento: Array.isArray(o.formasPagamento) ? o.formasPagamento : [],
     }));
+    merged.relatorios = Array.isArray(parsed.relatorios) ? parsed.relatorios : [];
+    merged.proximoRelatorio = parsed.proximoRelatorio ?? 1;
     return merged;
   } catch {
     return seed;
