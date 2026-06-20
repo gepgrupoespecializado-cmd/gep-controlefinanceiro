@@ -40,41 +40,41 @@ export function gerarRelatorioPDF(
     try { doc.addImage(empresa.logoDataUrl, "PNG", M, 18, 60, 60); } catch {}
   }
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
   doc.text(empresa.nome || "GEP Serviços Especializado", empresa.logoDataUrl ? M + 76 : M, 38);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
   const head = [
     empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
     [empresa.telefone, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join(" | "),
     empresa.email || "",
     empresa.endereco || "",
   ].filter(Boolean);
-  let hy = 54;
-  head.forEach((l) => { doc.text(l, empresa.logoDataUrl ? M + 76 : M, hy); hy += 11; });
+  let hy = 56;
+  head.forEach((l) => { doc.text(l, empresa.logoDataUrl ? M + 76 : M, hy); hy += 13; });
 
   // Título
   let y = 120;
   doc.setTextColor(20, 20, 20);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
   doc.text("RELATÓRIO DE PRESTAÇÃO DE SERVIÇO", W / 2, y, { align: "center" });
-  doc.setFontSize(10); doc.setFont("helvetica", "normal");
-  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 16, { align: "center" });
-  y += 36;
+  doc.setFontSize(12); doc.setFont("helvetica", "normal");
+  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 18, { align: "center" });
+  y += 40;
 
   // Status
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.roundedRect(M, y, W - M * 2, 24, 4, 4, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
   doc.text(`Status: ${relatorioStatusLabel[r.status]}`, M + 10, y + 16);
   doc.text(`Data: ${dateBR(r.dataExecucao)}`, W - M - 10, y + 16, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += 36;
+  y += 40;
 
   // Dados do cliente
-  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-  doc.text("CLIENTE", M, y); y += 14;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+  doc.text("CLIENTE", M, y); y += 18;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(14);
   const cliInfo = [
     `Nome: ${cliente?.nome ?? "—"}`,
     cliente?.telefone && `Telefone: ${cliente.telefone}`,
@@ -84,14 +84,14 @@ export function gerarRelatorioPDF(
   ].filter(Boolean) as string[];
   cliInfo.forEach((l) => {
     const lines = doc.splitTextToSize(l, W - M * 2);
-    lines.forEach((ln: string) => { doc.text(ln, M, y); y += 13; });
+    lines.forEach((ln: string) => { doc.text(ln, M, y); y += 17; });
   });
-  y += 8;
+  y += 10;
 
   // Dados do serviço
-  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-  doc.text("DADOS DO SERVIÇO", M, y); y += 14;
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+  doc.text("DADOS DO SERVIÇO", M, y); y += 18;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(14);
   const servInfo = [
     `Serviço: ${r.servicoExecutado}`,
     r.horaInicio && `Início: ${r.horaInicio}`,
@@ -99,35 +99,35 @@ export function gerarRelatorioPDF(
     r.responsavel && `Responsável: ${r.responsavel}`,
     r.valor != null && `Valor: ${brl(r.valor)}`,
   ].filter(Boolean) as string[];
-  servInfo.forEach((l) => { doc.text(l, M, y); y += 13; });
-  y += 8;
+  servInfo.forEach((l) => { doc.text(l, M, y); y += 17; });
+  y += 10;
 
   // Serviços executados
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(M, y - 12, W - M * 2, 22, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
   doc.text("SERVIÇOS EXECUTADOS", M + 8, y + 3);
   y += 22;
   doc.setTextColor(20, 20, 20);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(13);
   const descLines = doc.splitTextToSize(r.descricao || "—", W - M * 2);
   descLines.forEach((ln: string) => {
     if (y > H - 80) { doc.addPage(); y = M; }
-    doc.text(ln, M, y); y += 13;
+    doc.text(ln, M, y); y += 17;
   });
   y += 8;
 
   // Observações
   if (r.observacoes) {
     if (y > H - 100) { doc.addPage(); y = M; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text("OBSERVAÇÕES", M, y); y += 14;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text("OBSERVAÇÕES", M, y); y += 18;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12);
     const obs = doc.splitTextToSize(r.observacoes, W - M * 2);
     obs.forEach((ln: string) => {
       if (y > H - 80) { doc.addPage(); y = M; }
-      doc.text(ln, M, y); y += 13;
+      doc.text(ln, M, y); y += 16;
     });
     y += 8;
   }
@@ -141,8 +141,8 @@ export function gerarRelatorioPDF(
   for (const g of fotosGrupos) {
     if (g.arr.length === 0) continue;
     if (y > H - 200) { doc.addPage(); y = M; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-    doc.text(g.titulo, M, y); y += 14;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+    doc.text(g.titulo, M, y); y += 18;
     const cellW = (W - M * 2 - 16) / 3;
     const cellH = cellW * 0.75;
     let col = 0;
@@ -166,7 +166,7 @@ export function gerarRelatorioPDF(
     try { doc.addImage(r.assinaturaTecnico, "PNG", M, y, halfW, 50); } catch {}
   }
   doc.setDrawColor(120); doc.line(M, y + 56, M + halfW, y + 56);
-  doc.setFontSize(9); doc.setFont("helvetica", "normal");
+  doc.setFontSize(12); doc.setFont("helvetica", "normal");
   doc.text(`Responsável Técnico — ${r.responsavel || empresa.nome || ""}`, M, y + 70);
   // Cliente
   const xC = M + halfW + 20;
