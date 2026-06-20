@@ -58,29 +58,29 @@ export function gerarOrcamentoPDF(
   if (tema === "simples") doc.setTextColor(brand[0], brand[1], brand[2]);
   else doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(tema === "executivo" ? 20 : 18);
+  doc.setFontSize(tema === "executivo" ? 22 : 20);
   doc.text(empresa.nome || "Empresa", empresa.logoDataUrl ? M + 70 : M, tema === "simples" ? 36 : 40);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(11);
   const headLines = [
     empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
     [empresa.telefone, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join(" | "),
     empresa.email || "",
     empresa.endereco || "",
   ].filter(Boolean);
-  let hy = tema === "simples" ? 50 : 56;
+  let hy = tema === "simples" ? 52 : 58;
   headLines.forEach((l) => {
     doc.text(l, empresa.logoDataUrl ? M + 70 : M, hy);
-    hy += 11;
+    hy += 13;
   });
 
   let y = headerH + 30;
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(18);
   doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M, y);
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(12);
   doc.text(`Emitido em ${dateBR(emissao)}`, W - M, y, { align: "right" });
 
   // Validade — destaque
@@ -88,9 +88,9 @@ export function gerarOrcamentoPDF(
   doc.setFillColor(tint[0], tint[1], tint[2]);
   doc.roundedRect(M, y - 12, W - M * 2, 28, 6, 6, "F");
   doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12);
   doc.text(`Validade: ${orc.validadeDias ?? 7} dia(s) — válido até ${dateBR(vencimento)}`, M + 10, y + 5);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
   doc.text(`Emissão ${dateBR(emissao)}`, W - M - 10, y + 5, { align: "right" });
   doc.setTextColor(20, 20, 20);
 
@@ -101,11 +101,11 @@ export function gerarOrcamentoPDF(
 
   // Cliente
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(16);
   doc.text("Cliente", M, y);
-  y += 14;
+  y += 18;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
+  doc.setFontSize(14);
   const cli = cliente
     ? [
         cliente.nome,
@@ -116,7 +116,7 @@ export function gerarOrcamentoPDF(
     : ["Cliente não informado"];
   cli.forEach((l) => {
     doc.text(l, M, y);
-    y += 13;
+    y += 17;
   });
 
   y += 12;
@@ -124,7 +124,7 @@ export function gerarOrcamentoPDF(
   doc.setFillColor(tint[0], tint[1], tint[2]);
   doc.rect(M, y - 12, W - M * 2, 22, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(12);
   doc.text("Descrição", M + 8, y + 3);
   doc.text("Qtd", W - M - 180, y + 3, { align: "right" });
   doc.text("Valor Unit.", W - M - 90, y + 3, { align: "right" });
@@ -132,6 +132,7 @@ export function gerarOrcamentoPDF(
   y += 22;
 
   doc.setFont("helvetica", "normal");
+  doc.setFontSize(12);
   orc.itens.forEach((it) => {
     const nome =
       it.descricao ||
@@ -145,7 +146,7 @@ export function gerarOrcamentoPDF(
         doc.text(brl(it.valorUnit), W - M - 90, y, { align: "right" });
         doc.text(brl(it.quantidade * it.valorUnit), W - M - 8, y, { align: "right" });
       }
-      y += 14;
+      y += 16;
     });
     y += 4;
     if (y > 720) {
@@ -160,7 +161,7 @@ export function gerarOrcamentoPDF(
   doc.line(M, y, W - M, y);
   y += 18;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(tema === "moderno" ? 14 : 12);
+  doc.setFontSize(tema === "moderno" ? 18 : 16);
   doc.setTextColor(brand[0], brand[1], brand[2]);
   doc.text("Valor total:", W - M - 130, y, { align: "right" });
   doc.text(brl(totalOrcamento(orc)), W - M - 8, y, { align: "right" });
@@ -173,16 +174,16 @@ export function gerarOrcamentoPDF(
     doc.setFillColor(brand[0], brand[1], brand[2]);
     doc.rect(M, y - 12, W - M * 2, 22, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS", M + 8, y + 3);
     y += 22;
     doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(13);
     const descLines = doc.splitTextToSize(orc.descricaoServicos, W - M * 2);
     descLines.forEach((ln: string) => {
       if (y > 770) { doc.addPage(); y = M; }
       doc.text(ln, M, y);
-      y += 13;
+      y += 17;
     });
   }
 
@@ -193,52 +194,52 @@ export function gerarOrcamentoPDF(
     doc.setFillColor(brand[0], brand[1], brand[2]);
     doc.rect(M, y - 12, W - M * 2, 22, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
     doc.text("FORMAS DE PAGAMENTO", M + 8, y + 3);
     y += 22;
     doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(13);
     const formas = (orc.formasPagamento && orc.formasPagamento.length
       ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
       : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
     doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
-    y += 14;
+    y += 18;
     formas.forEach((f) => {
       if (y > 770) { doc.addPage(); y = M; }
       doc.text(`• ${f}`, M + 10, y);
-      y += 13;
+      y += 17;
     });
-    y += 4;
+    y += 6;
     const aviso = "Nos pagamentos realizados por cartão de crédito poderá haver acréscimo referente às taxas da operadora e custos de manutenção da transação. Consulte condições e parcelamentos disponíveis no momento da contratação.";
     const av = doc.splitTextToSize(aviso, W - M * 2);
-    doc.setFontSize(9); doc.setTextColor(90, 90, 90);
+    doc.setFontSize(11); doc.setTextColor(90, 90, 90);
     av.forEach((ln: string) => {
       if (y > 770) { doc.addPage(); y = M; }
-      doc.text(ln, M, y); y += 12;
+      doc.text(ln, M, y); y += 14;
     });
-    doc.setTextColor(20, 20, 20); doc.setFontSize(10);
+    doc.setTextColor(20, 20, 20); doc.setFontSize(13);
   }
 
   // Prazo e observações
   y += 30;
   if (y > 740) { doc.addPage(); y = M; }
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(13);
   if (orc.prazo) {
     doc.text("Prazo:", M, y);
     doc.setFont("helvetica", "normal");
-    doc.text(orc.prazo, M + 46, y);
-    y += 16;
+    doc.text(orc.prazo, M + 56, y);
+    y += 18;
   }
   if (orc.observacoes) {
     doc.setFont("helvetica", "bold");
     doc.text("Observações:", M, y);
-    y += 14;
+    y += 18;
     doc.setFont("helvetica", "normal");
     const obs = doc.splitTextToSize(orc.observacoes, W - M * 2);
     obs.forEach((ln: string) => {
       doc.text(ln, M, y);
-      y += 13;
+      y += 16;
     });
   }
 
@@ -246,14 +247,14 @@ export function gerarOrcamentoPDF(
   const footY = doc.internal.pageSize.getHeight() - 60;
   doc.setDrawColor(120);
   doc.line(M, footY, M + 220, footY);
-  doc.setFontSize(9);
+  doc.setFontSize(12);
   doc.text("Assinatura — " + (empresa.nome || ""), M, footY + 14);
 
   doc.line(W - M - 220, footY, W - M, footY);
   doc.text("Cliente", W - M - 220, footY + 14);
 
   // Rodapé de validade
-  doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+  doc.setFontSize(10); doc.setTextColor(120, 120, 120);
   doc.text(
     `Este orçamento é válido por ${orc.validadeDias ?? 7} dia(s) corridos a partir da data de emissão (${dateBR(emissao)}). Validade até ${dateBR(vencimento)}.`,
     W / 2, footY + 36, { align: "center", maxWidth: W - M * 2 },
