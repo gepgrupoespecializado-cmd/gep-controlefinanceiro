@@ -18,7 +18,7 @@ import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
-import { gerarOrcamentoPDF, abrirPDF, baixarPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF } from "@/lib/pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos")({
