@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Orcamento, Servico } from "./store";
-import { totalOrcamento, validadeOrcamento, formaPagamentoLabel } from "./store";
+import { totalOrcamento, validadeOrcamento, formaPagamentoLabel, pdfTemaPreset } from "./store";
 import { brl, dateBR, padNum } from "./format";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -17,248 +17,287 @@ function lighten([r, g, b]: [number, number, number], pct = 0.85): [number, numb
   ];
 }
 
+/**
+ * Permite gerar o PDF com tema/cor sobrescritos (preview ao vivo).
+ */
+export interface PdfOverrides {
+  temaPdf?: Empresa["temaPdf"];
+  corPdf?: string;
+  corSecundariaPdf?: string;
+}
+
 export function gerarOrcamentoPDF(
   orc: Orcamento,
   cliente: Cliente | undefined,
   servicos: Servico[],
   empresa: Empresa,
+  overrides: PdfOverrides = {},
 ) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
   const M = 40;
-  const tema = empresa.temaPdf ?? "classico";
-  const brand = hexToRgb(empresa.corPdf ?? "#0b1b3d");
-  const tint = lighten(brand, 0.9);
+
+  const tema = (overrides.temaPdf ?? empresa.temaPdf ?? "azul_escuro") as NonNullable<Empresa["temaPdf"]>;
+  const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
+  const brand = hexToRgb(overrides.corPdf ?? empresa.corPdf ?? preset.principal);
+  const sec   = hexToRgb(overrides.corSecundariaPdf ?? empresa.corSecundariaPdf ?? preset.secundaria);
+  const tint  = lighten(brand, 0.88);
   const { emissao, vencimento } = validadeOrcamento(orc);
 
-  // Header band (varies by tema)
-  let headerH = 90;
-  if (tema === "moderno") headerH = 110;
-  if (tema === "simples") headerH = 64;
-  if (tema === "executivo") headerH = 96;
+  const BOTTOM_LIMIT = H - 90; // reservado para rodapé / assinatura
+  let y = 0;
 
-  if (tema === "simples") {
-    doc.setDrawColor(brand[0], brand[1], brand[2]);
-    doc.setLineWidth(3);
-    doc.line(M, headerH, W - M, headerH);
-  } else {
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(0, 0, W, headerH, "F");
-    if (tema === "moderno") {
-      doc.setFillColor(tint[0], tint[1], tint[2]);
-      doc.rect(0, headerH, W, 8, "F");
+  /** Garante espaço; se não couber, abre nova página e redesenha mini-header. */
+  function ensure(space: number) {
+    if (y + space > BOTTOM_LIMIT) {
+      drawFooter();
+      doc.addPage();
+      y = M;
+      drawMiniHeader();
     }
   }
+
+  function drawMiniHeader() {
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(0, 0, W, 28, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.text(`${empresa.nome || "Empresa"} — ORC-${padNum(orc.numero)}`, M, 18);
+    doc.text(`Pág. ${doc.getNumberOfPages()}`, W - M, 18, { align: "right" });
+    doc.setTextColor(20, 20, 20);
+    y = 48;
+  }
+
+  function drawFooter() {
+    const fy = H - 32;
+    doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.8);
+    doc.line(M, fy - 12, W - M, fy - 12);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(110, 110, 110);
+    const cont = [empresa.telefone, empresa.whatsapp && `WhatsApp ${empresa.whatsapp}`, empresa.email].filter(Boolean).join("  ·  ");
+    if (cont) doc.text(cont, M, fy);
+    doc.text(`ORC-${padNum(orc.numero)} · Validade até ${dateBR(vencimento)}`, W - M, fy, { align: "right" });
+    doc.setTextColor(20, 20, 20);
+  }
+
+  // ====== CABEÇALHO ======
+  const headerH = 110;
+  doc.setFillColor(brand[0], brand[1], brand[2]);
+  doc.rect(0, 0, W, headerH, "F");
+  // faixa secundária
+  doc.setFillColor(sec[0], sec[1], sec[2]);
+  doc.rect(0, headerH, W, 6, "F");
 
   if (empresa.logoDataUrl) {
     try {
-      doc.addImage(empresa.logoDataUrl, "PNG", M, tema === "simples" ? 12 : 18, 54, 54);
+      const fmt = empresa.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+      doc.addImage(empresa.logoDataUrl, fmt, M, 20, 70, 70);
     } catch {}
   }
-  if (tema === "simples") doc.setTextColor(brand[0], brand[1], brand[2]);
-  else doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(tema === "executivo" ? 22 : 20);
-  doc.text(empresa.nome || "Empresa", empresa.logoDataUrl ? M + 70 : M, tema === "simples" ? 36 : 40);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  const headLines = [
-    empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
-    [empresa.telefone, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join(" | "),
-    empresa.email || "",
-    empresa.endereco || "",
-  ].filter(Boolean);
-  let hy = tema === "simples" ? 52 : 58;
-  headLines.forEach((l) => {
-    doc.text(l, empresa.logoDataUrl ? M + 70 : M, hy);
-    hy += 13;
+  const headX = empresa.logoDataUrl ? M + 84 : M;
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+  doc.text(empresa.nome || "Empresa", headX, 40, { maxWidth: W - headX - M });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+  let hy = 56;
+  const headInfo = [
+    empresa.cnpj && `CNPJ: ${empresa.cnpj}`,
+    [empresa.telefone && `Tel: ${empresa.telefone}`, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join("  |  "),
+    empresa.email && `E-mail: ${empresa.email}`,
+    empresa.endereco,
+  ].filter(Boolean) as string[];
+  headInfo.forEach((l) => {
+    const lines = doc.splitTextToSize(l, W - headX - M);
+    lines.forEach((ln: string) => { doc.text(ln, headX, hy); hy += 12; });
   });
 
-  let y = headerH + 30;
+  y = headerH + 28;
   doc.setTextColor(20, 20, 20);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M, y);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.text(`Emitido em ${dateBR(emissao)}`, W - M, y, { align: "right" });
 
-  // Validade — destaque
-  y += 16;
+  // ====== TÍTULO + VALIDADE ======
+  doc.setFont("helvetica", "bold"); doc.setFontSize(18);
+  doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M, y);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  doc.text(`Emitido em ${dateBR(emissao)}`, W - M, y, { align: "right" });
+  y += 18;
+
   doc.setFillColor(tint[0], tint[1], tint[2]);
-  doc.roundedRect(M, y - 12, W - M * 2, 28, 6, 6, "F");
+  doc.roundedRect(M, y, W - M * 2, 30, 6, 6, "F");
   doc.setTextColor(brand[0], brand[1], brand[2]);
   doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-  doc.text(`Validade: ${orc.validadeDias ?? 7} dia(s) — válido até ${dateBR(vencimento)}`, M + 10, y + 5);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
-  doc.text(`Emissão ${dateBR(emissao)}`, W - M - 10, y + 5, { align: "right" });
+  doc.text(`Validade: ${orc.validadeDias ?? 7} dia(s) — válido até ${dateBR(vencimento)}`, M + 12, y + 19);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+  doc.text(`Emissão ${dateBR(emissao)}`, W - M - 12, y + 19, { align: "right" });
   doc.setTextColor(20, 20, 20);
+  y += 46;
 
-  y += 32;
-  doc.setDrawColor(220);
-  doc.line(M, y, W - M, y);
-  y += 18;
-
-  // Cliente
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("Cliente", M, y);
-  y += 18;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(14);
-  const cli = cliente
+  // ====== CLIENTE ======
+  ensure(80);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(14);
+  doc.setTextColor(brand[0], brand[1], brand[2]);
+  doc.text("CLIENTE", M, y); y += 6;
+  doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(1.2);
+  doc.line(M, y, M + 70, y);
+  doc.setTextColor(20, 20, 20);
+  y += 14;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(12);
+  const cliLines = cliente
     ? [
-        cliente.nome,
-        cliente.telefone && `Tel: ${cliente.telefone}`,
-        cliente.email,
-        cliente.endereco,
+        `Nome: ${cliente.nome}`,
+        cliente.telefone && `Telefone: ${cliente.telefone}`,
+        cliente.whatsapp && `WhatsApp: ${cliente.whatsapp}`,
+        cliente.email && `E-mail: ${cliente.email}`,
+        cliente.endereco && `Endereço: ${cliente.endereco}`,
       ].filter(Boolean) as string[]
     : ["Cliente não informado"];
-  cli.forEach((l) => {
-    doc.text(l, M, y);
-    y += 17;
+  cliLines.forEach((l) => {
+    const lines = doc.splitTextToSize(l, W - M * 2);
+    lines.forEach((ln: string) => { ensure(16); doc.text(ln, M, y); y += 16; });
   });
+  y += 8;
 
-  y += 12;
-  // Items header
-  doc.setFillColor(tint[0], tint[1], tint[2]);
-  doc.rect(M, y - 12, W - M * 2, 22, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Descrição", M + 8, y + 3);
-  doc.text("Qtd", W - M - 180, y + 3, { align: "right" });
-  doc.text("Valor Unit.", W - M - 90, y + 3, { align: "right" });
-  doc.text("Total", W - M - 8, y + 3, { align: "right" });
-  y += 22;
+  // ====== ITENS ======
+  ensure(40);
+  doc.setFillColor(brand[0], brand[1], brand[2]);
+  doc.rect(M, y, W - M * 2, 22, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("DESCRIÇÃO", M + 8, y + 15);
+  doc.text("QTD", W - M - 200, y + 15, { align: "right" });
+  doc.text("VALOR UNIT.", W - M - 90, y + 15, { align: "right" });
+  doc.text("TOTAL", W - M - 8, y + 15, { align: "right" });
+  doc.setTextColor(20, 20, 20);
+  y += 28;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  orc.itens.forEach((it) => {
-    const nome =
-      it.descricao ||
-      servicos.find((s) => s.id === it.servicoId)?.nome ||
-      "Serviço";
-    const lines = doc.splitTextToSize(nome, W - M * 2 - 220);
-    lines.forEach((ln: string, idx: number) => {
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  orc.itens.forEach((it, idx) => {
+    const nome = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
+    const lines = doc.splitTextToSize(nome, W - M * 2 - 230);
+    const blockH = Math.max(lines.length * 14, 14) + 6;
+    ensure(blockH);
+    if (idx % 2 === 1) {
+      doc.setFillColor(248, 248, 250);
+      doc.rect(M, y - 10, W - M * 2, blockH, "F");
+    }
+    lines.forEach((ln: string, i: number) => {
       doc.text(ln, M + 8, y);
-      if (idx === 0) {
-        doc.text(String(it.quantidade), W - M - 180, y, { align: "right" });
+      if (i === 0) {
+        doc.text(String(it.quantidade), W - M - 200, y, { align: "right" });
         doc.text(brl(it.valorUnit), W - M - 90, y, { align: "right" });
+        doc.setFont("helvetica", "bold");
         doc.text(brl(it.quantidade * it.valorUnit), W - M - 8, y, { align: "right" });
+        doc.setFont("helvetica", "normal");
       }
-      y += 16;
+      y += 14;
     });
     y += 4;
-    if (y > 720) {
-      doc.addPage();
-      y = M;
-    }
   });
 
-  // Total
-  y += 8;
-  doc.setDrawColor(220);
-  doc.line(M, y, W - M, y);
-  y += 18;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(tema === "moderno" ? 18 : 16);
-  doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("Valor total:", W - M - 130, y, { align: "right" });
-  doc.text(brl(totalOrcamento(orc)), W - M - 8, y, { align: "right" });
+  // ====== TOTAL ======
+  ensure(40);
+  doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(1);
+  doc.line(M, y, W - M, y); y += 16;
+  doc.setFillColor(brand[0], brand[1], brand[2]);
+  doc.roundedRect(W - M - 230, y - 4, 230, 30, 4, 4, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+  doc.text("VALOR TOTAL", W - M - 220, y + 15);
+  doc.setFontSize(15);
+  doc.text(brl(totalOrcamento(orc)), W - M - 8, y + 15, { align: "right" });
   doc.setTextColor(20, 20, 20);
+  y += 42;
 
-  // Descrição dos Serviços Contratados
+  // ====== DESCRIÇÃO DOS SERVIÇOS ======
   if (orc.descricaoServicos && orc.descricaoServicos.trim()) {
-    y += 30;
-    if (y > 700) { doc.addPage(); y = M; }
+    ensure(50);
     doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y - 12, W - M * 2, 22, "F");
+    doc.rect(M, y, W - M * 2, 22, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS", M + 8, y + 3);
-    y += 22;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS", M + 8, y + 15);
     doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(13);
-    const descLines = doc.splitTextToSize(orc.descricaoServicos, W - M * 2);
-    descLines.forEach((ln: string) => {
-      if (y > 770) { doc.addPage(); y = M; }
-      doc.text(ln, M, y);
-      y += 17;
-    });
+    y += 30;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12);
+    const blocos = orc.descricaoServicos.replace(/\r/g, "").split("\n");
+    for (const bloco of blocos) {
+      const lines = bloco.length
+        ? doc.splitTextToSize(bloco, W - M * 2)
+        : [""];
+      for (const ln of lines as string[]) {
+        ensure(16);
+        doc.text(ln, M, y);
+        y += 16;
+      }
+    }
+    y += 8;
   }
 
-  // Formas de pagamento
+  // ====== FORMAS DE PAGAMENTO ======
   {
-    y += 24;
-    if (y > 700) { doc.addPage(); y = M; }
+    ensure(60);
     doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y - 12, W - M * 2, 22, "F");
+    doc.rect(M, y, W - M * 2, 22, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(14);
-    doc.text("FORMAS DE PAGAMENTO", M + 8, y + 3);
-    y += 22;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("FORMAS DE PAGAMENTO", M + 8, y + 15);
     doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(13);
+    y += 30;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12);
     const formas = (orc.formasPagamento && orc.formasPagamento.length
       ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
       : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
+    ensure(18);
     doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
     y += 18;
-    formas.forEach((f) => {
-      if (y > 770) { doc.addPage(); y = M; }
-      doc.text(`• ${f}`, M + 10, y);
-      y += 17;
-    });
-    y += 6;
-    const aviso = "Nos pagamentos realizados por cartão de crédito poderá haver acréscimo referente às taxas da operadora e custos de manutenção da transação. Consulte condições e parcelamentos disponíveis no momento da contratação.";
+    formas.forEach((f) => { ensure(16); doc.text(`•  ${f}`, M + 14, y); y += 16; });
+    y += 4;
+    const aviso = "Pagamentos no cartão de crédito poderão sofrer acréscimo referente às taxas da operadora. Consulte condições e parcelamentos no momento da contratação.";
+    doc.setFontSize(10); doc.setTextColor(110, 110, 110);
     const av = doc.splitTextToSize(aviso, W - M * 2);
-    doc.setFontSize(11); doc.setTextColor(90, 90, 90);
-    av.forEach((ln: string) => {
-      if (y > 770) { doc.addPage(); y = M; }
-      doc.text(ln, M, y); y += 14;
-    });
-    doc.setTextColor(20, 20, 20); doc.setFontSize(13);
+    av.forEach((ln: string) => { ensure(13); doc.text(ln, M, y); y += 13; });
+    doc.setTextColor(20, 20, 20);
   }
 
-  // Prazo e observações
+  // ====== PRAZO + OBSERVAÇÕES ======
+  if (orc.prazo || orc.observacoes) {
+    y += 12;
+    if (orc.prazo) {
+      ensure(20);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+      doc.text("Prazo:", M, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(orc.prazo, M + 50, y);
+      y += 18;
+    }
+    if (orc.observacoes) {
+      ensure(28);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+      doc.text("Observações:", M, y); y += 16;
+      doc.setFont("helvetica", "normal");
+      const obs = doc.splitTextToSize(orc.observacoes, W - M * 2);
+      obs.forEach((ln: string) => { ensure(15); doc.text(ln, M, y); y += 15; });
+    }
+  }
+
+  // ====== ASSINATURAS ======
+  ensure(110);
   y += 30;
-  if (y > 740) { doc.addPage(); y = M; }
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  if (orc.prazo) {
-    doc.text("Prazo:", M, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(orc.prazo, M + 56, y);
-    y += 18;
-  }
-  if (orc.observacoes) {
-    doc.setFont("helvetica", "bold");
-    doc.text("Observações:", M, y);
-    y += 18;
-    doc.setFont("helvetica", "normal");
-    const obs = doc.splitTextToSize(orc.observacoes, W - M * 2);
-    obs.forEach((ln: string) => {
-      doc.text(ln, M, y);
-      y += 16;
-    });
-  }
+  const halfW = (W - M * 2 - 30) / 2;
+  doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.6);
+  doc.line(M, y, M + halfW, y);
+  doc.line(M + halfW + 30, y, W - M, y);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  doc.text(empresa.nome || "Responsável", M, y + 14);
+  doc.text("Cliente", M + halfW + 30, y + 14);
 
-  // Assinatura
-  const footY = doc.internal.pageSize.getHeight() - 60;
-  doc.setDrawColor(120);
-  doc.line(M, footY, M + 220, footY);
-  doc.setFontSize(12);
-  doc.text("Assinatura — " + (empresa.nome || ""), M, footY + 14);
-
-  doc.line(W - M - 220, footY, W - M, footY);
-  doc.text("Cliente", W - M - 220, footY + 14);
-
-  // Rodapé de validade
-  doc.setFontSize(10); doc.setTextColor(120, 120, 120);
+  // ====== RODAPÉ + AGRADECIMENTO ======
+  drawFooter();
+  doc.setFont("helvetica", "italic"); doc.setFontSize(10); doc.setTextColor(110, 110, 110);
   doc.text(
-    `Este orçamento é válido por ${orc.validadeDias ?? 7} dia(s) corridos a partir da data de emissão (${dateBR(emissao)}). Validade até ${dateBR(vencimento)}.`,
-    W / 2, footY + 36, { align: "center", maxWidth: W - M * 2 },
+    "Agradecemos a oportunidade. Este orçamento é válido por " + (orc.validadeDias ?? 7) + " dia(s) a partir da emissão.",
+    W / 2, H - 50, { align: "center", maxWidth: W - M * 2 },
   );
+  doc.setTextColor(20, 20, 20);
 
   return doc;
 }
