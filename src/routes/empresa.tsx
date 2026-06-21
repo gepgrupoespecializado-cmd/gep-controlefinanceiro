@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, type PdfTema } from "@/lib/store";
+import { db, useDB, pdfTemaPreset, type PdfTema } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/empresa")({
@@ -23,17 +23,17 @@ function EmpresaPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const temas: { value: PdfTema; nome: string; desc: string }[] = [
-    { value: "classico", nome: "Clássico", desc: "Branco e azul · layout corporativo" },
-    { value: "moderno", nome: "Moderno", desc: "Visual premium · destaque para logo" },
-    { value: "executivo", nome: "Executivo", desc: "Sofisticado · empresas e condomínios" },
-    { value: "simples", nome: "Simples", desc: "Limpo e objetivo" },
+    { value: "azul_corporativo", nome: "Azul Corporativo", desc: "Cabeçalho azul · visual empresarial" },
+    { value: "azul_escuro",      nome: "Azul Escuro Premium", desc: "Azul escuro elegante · layout executivo" },
+    { value: "verde_empresarial",nome: "Verde Empresarial", desc: "Verde profissional · moderno e confiável" },
+    { value: "cinza_executivo",  nome: "Cinza Executivo", desc: "Tons de cinza · design corporativo limpo" },
+    { value: "preto_premium",    nome: "Preto Premium", desc: "Preto e branco · alto padrão visual" },
   ];
-  const coresSugeridas = [
-    { nome: "Azul Corporativo", cor: "#0b1b3d" },
-    { nome: "Verde Empresarial", cor: "#0f5132" },
-    { nome: "Cinza Executivo", cor: "#374151" },
-    { nome: "Preto Premium", cor: "#111111" },
-  ];
+
+  function aplicarTema(t: PdfTema) {
+    const p = pdfTemaPreset[t];
+    setForm({ ...form, temaPdf: t, corPdf: p.principal, corSecundariaPdf: p.secundaria });
+  }
 
   function salvar() {
     db.updateEmpresa(form);
@@ -95,49 +95,47 @@ function EmpresaPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Personalização do PDF</CardTitle></CardHeader>
         <CardContent className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label className="text-xs">Modelo de layout</Label>
-            <Select value={form.temaPdf ?? "classico"} onValueChange={(v) => setForm({ ...form, temaPdf: v as PdfTema })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {temas.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    <div>
-                      <p className="font-semibold">{t.nome}</p>
-                      <p className="text-[11px] text-muted-foreground">{t.desc}</p>
+          <div className="grid gap-2">
+            <Label className="text-xs">Modelo de PDF</Label>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {temas.map((t) => {
+                const ativo = (form.temaPdf ?? "azul_escuro") === t.value;
+                const p = pdfTemaPreset[t.value];
+                return (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => aplicarTema(t.value)}
+                    className={`text-left rounded-lg border p-3 transition-colors ${ativo ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "hover:bg-muted"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="h-5 w-5 rounded border" style={{ background: p.principal }} />
+                      <span className="h-5 w-5 rounded border" style={{ background: p.secundaria }} />
+                      <p className="font-semibold text-sm">{t.nome}</p>
                     </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-1.5">
-            <Label className="text-xs">Cor principal (cabeçalho, títulos, botões do PDF)</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={form.corPdf ?? "#0b1b3d"}
-                onChange={(e) => setForm({ ...form, corPdf: e.target.value })}
-                className="h-10 w-16 cursor-pointer rounded border"
-              />
-              <Input
-                value={form.corPdf ?? "#0b1b3d"}
-                onChange={(e) => setForm({ ...form, corPdf: e.target.value })}
-                className="font-mono"
-              />
+                    <p className="text-[11px] text-muted-foreground">{t.desc}</p>
+                  </button>
+                );
+              })}
             </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {coresSugeridas.map((c) => (
-                <button
-                  key={c.cor}
-                  type="button"
-                  onClick={() => setForm({ ...form, corPdf: c.cor })}
-                  className="flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs hover:bg-muted transition-colors"
-                >
-                  <span className="h-4 w-4 rounded-full border" style={{ background: c.cor }} />
-                  {c.nome}
-                </button>
-              ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Cor principal</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={form.corPdf ?? "#0b1b3d"} onChange={(e) => setForm({ ...form, corPdf: e.target.value })} className="h-10 w-14 cursor-pointer rounded border" />
+                <Input value={form.corPdf ?? "#0b1b3d"} onChange={(e) => setForm({ ...form, corPdf: e.target.value })} className="font-mono" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Cabeçalho, títulos e total.</p>
+            </div>
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Cor secundária</Label>
+              <div className="flex items-center gap-2">
+                <input type="color" value={form.corSecundariaPdf ?? "#3b82f6"} onChange={(e) => setForm({ ...form, corSecundariaPdf: e.target.value })} className="h-10 w-14 cursor-pointer rounded border" />
+                <Input value={form.corSecundariaPdf ?? "#3b82f6"} onChange={(e) => setForm({ ...form, corSecundariaPdf: e.target.value })} className="font-mono" />
+              </div>
+              <p className="text-[11px] text-muted-foreground">Rodapés, bordas, destaques.</p>
             </div>
           </div>
         </CardContent>

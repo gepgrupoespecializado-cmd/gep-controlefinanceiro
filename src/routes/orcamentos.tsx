@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ClienteFormDialog } from "@/components/cliente-form-dialog";
+import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
-import { gerarOrcamentoPDF, abrirPDF, baixarPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF } from "@/lib/pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos")({
@@ -29,6 +30,7 @@ function OrcamentosPage() {
   const data = useDB();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [statusFiltro, setStatusFiltro] = useState<OrcamentoStatus | "todos">("todos");
   const [clienteId, setClienteId] = useState("");
@@ -134,11 +136,20 @@ function OrcamentosPage() {
   function pdf(orcId: string, action: "view" | "download" | "share") {
     const o = data.orcamentos.find((x) => x.id === orcId);
     if (!o) return;
+    const faltas: string[] = [];
+    if (!data.empresa.nome) faltas.push("Nome da empresa");
+    if (!o.descricaoServicos?.trim()) faltas.push("Descrição dos serviços");
+    if (!o.itens.length || o.itens.some((i) => !i.descricao.trim())) faltas.push("Itens do orçamento");
+    if (!o.clienteId) faltas.push("Cliente");
+    if (faltas.length) {
+      toast.error(`Existem informações obrigatórias não preenchidas: ${faltas.join(", ")}.`);
+      return;
+    }
     const cli = data.clientes.find((c) => c.id === o.clienteId);
+    if (action === "view") { setPreviewId(orcId); return; }
     const doc = gerarOrcamentoPDF(o, cli, data.servicos, data.empresa);
     const filename = `ORC-${padNum(o.numero)}.pdf`;
-    if (action === "view") abrirPDF(doc);
-    else if (action === "download") baixarPDF(doc, filename);
+    if (action === "download") baixarPDF(doc, filename);
     else {
       const tot = totalOrcamento(o);
       const { vencimento } = validadeOrcamento(o);
@@ -373,6 +384,16 @@ function OrcamentosPage() {
           saveLabel="Salvar cliente e continuar orçamento"
         />
       </div>
+
+      {/* Pré-visualização com troca de modelo/cor em tempo real */}
+      <PdfPreviewDialog
+        open={!!previewId}
+        onOpenChange={(v) => { if (!v) setPreviewId(null); }}
+        orcamento={previewId ? data.orcamentos.find((o) => o.id === previewId) ?? null : null}
+        cliente={previewId ? data.clientes.find((c) => c.id === (data.orcamentos.find((o) => o.id === previewId)?.clienteId ?? "")) : undefined}
+        servicos={data.servicos}
+        empresa={data.empresa}
+      />
 
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
         <div className="relative">
