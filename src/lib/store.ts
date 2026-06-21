@@ -178,9 +178,32 @@ export interface Empresa {
   logoDataUrl?: string;
   temaPdf?: PdfTema;
   corPdf?: string; // hex, ex: "#0b1b3d"
+  corSecundariaPdf?: string; // hex — títulos/bordas/destaques
 }
 
-export type PdfTema = "classico" | "moderno" | "executivo" | "simples";
+export type PdfTema =
+  | "azul_corporativo"
+  | "azul_escuro"
+  | "verde_empresarial"
+  | "cinza_executivo"
+  | "preto_premium"
+  // legados (mantidos para compatibilidade)
+  | "classico"
+  | "moderno"
+  | "executivo"
+  | "simples";
+
+export const pdfTemaPreset: Record<PdfTema, { principal: string; secundaria: string }> = {
+  azul_corporativo: { principal: "#1d4ed8", secundaria: "#60a5fa" },
+  azul_escuro:      { principal: "#0b1b3d", secundaria: "#3b82f6" },
+  verde_empresarial:{ principal: "#0f5132", secundaria: "#34d399" },
+  cinza_executivo:  { principal: "#374151", secundaria: "#9ca3af" },
+  preto_premium:    { principal: "#111111", secundaria: "#9ca3af" },
+  classico:         { principal: "#0b1b3d", secundaria: "#3b82f6" },
+  moderno:          { principal: "#1d4ed8", secundaria: "#60a5fa" },
+  executivo:        { principal: "#0b1b3d", secundaria: "#9ca3af" },
+  simples:          { principal: "#111111", secundaria: "#6b7280" },
+};
 
 export interface ModeloDescricao {
   id: string;
