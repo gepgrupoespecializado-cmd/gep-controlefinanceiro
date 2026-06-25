@@ -97,9 +97,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Controle de Prestação de Serviços GEP" },
-      { name: "description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
-      { property: "og:description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
-      { name: "twitter:description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
+      {
+        name: "twitter:description",
+        content: "Gestão completa: clientes, orçamentos, agenda e financeiro.",
+      },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
     ],
@@ -121,7 +122,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
