@@ -37,13 +37,31 @@ export interface Servico {
 
 export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado";
 
-export type FormaPagamento = "pix" | "dinheiro" | "debito" | "credito";
+export type FormaPagamento =
+  | "pix"
+  | "dinheiro"
+  | "debito"
+  | "credito"
+  | "transferencia"
+  | "boleto"
+  | "outro";
 
 export const formaPagamentoLabel: Record<FormaPagamento, string> = {
   pix: "PIX",
   dinheiro: "Dinheiro",
   debito: "Cartão de Débito",
   credito: "Cartão de Crédito",
+  transferencia: "Transferência Bancária",
+  boleto: "Boleto",
+  outro: "Outro",
+};
+
+export type SituacaoPagamento = "pago" | "parcial" | "pendente";
+
+export const situacaoPagamentoLabel: Record<SituacaoPagamento, string> = {
+  pago: "Pago",
+  parcial: "Parcial",
+  pendente: "Pendente",
 };
 
 export interface OrcamentoItem {
@@ -148,6 +166,16 @@ export interface Relatorio {
   assinaturaCliente?: string;
   criadoEm: string;
   arquivado?: boolean;
+  // ===== Encerramento financeiro =====
+  valorOrcamento?: number;
+  valorRecebido?: number;
+  formasPagamentoRecebimento?: FormaPagamento[];
+  parcelas?: number;
+  taxaCartao?: number;
+  observacoesFinanceiras?: string;
+  dataPagamento?: string;
+  situacaoPagamento?: SituacaoPagamento;
+  recebidoPor?: string;
 }
 
 export type LancamentoTipo = "entrada" | "saida";
