@@ -423,9 +423,114 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
             );
           })}
 
+          {/* ===== Pagamento ===== */}
+          <div className="grid gap-3 rounded-lg border bg-emerald-50/40 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">💰 Encerramento financeiro</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Valor do orçamento</Label>
+                <Input type="number" step="0.01" value={valorOrcamento}
+                  onChange={(e) => setValorOrcamento(+e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Valor recebido</Label>
+                <Input type="number" step="0.01" value={valorRecebido}
+                  onChange={(e) => setValorRecebido(+e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Saldo</Label>
+                <div className={`rounded-md border px-2 py-2 text-sm font-semibold ${saldo > 0 ? "text-amber-700" : saldo < 0 ? "text-blue-700" : "text-emerald-700"}`}>
+                  {brl(saldo)}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Formas de pagamento</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(formaPagamentoLabel) as FormaPagamento[]).map((f) => {
+                  const on = formasPag.includes(f);
+                  return (
+                    <button key={f} type="button"
+                      onClick={() => setFormasPag((p) => on ? p.filter((x) => x !== f) : [...p, f])}
+                      className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}>
+                      {formaPagamentoLabel[f]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {formasPag.includes("credito") && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Parcelas</Label>
+                  <Input type="number" min={1} value={parcelas} onChange={(e) => setParcelas(+e.target.value || 1)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Taxa cartão (%)</Label>
+                  <Input type="number" step="0.01" value={taxaCartao} onChange={(e) => setTaxaCartao(+e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Data do recebimento</Label>
+                <Input type="date" value={dataPag} onChange={(e) => setDataPag(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Situação</Label>
+                <Select value={situacaoPag} onValueChange={(v) => setSituacaoPag(v as SituacaoPagamento)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(situacaoPagamentoLabel) as SituacaoPagamento[]).map((s) => (
+                      <SelectItem key={s} value={s}>{situacaoPagamentoLabel[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Recebido por</Label>
+                <Input value={recebidoPor} onChange={(e) => setRecebidoPor(e.target.value)} placeholder="Nome" />
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Observações financeiras</Label>
+              <Textarea rows={2} value={obsFin} onChange={(e) => setObsFin(e.target.value)}
+                placeholder="Desconto concedido, pagamento parcial, cortesia, etc." />
+            </div>
+          </div>
+
+          {/* ===== Assinaturas ===== */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <SignaturePad value={assTec} onChange={setAssTec} label="Assinatura do Responsável Técnico" />
-            <SignaturePad value={assCli} onChange={setAssCli} label="Assinatura do Cliente" />
+            <div className="grid gap-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold">Responsável Técnico</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAssTela("tec")}>
+                  <Pen className="h-3.5 w-3.5" />✍️ Assinar
+                </Button>
+              </div>
+              {assTec ? (
+                <img src={assTec} alt="Assinatura técnico" className="h-20 w-full rounded border bg-white object-contain" />
+              ) : (
+                <div className="grid h-20 w-full place-items-center rounded border bg-muted/30 text-[11px] text-muted-foreground">Sem assinatura</div>
+              )}
+            </div>
+            <div className="grid gap-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold">Cliente</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAssTela("cli")}>
+                  <Pen className="h-3.5 w-3.5" />✍️ Assinar
+                </Button>
+              </div>
+              {assCli ? (
+                <img src={assCli} alt="Assinatura cliente" className="h-20 w-full rounded border bg-white object-contain" />
+              ) : (
+                <div className="grid h-20 w-full place-items-center rounded border bg-muted/30 text-[11px] text-muted-foreground">Sem assinatura</div>
+              )}
+            </div>
           </div>
 
           <div className="rounded-lg border bg-primary/5 p-3">
