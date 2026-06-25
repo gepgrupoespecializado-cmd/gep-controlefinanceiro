@@ -127,6 +127,78 @@ function AgendaPage() {
     return { ehHoje, ehAmanha, atrasados };
   }, [ativos]);
 
+  function VazioAgenda({ msg }: { msg: string }) {
+    return (
+      <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
+        <CalendarIcon className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        {msg}
+      </CardContent></Card>
+    );
+  }
+
+  function renderCard(a: Agendamento) {
+    const cli = data.clientes.find((c) => c.id === a.clienteId);
+    const serv = data.servicos.find((s) => s.id === a.servicoId);
+    const dotClass = cli ? freqDot[cli.frequencia] : "bg-slate-400";
+    const endereco = a.endereco || cli?.endereco;
+    return (
+      <Card key={a.id} className="overflow-hidden">
+        <div className={`h-1 ${dotClass}`} />
+        <CardContent className="p-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} title={cli ? freqLabel[cli.frequencia] : ""} />
+                <p className="truncate font-semibold">{a.titulo}</p>
+                <span className={`h-2 w-2 rounded-full ${statusColor[a.status]}`} title={statusAgendaLabel[a.status]} />
+                <Badge variant="outline" className="text-[10px] h-5">{statusAgendaLabel[a.status]}</Badge>
+                {cli && <Badge variant="outline" className="text-[10px] h-5">{freqLabel[cli.frequencia]}</Badge>}
+                {a.recorrencia && a.recorrencia !== "nenhuma" && (
+                  <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">↻ {recorrenciaLabel[a.recorrencia]}</Badge>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
+                <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3" />{cli?.nome ?? "—"}</p>
+                <p className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  {dateTimeBR(a.data)}
+                  {a.horaFim && ` – ${a.horaFim}`}
+                </p>
+                {serv && <p className="flex items-center gap-1.5">🔧 {serv.nome}</p>}
+                {endereco && <p className="flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5 shrink-0" /><span className="line-clamp-2">{endereco}</span></p>}
+              </div>
+              {a.observacoes && <p className="text-xs text-muted-foreground mt-1">{a.observacoes}</p>}
+              {a.status === "concluido" && (
+                <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => abrirRelatorio(a)}>
+                  <FileCheck2 className="h-3.5 w-3.5" />
+                  {a.relatorioId ? "Ver/editar relatório" : "Gerar relatório"}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-start gap-1">
+              <Select value={a.status} onValueChange={(v) => mudarStatus(a, v as AgendaStatus)}>
+                <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(statusAgendaLabel) as AgendaStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>{statusAgendaLabel[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} title="Editar">
+                <Pencil className="h-4 w-4 text-primary" />
+              </Button>
+              <ConfirmDelete
+                trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                titulo={`Excluir agendamento "${a.titulo}"?`}
+                onConfirm={() => { db.arquivarAgendamento(a.id); toast.success("Agendamento excluído"); }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   function abrirNovo() {
     const d = selDate ?? new Date();
     setEditId(null);
