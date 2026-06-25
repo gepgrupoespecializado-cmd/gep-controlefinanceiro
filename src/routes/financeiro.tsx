@@ -235,6 +235,9 @@ function FinanceiroPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pl-9" placeholder="Buscar lançamento..." value={q} onChange={(e) => setQ(e.target.value)} />
             </div>
+          </div>
+        </CardContent>
+      </Card>
             <Select value={filtroStatus} onValueChange={(v) => setFiltroStatus(v as typeof filtroStatus)}>
               <SelectTrigger className="sm:w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
