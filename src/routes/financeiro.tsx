@@ -227,6 +227,8 @@ function FinanceiroPage() {
         </CardContent>
       </Card>
 
+      <AlertasPagamento titulo="Alertas e lembretes de pagamento" />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Lançamentos</CardTitle></CardHeader>
         <CardContent className="space-y-3">
