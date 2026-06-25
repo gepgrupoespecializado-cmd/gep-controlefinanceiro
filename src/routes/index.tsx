@@ -9,6 +9,7 @@ import {
   UserPlus,
   CalendarPlus,
   Clock,
+  Calculator,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { brl } from "@/lib/format";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — GEP Controle" },
+      { title: "Dashboard — Controle de Prestação de Serviços GEP" },
       { name: "description", content: "Visão geral do seu negócio em tempo real." },
     ],
   }),
@@ -69,16 +70,26 @@ function Index() {
         className="rounded-2xl p-5 sm:p-7 text-white shadow-[var(--shadow-elevated)]"
         style={{ background: "var(--gradient-hero)" }}
       >
-        <p className="text-xs uppercase tracking-wider opacity-80">Bem-vindo de volta</p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-black">
-          {db.empresa.nome || "GEP Serviços Especializado"}
-        </h1>
-        <p className="mt-1 text-sm opacity-80">
-          Gerencie clientes, orçamentos e finanças em um só lugar.
-        </p>
+        <div className="flex items-center gap-4">
+          {db.empresa.logoDataUrl && (
+            <img src={db.empresa.logoDataUrl} alt="Logo" className="h-16 w-16 rounded-xl bg-white/95 object-contain p-1 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wider opacity-80">Controle de Prestação de Serviços GEP</p>
+            <h1 className="mt-1 text-2xl sm:text-3xl font-black truncate">
+              {db.empresa.nome || "GEP — Grupo Especializado"}
+            </h1>
+            <p className="mt-1 text-sm opacity-80">
+              Gestão profissional de clientes, orçamentos, agenda, financeiro e precificação.
+            </p>
+          </div>
+        </div>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button asChild size="sm" className="bg-white text-primary hover:bg-white/90">
             <Link to="/orcamentos"><Plus className="h-4 w-4" />Novo orçamento</Link>
+          </Button>
+          <Button asChild size="sm" className="bg-white text-primary hover:bg-white/90">
+            <Link to="/precificacao"><Calculator className="h-4 w-4" />Precificação Inteligente</Link>
           </Button>
           <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
             <Link to="/clientes"><UserPlus className="h-4 w-4" />Novo cliente</Link>
@@ -91,6 +102,24 @@ function Index() {
           </Button>
         </div>
       </div>
+
+      {/* Acesso destacado — Precificação Inteligente */}
+      <Link to="/precificacao" className="block group">
+        <Card className="overflow-hidden border-primary/30 hover:border-primary/60 transition-colors">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-[var(--primary-glow,#1e40af)] text-white">
+              <Calculator className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-base sm:text-lg font-black">🧮 Precificação Inteligente</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Calcule mão de obra, materiais, deslocamento, impostos e margem em segundos — e gere o orçamento direto.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="hidden sm:inline-flex">Abrir</Button>
+          </CardContent>
+        </Card>
+      </Link>
 
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
