@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useDB, totalOrcamento, statusPagamento } from "@/lib/store";
 import { brl } from "@/lib/format";
+import { AlertasPagamento } from "@/components/alertas-pagamento";
 
 export const Route = createFileRoute("/")({
   head: () => ({
