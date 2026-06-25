@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Relatorio } from "./store";
-import { relatorioStatusLabel } from "./store";
+import { relatorioStatusLabel, formaPagamentoLabel, situacaoPagamentoLabel } from "./store";
 import { brl, dateBR, padNum } from "./format";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -157,21 +157,61 @@ export function gerarRelatorioPDF(
     y += 4;
   }
 
-  // Assinaturas (opcionais — só desenha linha se houver assinatura ou couber no final da página)
-  const temAssinatura = !!(r.assinaturaTecnico || r.assinaturaCliente);
-  if (temAssinatura) {
-    if (y > H - 110) { doc.addPage(); y = M; }
-    y = Math.max(y, H - 110);
-    const halfW = (W - M * 2 - 20) / 2;
-    if (r.assinaturaTecnico) { try { doc.addImage(r.assinaturaTecnico, "PNG", M, y, halfW, 44); } catch {} }
-    doc.setDrawColor(120); doc.line(M, y + 50, M + halfW, y + 50);
-    doc.setFontSize(10); doc.setFont("helvetica", "normal");
-    doc.text(`Responsável Técnico — ${r.responsavel || empresa.nome || ""}`, M, y + 62);
-    const xC = M + halfW + 20;
-    if (r.assinaturaCliente) { try { doc.addImage(r.assinaturaCliente, "PNG", xC, y, halfW, 44); } catch {} }
-    doc.line(xC, y + 50, xC + halfW, y + 50);
-    doc.text(`Cliente — ${cliente?.nome ?? ""}`, xC, y + 62);
+  // ===== PAGAMENTO =====
+  const temPagamento = r.valorOrcamento != null || r.valorRecebido != null ||
+    (r.formasPagamentoRecebimento && r.formasPagamentoRecebimento.length > 0) ||
+    !!r.observacoesFinanceiras || !!r.situacaoPagamento;
+  if (temPagamento) {
+    if (y > H - 160) { doc.addPage(); y = M; }
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(M, y, W - M * 2, 20, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text("PAGAMENTO", M + 8, y + 14);
+    doc.setTextColor(20, 20, 20);
+    y += 26;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12);
+    const formas = (r.formasPagamentoRecebimento ?? []).map((f) => formaPagamentoLabel[f]).join(", ") || "—";
+    const linhas: string[] = [
+      `Valor do Orçamento: ${r.valorOrcamento != null ? brl(r.valorOrcamento) : "—"}`,
+      `Valor Recebido: ${r.valorRecebido != null ? brl(r.valorRecebido) : "—"}`,
+      `Forma de Pagamento: ${formas}`,
+      r.parcelas && r.parcelas > 1 ? `Parcelas: ${r.parcelas}x${r.taxaCartao ? ` (taxa ${r.taxaCartao}%)` : ""}` : "",
+      `Data do Recebimento: ${r.dataPagamento ? dateBR(r.dataPagamento) : "—"}`,
+      `Situação: ${r.situacaoPagamento ? situacaoPagamentoLabel[r.situacaoPagamento] : "—"}`,
+      r.recebidoPor ? `Recebido por: ${r.recebidoPor}` : "",
+    ].filter(Boolean);
+    linhas.forEach((l) => {
+      if (y > H - 80) { doc.addPage(); y = M; }
+      doc.text(l, M, y); y += 14;
+    });
+    if (r.observacoesFinanceiras) {
+      if (y > H - 80) { doc.addPage(); y = M; }
+      doc.setFont("helvetica", "bold"); doc.text("Observações Financeiras:", M, y); y += 14;
+      doc.setFont("helvetica", "normal");
+      const obs = doc.splitTextToSize(r.observacoesFinanceiras, W - M * 2);
+      obs.forEach((ln: string) => { if (y > H - 80) { doc.addPage(); y = M; } doc.text(ln, M, y); y += 14; });
+    }
+    y += 6;
   }
+
+  // ===== ASSINATURAS (sempre exibe os campos) =====
+  if (y > H - 110) { doc.addPage(); y = M; }
+  y = Math.max(y, H - 110);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+  doc.setTextColor(brand[0], brand[1], brand[2]);
+  doc.text("ASSINATURAS", M, y);
+  doc.setTextColor(20, 20, 20);
+  y += 8;
+  const halfW = (W - M * 2 - 20) / 2;
+  if (r.assinaturaTecnico) { try { doc.addImage(r.assinaturaTecnico, "PNG", M, y, halfW, 44); } catch {} }
+  doc.setDrawColor(120); doc.line(M, y + 50, M + halfW, y + 50);
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(`Responsável Técnico — ${r.responsavel || empresa.nome || ""}`, M, y + 62);
+  const xC = M + halfW + 20;
+  if (r.assinaturaCliente) { try { doc.addImage(r.assinaturaCliente, "PNG", xC, y, halfW, 44); } catch {} }
+  doc.line(xC, y + 50, xC + halfW, y + 50);
+  doc.text(`Cliente — ${cliente?.nome ?? ""}`, xC, y + 62);
 
   // Rodapé
   doc.setFontSize(10); doc.setTextColor(110, 110, 110);
