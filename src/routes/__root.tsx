@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GEP Controle Prestação de Serviços" },
+      { title: "Controle de Prestação de Serviços GEP" },
       {
         name: "description",
         content:
@@ -89,14 +89,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "author", content: "GEP Serviços Especializado" },
       { name: "theme-color", content: "#0b1b3d" },
-      { property: "og:title", content: "GEP Controle Prestação de Serviços" },
+      { property: "og:title", content: "Controle de Prestação de Serviços GEP" },
       {
         property: "og:description",
         content: "Gestão completa: clientes, orçamentos, agenda e financeiro.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "GEP Controle Prestação de Serviços" },
+      { name: "twitter:title", content: "Controle de Prestação de Serviços GEP" },
       { name: "description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
       { property: "og:description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
       { name: "twitter:description", content: "GEP Controle de Serviços Pro is a comprehensive service management app for businesses." },
@@ -145,7 +145,7 @@ function RootComponent() {
             <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/80 backdrop-blur px-3 sm:px-4">
               <SidebarTrigger />
               <div className="ml-1 min-w-0">
-                <p className="truncate text-sm font-semibold">GEP Controle Pro</p>
+                <p className="truncate text-sm font-semibold">Controle de Prestação de Serviços GEP</p>
               </div>
               <div className="ml-auto">
                 <OnlineStatus />
