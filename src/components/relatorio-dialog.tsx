@@ -324,6 +324,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   if (!agendamento) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
