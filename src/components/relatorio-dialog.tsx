@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Download, Eye, FolderOpen, ImageIcon, Mail, Search, Share2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, ChevronLeft, ChevronRight, Download, Eye, FolderOpen, ImageIcon, Mail, Maximize2, Pen, Search, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,13 +11,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  type Agendamento, type Relatorio, type RelatorioStatus,
-  relatorioStatusLabel, relatorios, useDB,
+  type Agendamento, type FormaPagamento, type Relatorio, type RelatorioStatus,
+  type SituacaoPagamento,
+  formaPagamentoLabel, relatorioStatusLabel, relatorios, situacaoPagamentoLabel, useDB,
 } from "@/lib/store";
 import { SignaturePad } from "@/components/signature-pad";
 import { gerarRelatorioPDF } from "@/lib/relatorio-pdf";
 import { abrirPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
-import { dateBR, padNum } from "@/lib/format";
+import { brl, dateBR, padNum } from "@/lib/format";
 import { toast } from "sonner";
 
 interface Props {
@@ -87,6 +88,20 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   const [assCli, setAssCli] = useState<string | undefined>();
   const [salvoId, setSalvoId] = useState<string | null>(null);
 
+  // ===== Pagamento =====
+  const [valorOrcamento, setValorOrcamento] = useState<number>(0);
+  const [valorRecebido, setValorRecebido] = useState<number>(0);
+  const [formasPag, setFormasPag] = useState<FormaPagamento[]>([]);
+  const [parcelas, setParcelas] = useState<number>(1);
+  const [taxaCartao, setTaxaCartao] = useState<number>(0);
+  const [obsFin, setObsFin] = useState<string>("");
+  const [dataPag, setDataPag] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [situacaoPag, setSituacaoPag] = useState<SituacaoPagamento>("pago");
+  const [recebidoPor, setRecebidoPor] = useState<string>("");
+  const [assTela, setAssTela] = useState<null | "tec" | "cli">(null);
+
+  const saldo = useMemo(() => +(valorOrcamento - valorRecebido).toFixed(2), [valorOrcamento, valorRecebido]);
+
   useEffect(() => {
     if (!open || !agendamento) return;
     if (existente) {
@@ -102,6 +117,15 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       setAssTec(existente.assinaturaTecnico);
       setAssCli(existente.assinaturaCliente);
       setSalvoId(existente.id);
+      setValorOrcamento(existente.valorOrcamento ?? agendamento.valor ?? 0);
+      setValorRecebido(existente.valorRecebido ?? existente.valorOrcamento ?? agendamento.valor ?? 0);
+      setFormasPag(existente.formasPagamentoRecebimento ?? []);
+      setParcelas(existente.parcelas ?? 1);
+      setTaxaCartao(existente.taxaCartao ?? 0);
+      setObsFin(existente.observacoesFinanceiras ?? "");
+      setDataPag((existente.dataPagamento ?? new Date().toISOString()).slice(0, 10));
+      setSituacaoPag(existente.situacaoPagamento ?? "pago");
+      setRecebidoPor(existente.recebidoPor ?? "");
     } else {
       const dt = new Date(agendamento.data);
       setStatus("sucesso");
@@ -114,6 +138,11 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       setAssTec(undefined); setAssCli(undefined);
       setSalvoId(null);
       setBuscaFoto("");
+      const v = agendamento.valor ?? 0;
+      setValorOrcamento(v); setValorRecebido(v);
+      setFormasPag([]); setParcelas(1); setTaxaCartao(0);
+      setObsFin(""); setDataPag(new Date().toISOString().slice(0, 10));
+      setSituacaoPag("pago"); setRecebidoPor(agendamento.responsavel ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamento?.id]);
@@ -172,6 +201,13 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       fotosDepois: fotosDepois.map((f) => f.src),
       assinaturaTecnico: assTec, assinaturaCliente: assCli,
       criadoEm: existente?.criadoEm ?? new Date().toISOString(),
+      valorOrcamento, valorRecebido,
+      formasPagamentoRecebimento: formasPag,
+      parcelas, taxaCartao,
+      observacoesFinanceiras: obsFin,
+      dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+      situacaoPagamento: situacaoPag,
+      recebidoPor,
     };
   }
 
@@ -200,6 +236,12 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
         fotosDurante: fotosDurante.map((f) => f.src),
         fotosDepois: fotosDepois.map((f) => f.src),
         assinaturaTecnico: assTec, assinaturaCliente: assCli,
+        valorOrcamento, valorRecebido,
+        formasPagamentoRecebimento: formasPag,
+        parcelas, taxaCartao,
+        observacoesFinanceiras: obsFin,
+        dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+        situacaoPagamento: situacaoPag, recebidoPor,
       });
       if (!silencioso) toast.success("Relatório atualizado");
       return salvoId;
@@ -217,6 +259,12 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       fotosDurante: fotosDurante.map((f) => f.src),
       fotosDepois: fotosDepois.map((f) => f.src),
       assinaturaTecnico: assTec, assinaturaCliente: assCli,
+      valorOrcamento, valorRecebido,
+      formasPagamentoRecebimento: formasPag,
+      parcelas, taxaCartao,
+      observacoesFinanceiras: obsFin,
+      dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+      situacaoPagamento: situacaoPag, recebidoPor,
     });
     setSalvoId(novoId);
     if (!silencioso) toast.success("Relatório salvo");
@@ -276,6 +324,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   if (!agendamento) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -375,9 +424,114 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
             );
           })}
 
+          {/* ===== Pagamento ===== */}
+          <div className="grid gap-3 rounded-lg border bg-emerald-50/40 p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">💰 Encerramento financeiro</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Valor do orçamento</Label>
+                <Input type="number" step="0.01" value={valorOrcamento}
+                  onChange={(e) => setValorOrcamento(+e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Valor recebido</Label>
+                <Input type="number" step="0.01" value={valorRecebido}
+                  onChange={(e) => setValorRecebido(+e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Saldo</Label>
+                <div className={`rounded-md border px-2 py-2 text-sm font-semibold ${saldo > 0 ? "text-amber-700" : saldo < 0 ? "text-blue-700" : "text-emerald-700"}`}>
+                  {brl(saldo)}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Formas de pagamento</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {(Object.keys(formaPagamentoLabel) as FormaPagamento[]).map((f) => {
+                  const on = formasPag.includes(f);
+                  return (
+                    <button key={f} type="button"
+                      onClick={() => setFormasPag((p) => on ? p.filter((x) => x !== f) : [...p, f])}
+                      className={`rounded-full border px-3 py-1 text-xs ${on ? "bg-primary text-primary-foreground border-primary" : "bg-background"}`}>
+                      {formaPagamentoLabel[f]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {formasPag.includes("credito") && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Parcelas</Label>
+                  <Input type="number" min={1} value={parcelas} onChange={(e) => setParcelas(+e.target.value || 1)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label className="text-xs">Taxa cartão (%)</Label>
+                  <Input type="number" step="0.01" value={taxaCartao} onChange={(e) => setTaxaCartao(+e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Data do recebimento</Label>
+                <Input type="date" value={dataPag} onChange={(e) => setDataPag(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Situação</Label>
+                <Select value={situacaoPag} onValueChange={(v) => setSituacaoPag(v as SituacaoPagamento)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(situacaoPagamentoLabel) as SituacaoPagamento[]).map((s) => (
+                      <SelectItem key={s} value={s}>{situacaoPagamentoLabel[s]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Recebido por</Label>
+                <Input value={recebidoPor} onChange={(e) => setRecebidoPor(e.target.value)} placeholder="Nome" />
+              </div>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs">Observações financeiras</Label>
+              <Textarea rows={2} value={obsFin} onChange={(e) => setObsFin(e.target.value)}
+                placeholder="Desconto concedido, pagamento parcial, cortesia, etc." />
+            </div>
+          </div>
+
+          {/* ===== Assinaturas ===== */}
           <div className="grid gap-3 sm:grid-cols-2">
-            <SignaturePad value={assTec} onChange={setAssTec} label="Assinatura do Responsável Técnico" />
-            <SignaturePad value={assCli} onChange={setAssCli} label="Assinatura do Cliente" />
+            <div className="grid gap-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold">Responsável Técnico</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAssTela("tec")}>
+                  <Pen className="h-3.5 w-3.5" />✍️ Assinar
+                </Button>
+              </div>
+              {assTec ? (
+                <img src={assTec} alt="Assinatura técnico" className="h-20 w-full rounded border bg-white object-contain" />
+              ) : (
+                <div className="grid h-20 w-full place-items-center rounded border bg-muted/30 text-[11px] text-muted-foreground">Sem assinatura</div>
+              )}
+            </div>
+            <div className="grid gap-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold">Cliente</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => setAssTela("cli")}>
+                  <Pen className="h-3.5 w-3.5" />✍️ Assinar
+                </Button>
+              </div>
+              {assCli ? (
+                <img src={assCli} alt="Assinatura cliente" className="h-20 w-full rounded border bg-white object-contain" />
+              ) : (
+                <div className="grid h-20 w-full place-items-center rounded border bg-muted/30 text-[11px] text-muted-foreground">Sem assinatura</div>
+              )}
+            </div>
           </div>
 
           <div className="rounded-lg border bg-primary/5 p-3">
@@ -412,5 +566,31 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
         )}
       </DialogContent>
     </Dialog>
+
+    {assTela && (
+      <Dialog open={!!assTela} onOpenChange={(v) => !v && setAssTela(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {assTela === "tec" ? "Assinatura do Responsável Técnico" : "Assinatura do Cliente"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded-lg border bg-white p-2">
+            <div className="h-[55vh]">
+              <SignaturePad
+                value={assTela === "tec" ? assTec : assCli}
+                onChange={(v) => assTela === "tec" ? setAssTec(v) : setAssCli(v)}
+                label="Assine no quadro abaixo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAssTela(null)}>Cancelar</Button>
+            <Button onClick={() => { setAssTela(null); toast.success("Assinatura confirmada"); }}>Confirmar assinatura</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }

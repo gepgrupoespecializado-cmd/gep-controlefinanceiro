@@ -37,13 +37,31 @@ export interface Servico {
 
 export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado";
 
-export type FormaPagamento = "pix" | "dinheiro" | "debito" | "credito";
+export type FormaPagamento =
+  | "pix"
+  | "dinheiro"
+  | "debito"
+  | "credito"
+  | "transferencia"
+  | "boleto"
+  | "outro";
 
 export const formaPagamentoLabel: Record<FormaPagamento, string> = {
   pix: "PIX",
   dinheiro: "Dinheiro",
   debito: "Cartão de Débito",
   credito: "Cartão de Crédito",
+  transferencia: "Transferência Bancária",
+  boleto: "Boleto",
+  outro: "Outro",
+};
+
+export type SituacaoPagamento = "pago" | "parcial" | "pendente";
+
+export const situacaoPagamentoLabel: Record<SituacaoPagamento, string> = {
+  pago: "Pago",
+  parcial: "Parcial",
+  pendente: "Pendente",
 };
 
 export interface OrcamentoItem {
@@ -148,6 +166,16 @@ export interface Relatorio {
   assinaturaCliente?: string;
   criadoEm: string;
   arquivado?: boolean;
+  // ===== Encerramento financeiro =====
+  valorOrcamento?: number;
+  valorRecebido?: number;
+  formasPagamentoRecebimento?: FormaPagamento[];
+  parcelas?: number;
+  taxaCartao?: number;
+  observacoesFinanceiras?: string;
+  dataPagamento?: string;
+  situacaoPagamento?: SituacaoPagamento;
+  recebidoPor?: string;
 }
 
 export type LancamentoTipo = "entrada" | "saida";
@@ -709,6 +737,7 @@ export const relatorios = {
     });
     const ag = state.agendamentos.find((a) => a.id === r.agendamentoId);
     if (ag) gerarProximoAgendamentoDe(ag, new Date(r.dataExecucao));
+    sincronizarFinanceiroRelatorio(novo);
     persist();
     return novo.id;
   },
@@ -717,12 +746,57 @@ export const relatorios = {
       ...state,
       relatorios: state.relatorios.map((r) => (r.id === id ? { ...r, ...patch } : r)),
     };
+    const novo = state.relatorios.find((r) => r.id === id);
+    if (novo) sincronizarFinanceiroRelatorio(novo);
     persist();
   },
   porCliente(clienteId: string) {
     return state.relatorios.filter((r) => r.clienteId === clienteId && !r.arquivado);
   },
 };
+
+function sincronizarFinanceiroRelatorio(r: Relatorio) {
+  if (r.valorRecebido == null && r.situacaoPagamento == null) return;
+  const ag = state.agendamentos.find((a) => a.id === r.agendamentoId);
+  if (!ag) return;
+  const valor = r.valorRecebido ?? r.valorOrcamento ?? ag.valor ?? 0;
+  const pago = (r.situacaoPagamento ?? "pago") === "pago";
+  const cliNome = nomeClienteLocal(ag.clienteId);
+  const desc = `Serviço concluído — ${ag.titulo} (${cliNome})`;
+  const categoria = r.formasPagamentoRecebimento && r.formasPagamentoRecebimento.length
+    ? r.formasPagamentoRecebimento.map((f) => formaPagamentoLabel[f]).join(", ")
+    : "Serviço";
+  const existente = state.lancamentos.find(
+    (l) => l.origemTipo === "agendamento" && l.origemId === ag.id,
+  );
+  if (existente) {
+    state = {
+      ...state,
+      lancamentos: state.lancamentos.map((l) =>
+        l.id === existente.id
+          ? { ...l, valor, pago, categoria, descricao: desc, data: r.dataPagamento ?? l.data, atualizadoEm: new Date().toISOString() }
+          : l,
+      ),
+    };
+    logHist({
+      entidade: "lancamento", entidadeId: existente.id, entidadeNome: desc,
+      acao: "editado", campo: "encerramento", depois: `${pago ? "Recebido" : "Pendente"} · ${categoria}`,
+    });
+  } else if (valor > 0) {
+    const l: Lancamento = {
+      id: uid(), tipo: "entrada",
+      descricao: desc, valor,
+      data: r.dataPagamento ?? new Date().toISOString(),
+      categoria, pago,
+      origemTipo: "agendamento", origemId: ag.id,
+    };
+    state = { ...state, lancamentos: [l, ...state.lancamentos] };
+    logHist({
+      entidade: "lancamento", entidadeId: l.id, entidadeNome: l.descricao,
+      acao: "criado", campo: "encerramento", depois: `${pago ? "Recebido" : "Pendente"} · ${categoria}`,
+    });
+  }
+}
 
 export const totalOrcamento = (o: Orcamento) =>
   o.itens.reduce((sum, i) => sum + i.quantidade * i.valorUnit, 0);
