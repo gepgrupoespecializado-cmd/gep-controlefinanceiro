@@ -24,6 +24,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useDB } from "@/lib/store";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -43,6 +44,7 @@ export function AppSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const data = useDB();
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false);
@@ -52,15 +54,17 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-[var(--primary-glow)] text-primary-foreground font-black">
-            G
-          </div>
+          {data.empresa.logoDataUrl ? (
+            <img src={data.empresa.logoDataUrl} alt="Logo" className="h-9 w-9 shrink-0 rounded-lg object-contain bg-white border" />
+          ) : (
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-[var(--primary-glow)] text-primary-foreground font-black">
+              G
+            </div>
+          )}
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold leading-tight">GEP Controle</p>
-              <p className="truncate text-[10px] text-sidebar-foreground/60">
-                Prestação de Serviços
-              </p>
+              <p className="truncate text-sm font-bold leading-tight">Controle de Prestação</p>
+              <p className="truncate text-[10px] text-sidebar-foreground/60">de Serviços GEP</p>
             </div>
           )}
         </div>

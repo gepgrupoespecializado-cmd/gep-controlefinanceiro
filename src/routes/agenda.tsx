@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon, Search, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
@@ -20,8 +21,9 @@ import {
 } from "@/lib/store";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { RelatorioDialog } from "@/components/relatorio-dialog";
-import { dateTimeBR } from "@/lib/format";
+import { dateTimeBR, dateBR } from "@/lib/format";
 import { toast } from "sonner";
+import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({ meta: [{ title: "Agenda — GEP Controle" }] }),
@@ -50,6 +52,8 @@ function AgendaPage() {
   const [selDate, setSelDate] = useState<Date | undefined>(new Date());
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [relatorioAg, setRelatorioAg] = useState<Agendamento | null>(null);
+  const [view, setView] = useState<"dia" | "semana" | "mes" | "lista">("dia");
+  const [busca, setBusca] = useState("");
   const [form, setForm] = useState({
     clienteId: "", servicoId: "", titulo: "", data: "", hora: "09:00",
     horaFim: "", responsavel: "", endereco: "",
@@ -63,10 +67,137 @@ function AgendaPage() {
     return set;
   }, [data.agendamentos]);
 
+  const ativos = useMemo(
+    () => data.agendamentos.filter((a) => !a.arquivado),
+    [data.agendamentos],
+  );
+
+  function matchBusca(a: Agendamento): boolean {
+    const term = busca.trim().toLowerCase();
+    if (!term) return true;
+    const cli = data.clientes.find((c) => c.id === a.clienteId);
+    const serv = data.servicos.find((s) => s.id === a.servicoId);
+    const campos = [
+      a.titulo, a.observacoes, a.endereco, a.responsavel,
+      cli?.nome, cli?.bairro, cli?.cidade, cli?.endereco,
+      serv?.nome, statusAgendaLabel[a.status],
+      dateBR(a.data), new Date(a.data).toLocaleDateString("pt-BR"),
+    ].filter(Boolean) as string[];
+    return campos.some((v) => v.toLowerCase().includes(term));
+  }
+
   const doDia = selDate
-    ? data.agendamentos.filter((a) => !a.arquivado && new Date(a.data).toDateString() === selDate.toDateString())
+    ? ativos.filter((a) => new Date(a.data).toDateString() === selDate.toDateString() && matchBusca(a))
         .sort((a, b) => +new Date(a.data) - +new Date(b.data))
     : [];
+
+  const daSemana = useMemo(() => {
+    const base = selDate ?? new Date();
+    const ini = new Date(base); ini.setDate(base.getDate() - base.getDay()); ini.setHours(0,0,0,0);
+    const fim = new Date(ini); fim.setDate(ini.getDate() + 7);
+    return ativos
+      .filter((a) => { const d = new Date(a.data); return d >= ini && d < fim && matchBusca(a); })
+      .sort((a, b) => +new Date(a.data) - +new Date(b.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos, selDate, busca, data.clientes, data.servicos]);
+
+  const doMes = useMemo(() => {
+    const base = selDate ?? new Date();
+    return ativos
+      .filter((a) => { const d = new Date(a.data); return d.getMonth() === base.getMonth() && d.getFullYear() === base.getFullYear() && matchBusca(a); })
+      .sort((a, b) => +new Date(a.data) - +new Date(b.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos, selDate, busca, data.clientes, data.servicos]);
+
+  const listaGeral = useMemo(
+    () => ativos.filter(matchBusca).sort((a, b) => +new Date(b.data) - +new Date(a.data)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ativos, busca, data.clientes, data.servicos],
+  );
+
+  // Alertas inteligentes
+  const alertas = useMemo(() => {
+    const agora = new Date(); const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const amanha = new Date(hoje); amanha.setDate(hoje.getDate() + 1);
+    const depAmanha = new Date(hoje); depAmanha.setDate(hoje.getDate() + 2);
+    const naoConcluido = (a: Agendamento) => a.status !== "concluido" && a.status !== "cancelado";
+    const ehHoje = ativos.filter((a) => naoConcluido(a) && new Date(a.data) >= hoje && new Date(a.data) < amanha);
+    const ehAmanha = ativos.filter((a) => naoConcluido(a) && new Date(a.data) >= amanha && new Date(a.data) < depAmanha);
+    const atrasados = ativos.filter((a) => naoConcluido(a) && new Date(a.data) < agora && new Date(a.data) < hoje);
+    return { ehHoje, ehAmanha, atrasados };
+  }, [ativos]);
+
+  function VazioAgenda({ msg }: { msg: string }) {
+    return (
+      <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
+        <CalendarIcon className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        {msg}
+      </CardContent></Card>
+    );
+  }
+
+  function renderCard(a: Agendamento) {
+    const cli = data.clientes.find((c) => c.id === a.clienteId);
+    const serv = data.servicos.find((s) => s.id === a.servicoId);
+    const dotClass = cli ? freqDot[cli.frequencia] : "bg-slate-400";
+    const endereco = a.endereco || cli?.endereco;
+    return (
+      <Card key={a.id} className="overflow-hidden">
+        <div className={`h-1 ${dotClass}`} />
+        <CardContent className="p-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} title={cli ? freqLabel[cli.frequencia] : ""} />
+                <p className="truncate font-semibold">{a.titulo}</p>
+                <span className={`h-2 w-2 rounded-full ${statusColor[a.status]}`} title={statusAgendaLabel[a.status]} />
+                <Badge variant="outline" className="text-[10px] h-5">{statusAgendaLabel[a.status]}</Badge>
+                {cli && <Badge variant="outline" className="text-[10px] h-5">{freqLabel[cli.frequencia]}</Badge>}
+                {a.recorrencia && a.recorrencia !== "nenhuma" && (
+                  <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">↻ {recorrenciaLabel[a.recorrencia]}</Badge>
+                )}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
+                <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3" />{cli?.nome ?? "—"}</p>
+                <p className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  {dateTimeBR(a.data)}
+                  {a.horaFim && ` – ${a.horaFim}`}
+                </p>
+                {serv && <p className="flex items-center gap-1.5">🔧 {serv.nome}</p>}
+                {endereco && <p className="flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5 shrink-0" /><span className="line-clamp-2">{endereco}</span></p>}
+              </div>
+              {a.observacoes && <p className="text-xs text-muted-foreground mt-1">{a.observacoes}</p>}
+              {a.status === "concluido" && (
+                <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => abrirRelatorio(a)}>
+                  <FileCheck2 className="h-3.5 w-3.5" />
+                  {a.relatorioId ? "Ver/editar relatório" : "Gerar relatório"}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-start gap-1">
+              <Select value={a.status} onValueChange={(v) => mudarStatus(a, v as AgendaStatus)}>
+                <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(statusAgendaLabel) as AgendaStatus[]).map((s) => (
+                    <SelectItem key={s} value={s}>{statusAgendaLabel[s]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} title="Editar">
+                <Pencil className="h-4 w-4 text-primary" />
+              </Button>
+              <ConfirmDelete
+                trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
+                titulo={`Excluir agendamento "${a.titulo}"?`}
+                onConfirm={() => { db.arquivarAgendamento(a.id); toast.success("Agendamento excluído"); }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   function abrirNovo() {
     const d = selDate ?? new Date();
@@ -181,76 +312,34 @@ function AgendaPage() {
         </Card>
 
         <div className="space-y-3">
-          <p className="text-sm font-semibold">
-            {selDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
-          </p>
-          {doDia.length === 0 ? (
-            <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">
-              <CalendarIcon className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-              Nenhum serviço agendado neste dia.
-            </CardContent></Card>
-          ) : (
-            doDia.map((a) => {
-              const cli = data.clientes.find((c) => c.id === a.clienteId);
-              const serv = data.servicos.find((s) => s.id === a.servicoId);
-              const dotClass = cli ? freqDot[cli.frequencia] : "bg-slate-400";
-              const endereco = a.endereco || cli?.endereco;
-              return (
-                <Card key={a.id} className="overflow-hidden">
-                  <div className={`h-1 ${dotClass}`} />
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} title={cli ? freqLabel[cli.frequencia] : ""} />
-                          <p className="truncate font-semibold">{a.titulo}</p>
-                          {cli && <Badge variant="outline" className="text-[10px] h-5">{freqLabel[cli.frequencia]}</Badge>}
-                          {a.recorrencia && a.recorrencia !== "nenhuma" && (
-                            <Badge className="text-[10px] h-5 bg-primary/10 text-primary border-primary/30 hover:bg-primary/20">↻ {recorrenciaLabel[a.recorrencia]}</Badge>
-                          )}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground space-y-0.5">
-                          <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3" />{cli?.nome ?? "—"}</p>
-                          <p className="flex items-center gap-1.5">
-                            <Clock className="h-3 w-3" />
-                            {dateTimeBR(a.data)}
-                            {a.horaFim && ` – ${a.horaFim}`}
-                          </p>
-                          {serv && <p className="flex items-center gap-1.5">🔧 {serv.nome}</p>}
-                          {endereco && <p className="flex items-start gap-1.5"><MapPin className="h-3 w-3 mt-0.5 shrink-0" /><span className="line-clamp-2">{endereco}</span></p>}
-                        </div>
-                        {a.observacoes && <p className="text-xs text-muted-foreground mt-1">{a.observacoes}</p>}
-                        {a.status === "concluido" && (
-                          <Button size="sm" variant="outline" className="mt-2 h-7 text-xs" onClick={() => abrirRelatorio(a)}>
-                            <FileCheck2 className="h-3.5 w-3.5" />
-                            {a.relatorioId ? "Ver/editar relatório" : "Gerar relatório"}
-                          </Button>
-                        )}
-                      </div>
-                      <div className="flex items-start gap-1">
-                        <Select value={a.status} onValueChange={(v) => mudarStatus(a, v as AgendaStatus)}>
-                          <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {(Object.keys(statusAgendaLabel) as AgendaStatus[]).map((s) => (
-                              <SelectItem key={s} value={s}>{statusAgendaLabel[s]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button variant="ghost" size="icon" onClick={() => abrirEdicao(a)} title="Editar">
-                          <Pencil className="h-4 w-4 text-primary" />
-                        </Button>
-                        <ConfirmDelete
-                          trigger={<Button variant="ghost" size="icon" title="Excluir"><Trash2 className="h-4 w-4 text-destructive" /></Button>}
-                          titulo={`Excluir agendamento "${a.titulo}"?`}
-                          onConfirm={() => { db.arquivarAgendamento(a.id); toast.success("Agendamento excluído"); }}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
+          <Tabs value={view} onValueChange={(v) => setView(v as typeof view)}>
+            <TabsList>
+              <TabsTrigger value="dia">Diária</TabsTrigger>
+              <TabsTrigger value="semana">Semanal</TabsTrigger>
+              <TabsTrigger value="mes">Mensal</TabsTrigger>
+              <TabsTrigger value="lista">Lista</TabsTrigger>
+            </TabsList>
+            <TabsContent value="dia" className="mt-3 space-y-3">
+              <p className="text-sm font-semibold capitalize">
+                {selDate?.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+              </p>
+              {doDia.length === 0 ? <VazioAgenda msg="Nenhum serviço agendado neste dia." /> : doDia.map((a) => renderCard(a))}
+            </TabsContent>
+            <TabsContent value="semana" className="mt-3 space-y-3">
+              <p className="text-sm font-semibold">{daSemana.length} compromisso(s) na semana</p>
+              {daSemana.length === 0 ? <VazioAgenda msg="Nenhum agendamento nesta semana." /> : daSemana.map((a) => renderCard(a))}
+            </TabsContent>
+            <TabsContent value="mes" className="mt-3 space-y-3">
+              <p className="text-sm font-semibold capitalize">
+                {(selDate ?? new Date()).toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} — {doMes.length} compromisso(s)
+              </p>
+              {doMes.length === 0 ? <VazioAgenda msg="Nenhum agendamento neste mês." /> : doMes.map((a) => renderCard(a))}
+            </TabsContent>
+            <TabsContent value="lista" className="mt-3 space-y-3">
+              <p className="text-sm font-semibold">{listaGeral.length} agendamento(s)</p>
+              {listaGeral.length === 0 ? <VazioAgenda msg="Nenhum agendamento encontrado." /> : listaGeral.map((a) => renderCard(a))}
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 

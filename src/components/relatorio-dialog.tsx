@@ -16,7 +16,7 @@ import {
 } from "@/lib/store";
 import { SignaturePad } from "@/components/signature-pad";
 import { gerarRelatorioPDF } from "@/lib/relatorio-pdf";
-import { abrirPDF, baixarPDF } from "@/lib/pdf";
+import { abrirPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
 import { dateBR, padNum } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -180,8 +180,6 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
     if (!cliente) faltas.push("Cliente");
     if (!(servico?.nome || agendamento?.titulo)) faltas.push("Serviço");
     if (!descricao.trim()) faltas.push("Descrição dos serviços");
-    if (fotosAntes.length + fotosDurante.length + fotosDepois.length === 0) faltas.push("Pelo menos 1 foto");
-    if (!assTec && !assCli) faltas.push("Assinatura (técnico ou cliente)");
     if (faltas.length) {
       toast.error(`Preencha antes de gerar PDF: ${faltas.join(", ")}`);
       return false;
@@ -250,12 +248,14 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
     ].join("\n");
   }
 
-  function enviarWhats(numero?: string) {
-    baixar();
+  async function enviarWhats(numero?: string) {
+    const r = pdfDoc();
+    if (!r) return;
     const tel = (numero || cliente?.whatsapp || cliente?.telefone || "").replace(/\D/g, "");
-    const url = `https://wa.me/${tel}?text=${encodeURIComponent(mensagemWhats())}`;
-    window.open(url, "_blank");
-    toast.info("Anexe o PDF baixado na conversa do WhatsApp");
+    const res = await compartilharPDF({ doc: r.doc, filename: r.filename, titulo: "Relatório de Serviço", mensagem: mensagemWhats(), telefone: tel });
+    if (res === "shared") toast.success("PDF compartilhado");
+    else if (res === "whatsapp") toast.info("PDF baixado — anexe na conversa do WhatsApp aberta");
+    else toast.info("PDF baixado");
   }
 
   function enviarEmail() {
@@ -269,16 +269,8 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   async function compartilhar() {
     const r = pdfDoc();
     if (!r) return;
-    const blob = r.doc.output("blob");
-    const file = new File([blob], r.filename, { type: "application/pdf" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file], title: "Relatório de Serviço", text: mensagemWhats() });
-      } catch {}
-    } else {
-      baixar();
-      toast.info("Compartilhamento nativo indisponível. PDF baixado.");
-    }
+    const tel = (cliente?.whatsapp || cliente?.telefone || "").replace(/\D/g, "");
+    await compartilharPDF({ doc: r.doc, filename: r.filename, titulo: "Relatório de Serviço", mensagem: mensagemWhats(), telefone: tel });
   }
 
   if (!agendamento) return null;

@@ -141,9 +141,68 @@ function EmpresaPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">⚙️ Configuração de Custos da Empresa</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Valores utilizados automaticamente como padrão na <b>Calculadora de Precificação</b>.
+          </p>
+        </CardHeader>
+        <CardContent className="grid sm:grid-cols-2 gap-3">
+          <CustoCampo
+            label="Valor padrão da hora (R$)"
+            value={form.custosPadrao?.valorHora ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, valorHora: v } })}
+          />
+          <CustoCampo
+            label="Margem de lucro padrão (%)"
+            value={form.custosPadrao?.margemLucro ?? 30}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, margemLucro: v } })}
+          />
+          <CustoCampo
+            label="Taxa do cartão (%)"
+            value={form.custosPadrao?.taxaCartao ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, taxaCartao: v } })}
+          />
+          <CustoCampo
+            label="Imposto / Simples (%)"
+            value={form.custosPadrao?.imposto ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, imposto: v } })}
+          />
+          <CustoCampo
+            label="Custo operacional mensal (R$)"
+            value={form.custosPadrao?.custoOperacionalMensal ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, custoOperacionalMensal: v } })}
+          />
+          <CustoCampo
+            label="Valor por km rodado (R$)"
+            value={form.custosPadrao?.valorKm ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, valorKm: v } })}
+          />
+          <CustoCampo
+            label="Valor mínimo de atendimento (R$)"
+            value={form.custosPadrao?.valorMinimoAtendimento ?? 0}
+            onChange={(v) => setForm({ ...form, custosPadrao: { ...form.custosPadrao, valorMinimoAtendimento: v } })}
+          />
+        </CardContent>
+      </Card>
+
       <div className="flex justify-end">
         <Button onClick={salvar}>Salvar alterações</Button>
       </div>
+    </div>
+  );
+}
+
+function CustoCampo({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="number" step={0.01} min={0}
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+      />
     </div>
   );
 }

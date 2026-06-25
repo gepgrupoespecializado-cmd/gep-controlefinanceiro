@@ -18,7 +18,7 @@ import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
-import { gerarOrcamentoPDF, baixarPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos")({
@@ -133,7 +133,7 @@ function OrcamentosPage() {
 
   const total = itens.reduce((s, i) => s + i.quantidade * i.valorUnit, 0);
 
-  function pdf(orcId: string, action: "view" | "download" | "share") {
+  async function pdf(orcId: string, action: "view" | "download" | "share") {
     const o = data.orcamentos.find((x) => x.id === orcId);
     if (!o) return;
     const faltas: string[] = [];
@@ -164,9 +164,11 @@ function OrcamentosPage() {
         o.descricaoServicos,
       ].filter(Boolean);
       const txt = partes.join("\n");
-      const tel = cli?.whatsapp?.replace(/\D/g, "") || "";
-      const url = `https://wa.me/${tel}?text=${encodeURIComponent(txt)}`;
-      window.open(url, "_blank");
+      const tel = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
+      const res = await compartilharPDF({ doc, filename, titulo: `Orçamento ORC-${padNum(o.numero)}`, mensagem: txt, telefone: tel });
+      if (res === "shared") toast.success("Orçamento compartilhado");
+      else if (res === "whatsapp") toast.info("PDF baixado — anexe na conversa do WhatsApp");
+      else toast.info("PDF baixado");
     }
   }
 
