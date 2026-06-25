@@ -565,5 +565,31 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
         )}
       </DialogContent>
     </Dialog>
+
+    {assTela && (
+      <Dialog open={!!assTela} onOpenChange={(v) => !v && setAssTela(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {assTela === "tec" ? "Assinatura do Responsável Técnico" : "Assinatura do Cliente"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded-lg border bg-white p-2">
+            <div className="h-[55vh]">
+              <SignaturePad
+                value={assTela === "tec" ? assTec : assCli}
+                onChange={(v) => assTela === "tec" ? setAssTec(v) : setAssCli(v)}
+                label="Assine no quadro abaixo"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAssTela(null)}>Cancelar</Button>
+            <Button onClick={() => { setAssTela(null); toast.success("Assinatura confirmada"); }}>Confirmar assinatura</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }
