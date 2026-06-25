@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   db, useDB, statusPagamento, situacaoPagamentoLabel,
+  relatorios as relatoriosApi,
   type Relatorio, type Lancamento, type SituacaoPagamento,
 } from "@/lib/store";
 import { brl, dateBR } from "@/lib/format";
@@ -149,7 +150,7 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
 
   function marcarPago(a: Alerta) {
     if (a.relatorio) {
-      db.relatorios.update(a.relatorio.id, {
+      relatoriosApi.update(a.relatorio.id, {
         situacaoPagamento: "pago" as SituacaoPagamento,
         valorRecebido: a.valorTotal,
         dataPagamento: new Date().toISOString(),
