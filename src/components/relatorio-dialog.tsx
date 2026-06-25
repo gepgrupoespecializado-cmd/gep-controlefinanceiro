@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronLeft, ChevronRight, Download, Eye, FolderOpen, ImageIcon, Mail, Search, Share2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, ChevronLeft, ChevronRight, Download, Eye, FolderOpen, ImageIcon, Mail, Maximize2, Pen, Search, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,13 +11,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  type Agendamento, type Relatorio, type RelatorioStatus,
-  relatorioStatusLabel, relatorios, useDB,
+  type Agendamento, type FormaPagamento, type Relatorio, type RelatorioStatus,
+  type SituacaoPagamento,
+  formaPagamentoLabel, relatorioStatusLabel, relatorios, situacaoPagamentoLabel, useDB,
 } from "@/lib/store";
 import { SignaturePad } from "@/components/signature-pad";
 import { gerarRelatorioPDF } from "@/lib/relatorio-pdf";
 import { abrirPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
-import { dateBR, padNum } from "@/lib/format";
+import { brl, dateBR, padNum } from "@/lib/format";
 import { toast } from "sonner";
 
 interface Props {
@@ -87,6 +88,20 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   const [assCli, setAssCli] = useState<string | undefined>();
   const [salvoId, setSalvoId] = useState<string | null>(null);
 
+  // ===== Pagamento =====
+  const [valorOrcamento, setValorOrcamento] = useState<number>(0);
+  const [valorRecebido, setValorRecebido] = useState<number>(0);
+  const [formasPag, setFormasPag] = useState<FormaPagamento[]>([]);
+  const [parcelas, setParcelas] = useState<number>(1);
+  const [taxaCartao, setTaxaCartao] = useState<number>(0);
+  const [obsFin, setObsFin] = useState<string>("");
+  const [dataPag, setDataPag] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [situacaoPag, setSituacaoPag] = useState<SituacaoPagamento>("pago");
+  const [recebidoPor, setRecebidoPor] = useState<string>("");
+  const [assTela, setAssTela] = useState<null | "tec" | "cli">(null);
+
+  const saldo = useMemo(() => +(valorOrcamento - valorRecebido).toFixed(2), [valorOrcamento, valorRecebido]);
+
   useEffect(() => {
     if (!open || !agendamento) return;
     if (existente) {
@@ -102,6 +117,15 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       setAssTec(existente.assinaturaTecnico);
       setAssCli(existente.assinaturaCliente);
       setSalvoId(existente.id);
+      setValorOrcamento(existente.valorOrcamento ?? agendamento.valor ?? 0);
+      setValorRecebido(existente.valorRecebido ?? existente.valorOrcamento ?? agendamento.valor ?? 0);
+      setFormasPag(existente.formasPagamentoRecebimento ?? []);
+      setParcelas(existente.parcelas ?? 1);
+      setTaxaCartao(existente.taxaCartao ?? 0);
+      setObsFin(existente.observacoesFinanceiras ?? "");
+      setDataPag((existente.dataPagamento ?? new Date().toISOString()).slice(0, 10));
+      setSituacaoPag(existente.situacaoPagamento ?? "pago");
+      setRecebidoPor(existente.recebidoPor ?? "");
     } else {
       const dt = new Date(agendamento.data);
       setStatus("sucesso");
@@ -114,6 +138,11 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       setAssTec(undefined); setAssCli(undefined);
       setSalvoId(null);
       setBuscaFoto("");
+      const v = agendamento.valor ?? 0;
+      setValorOrcamento(v); setValorRecebido(v);
+      setFormasPag([]); setParcelas(1); setTaxaCartao(0);
+      setObsFin(""); setDataPag(new Date().toISOString().slice(0, 10));
+      setSituacaoPag("pago"); setRecebidoPor(agendamento.responsavel ?? "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, agendamento?.id]);
@@ -172,6 +201,13 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       fotosDepois: fotosDepois.map((f) => f.src),
       assinaturaTecnico: assTec, assinaturaCliente: assCli,
       criadoEm: existente?.criadoEm ?? new Date().toISOString(),
+      valorOrcamento, valorRecebido,
+      formasPagamentoRecebimento: formasPag,
+      parcelas, taxaCartao,
+      observacoesFinanceiras: obsFin,
+      dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+      situacaoPagamento: situacaoPag,
+      recebidoPor,
     };
   }
 
@@ -200,6 +236,12 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
         fotosDurante: fotosDurante.map((f) => f.src),
         fotosDepois: fotosDepois.map((f) => f.src),
         assinaturaTecnico: assTec, assinaturaCliente: assCli,
+        valorOrcamento, valorRecebido,
+        formasPagamentoRecebimento: formasPag,
+        parcelas, taxaCartao,
+        observacoesFinanceiras: obsFin,
+        dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+        situacaoPagamento: situacaoPag, recebidoPor,
       });
       if (!silencioso) toast.success("Relatório atualizado");
       return salvoId;
@@ -217,6 +259,12 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
       fotosDurante: fotosDurante.map((f) => f.src),
       fotosDepois: fotosDepois.map((f) => f.src),
       assinaturaTecnico: assTec, assinaturaCliente: assCli,
+      valorOrcamento, valorRecebido,
+      formasPagamentoRecebimento: formasPag,
+      parcelas, taxaCartao,
+      observacoesFinanceiras: obsFin,
+      dataPagamento: new Date(`${dataPag}T12:00:00`).toISOString(),
+      situacaoPagamento: situacaoPag, recebidoPor,
     });
     setSalvoId(novoId);
     if (!silencioso) toast.success("Relatório salvo");
