@@ -185,6 +185,8 @@ function Index() {
         </Card>
       </div>
 
+      <AlertasPagamento limite={5} titulo="🔔 Alertas de pagamento" />
+
       <Card>
         <CardHeader><CardTitle className="text-base">Últimos orçamentos</CardTitle></CardHeader>
         <CardContent>
