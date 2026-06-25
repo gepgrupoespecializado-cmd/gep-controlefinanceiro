@@ -21,6 +21,7 @@ import {
   type Lancamento, type LancamentoTipo, type PagamentoStatus,
 } from "@/lib/store";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { AlertasPagamento } from "@/components/alertas-pagamento";
 import { brl, dateBR } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -225,6 +226,8 @@ function FinanceiroPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <AlertasPagamento titulo="Alertas e lembretes de pagamento" />
 
       <Card>
         <CardHeader><CardTitle className="text-base">Lançamentos</CardTitle></CardHeader>
