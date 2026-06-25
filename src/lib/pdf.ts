@@ -311,3 +311,35 @@ export function abrirPDF(doc: jsPDF) {
 export function baixarPDF(doc: jsPDF, filename: string) {
   doc.save(filename);
 }
+
+/**
+ * Compartilha o PDF de forma nativa (Android/iOS/Windows com Web Share API + files).
+ * Quando o sistema do usuário não permitir anexar arquivos via share, abre o WhatsApp
+ * (wa.me) com a mensagem e baixa o PDF para anexo manual.
+ */
+export async function compartilharPDF(opts: {
+  doc: jsPDF;
+  filename: string;
+  titulo?: string;
+  mensagem: string;
+  telefone?: string;
+}): Promise<"shared" | "whatsapp" | "downloaded"> {
+  const { doc, filename, titulo, mensagem, telefone } = opts;
+  const blob = doc.output("blob");
+  const file = new File([blob], filename, { type: "application/pdf" });
+  try {
+    const navAny = navigator as any;
+    if (navAny.canShare && navAny.canShare({ files: [file] }) && navAny.share) {
+      await navAny.share({ files: [file], title: titulo ?? filename, text: mensagem });
+      return "shared";
+    }
+  } catch {
+    /* usuário cancelou ou falhou — segue para fallback */
+  }
+  // Fallback: baixa e abre WhatsApp
+  doc.save(filename);
+  const tel = (telefone || "").replace(/\D/g, "");
+  const url = `https://wa.me/${tel}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, "_blank");
+  return tel ? "whatsapp" : "downloaded";
+}

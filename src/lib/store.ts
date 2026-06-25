@@ -179,6 +179,16 @@ export interface Empresa {
   temaPdf?: PdfTema;
   corPdf?: string; // hex, ex: "#0b1b3d"
   corSecundariaPdf?: string; // hex — títulos/bordas/destaques
+  /** Configuração de Custos da Empresa — usada na Calculadora de Precificação. */
+  custosPadrao?: {
+    valorHora?: number;
+    margemLucro?: number; // %
+    taxaCartao?: number; // %
+    custoOperacionalMensal?: number;
+    valorKm?: number;
+    valorMinimoAtendimento?: number;
+    imposto?: number; // %
+  };
 }
 
 export type PdfTema =
