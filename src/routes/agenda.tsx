@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon, Search, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
@@ -20,8 +21,9 @@ import {
 } from "@/lib/store";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { RelatorioDialog } from "@/components/relatorio-dialog";
-import { dateTimeBR } from "@/lib/format";
+import { dateTimeBR, dateBR } from "@/lib/format";
 import { toast } from "sonner";
+import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/agenda")({
   head: () => ({ meta: [{ title: "Agenda — GEP Controle" }] }),
@@ -50,6 +52,8 @@ function AgendaPage() {
   const [selDate, setSelDate] = useState<Date | undefined>(new Date());
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [relatorioAg, setRelatorioAg] = useState<Agendamento | null>(null);
+  const [view, setView] = useState<"dia" | "semana" | "mes" | "lista">("dia");
+  const [busca, setBusca] = useState("");
   const [form, setForm] = useState({
     clienteId: "", servicoId: "", titulo: "", data: "", hora: "09:00",
     horaFim: "", responsavel: "", endereco: "",
@@ -63,10 +67,65 @@ function AgendaPage() {
     return set;
   }, [data.agendamentos]);
 
+  const ativos = useMemo(
+    () => data.agendamentos.filter((a) => !a.arquivado),
+    [data.agendamentos],
+  );
+
+  function matchBusca(a: Agendamento): boolean {
+    const term = busca.trim().toLowerCase();
+    if (!term) return true;
+    const cli = data.clientes.find((c) => c.id === a.clienteId);
+    const serv = data.servicos.find((s) => s.id === a.servicoId);
+    const campos = [
+      a.titulo, a.observacoes, a.endereco, a.responsavel,
+      cli?.nome, cli?.bairro, cli?.cidade, cli?.endereco,
+      serv?.nome, statusAgendaLabel[a.status],
+      dateBR(a.data), new Date(a.data).toLocaleDateString("pt-BR"),
+    ].filter(Boolean) as string[];
+    return campos.some((v) => v.toLowerCase().includes(term));
+  }
+
   const doDia = selDate
-    ? data.agendamentos.filter((a) => !a.arquivado && new Date(a.data).toDateString() === selDate.toDateString())
+    ? ativos.filter((a) => new Date(a.data).toDateString() === selDate.toDateString() && matchBusca(a))
         .sort((a, b) => +new Date(a.data) - +new Date(b.data))
     : [];
+
+  const daSemana = useMemo(() => {
+    const base = selDate ?? new Date();
+    const ini = new Date(base); ini.setDate(base.getDate() - base.getDay()); ini.setHours(0,0,0,0);
+    const fim = new Date(ini); fim.setDate(ini.getDate() + 7);
+    return ativos
+      .filter((a) => { const d = new Date(a.data); return d >= ini && d < fim && matchBusca(a); })
+      .sort((a, b) => +new Date(a.data) - +new Date(b.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos, selDate, busca, data.clientes, data.servicos]);
+
+  const doMes = useMemo(() => {
+    const base = selDate ?? new Date();
+    return ativos
+      .filter((a) => { const d = new Date(a.data); return d.getMonth() === base.getMonth() && d.getFullYear() === base.getFullYear() && matchBusca(a); })
+      .sort((a, b) => +new Date(a.data) - +new Date(b.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ativos, selDate, busca, data.clientes, data.servicos]);
+
+  const listaGeral = useMemo(
+    () => ativos.filter(matchBusca).sort((a, b) => +new Date(b.data) - +new Date(a.data)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ativos, busca, data.clientes, data.servicos],
+  );
+
+  // Alertas inteligentes
+  const alertas = useMemo(() => {
+    const agora = new Date(); const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const amanha = new Date(hoje); amanha.setDate(hoje.getDate() + 1);
+    const depAmanha = new Date(hoje); depAmanha.setDate(hoje.getDate() + 2);
+    const naoConcluido = (a: Agendamento) => a.status !== "concluido" && a.status !== "cancelado";
+    const ehHoje = ativos.filter((a) => naoConcluido(a) && new Date(a.data) >= hoje && new Date(a.data) < amanha);
+    const ehAmanha = ativos.filter((a) => naoConcluido(a) && new Date(a.data) >= amanha && new Date(a.data) < depAmanha);
+    const atrasados = ativos.filter((a) => naoConcluido(a) && new Date(a.data) < agora && new Date(a.data) < hoje);
+    return { ehHoje, ehAmanha, atrasados };
+  }, [ativos]);
 
   function abrirNovo() {
     const d = selDate ?? new Date();
