@@ -11,6 +11,8 @@ import {
   Trash,
   BookOpen,
   Calculator,
+  Scale,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +40,11 @@ const items = [
   { title: "Histórico", url: "/historico", icon: History },
   { title: "Lixeira", url: "/lixeira", icon: Trash },
   { title: "Empresa", url: "/empresa", icon: Building2 },
+];
+
+const legalItems = [
+  { title: "Termos de Uso", url: "/termos-de-uso", icon: Scale },
+  { title: "Privacidade", url: "/politica-de-privacidade", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
@@ -79,6 +86,27 @@ export function AppSidebar() {
                   item.url === "/"
                     ? pathname === "/"
                     : pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={active}>
+                      <Link to={item.url} className="flex items-center gap-2" onClick={handleNavigate}>
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Legal</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {legalItems.map((item) => {
+                const active = pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
