@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as PrecificacaoRouteImport } from './routes/precificacao'
+import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as ModelosRouteImport } from './routes/modelos'
 import { Route as LixeiraRouteImport } from './routes/lixeira'
@@ -35,6 +36,11 @@ const ServicosRoute = ServicosRouteImport.update({
 const PrecificacaoRoute = PrecificacaoRouteImport.update({
   id: '/precificacao',
   path: '/precificacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PoliticaDePrivacidadeRoute = PoliticaDePrivacidadeRouteImport.update({
+  id: '/politica-de-privacidade',
+  path: '/politica-de-privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrcamentosRoute = OrcamentosRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/lixeira': typeof LixeiraRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
+  '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/politica-de-privacidade'
     | '/precificacao'
     | '/servicos'
     | '/termos-de-uso'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/politica-de-privacidade'
     | '/precificacao'
     | '/servicos'
     | '/termos-de-uso'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/lixeira'
     | '/modelos'
     | '/orcamentos'
+    | '/politica-de-privacidade'
     | '/precificacao'
     | '/servicos'
     | '/termos-de-uso'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   LixeiraRoute: typeof LixeiraRoute
   ModelosRoute: typeof ModelosRoute
   OrcamentosRoute: typeof OrcamentosRoute
+  PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   PrecificacaoRoute: typeof PrecificacaoRoute
   ServicosRoute: typeof ServicosRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/precificacao'
       fullPath: '/precificacao'
       preLoaderRoute: typeof PrecificacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/politica-de-privacidade': {
+      id: '/politica-de-privacidade'
+      path: '/politica-de-privacidade'
+      fullPath: '/politica-de-privacidade'
+      preLoaderRoute: typeof PoliticaDePrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orcamentos': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   LixeiraRoute: LixeiraRoute,
   ModelosRoute: ModelosRoute,
   OrcamentosRoute: OrcamentosRoute,
+  PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   PrecificacaoRoute: PrecificacaoRoute,
   ServicosRoute: ServicosRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,

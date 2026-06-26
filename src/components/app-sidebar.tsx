@@ -11,6 +11,8 @@ import {
   Trash,
   BookOpen,
   Calculator,
+  Scale,
+  ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +40,11 @@ const items = [
   { title: "Histórico", url: "/historico", icon: History },
   { title: "Lixeira", url: "/lixeira", icon: Trash },
   { title: "Empresa", url: "/empresa", icon: Building2 },
+];
+
+const legalItems = [
+  { title: "Termos de Uso", url: "/termos-de-uso", icon: Scale },
+  { title: "Privacidade", url: "/politica-de-privacidade", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
