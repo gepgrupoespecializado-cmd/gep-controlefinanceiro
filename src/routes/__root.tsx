@@ -103,6 +103,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
+      { name: "description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
+      { property: "og:description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
+      { name: "twitter:description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
     ],
     links: [
       {
