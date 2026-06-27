@@ -11,14 +11,17 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as PrestacaoDeServicosRouteImport } from './routes/prestacao-de-servicos'
 import { Route as PrecificacaoRouteImport } from './routes/precificacao'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as ModelosRouteImport } from './routes/modelos'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LixeiraRouteImport } from './routes/lixeira'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EmpresaRouteImport } from './routes/empresa'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
@@ -31,6 +34,11 @@ const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
   path: '/servicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrestacaoDeServicosRoute = PrestacaoDeServicosRouteImport.update({
+  id: '/prestacao-de-servicos',
+  path: '/prestacao-de-servicos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrecificacaoRoute = PrecificacaoRouteImport.update({
@@ -53,6 +61,11 @@ const ModelosRoute = ModelosRouteImport.update({
   path: '/modelos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LixeiraRoute = LixeiraRouteImport.update({
   id: '/lixeira',
   path: '/lixeira',
@@ -71,6 +84,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const EmpresaRoute = EmpresaRouteImport.update({
   id: '/empresa',
   path: '/empresa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientesRoute = ClientesRouteImport.update({
@@ -93,14 +111,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
+  '/login': typeof LoginRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
+  '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
@@ -108,14 +129,17 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
+  '/login': typeof LoginRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
+  '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
@@ -124,14 +148,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
   '/clientes': typeof ClientesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
+  '/login': typeof LoginRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
+  '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
@@ -141,14 +168,17 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/clientes'
+    | '/configuracoes'
     | '/empresa'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
+    | '/login'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
     | '/precificacao'
+    | '/prestacao-de-servicos'
     | '/servicos'
     | '/termos-de-uso'
   fileRoutesByTo: FileRoutesByTo
@@ -156,14 +186,17 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/clientes'
+    | '/configuracoes'
     | '/empresa'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
+    | '/login'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
     | '/precificacao'
+    | '/prestacao-de-servicos'
     | '/servicos'
     | '/termos-de-uso'
   id:
@@ -171,14 +204,17 @@ export interface FileRouteTypes {
     | '/'
     | '/agenda'
     | '/clientes'
+    | '/configuracoes'
     | '/empresa'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
+    | '/login'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
     | '/precificacao'
+    | '/prestacao-de-servicos'
     | '/servicos'
     | '/termos-de-uso'
   fileRoutesById: FileRoutesById
@@ -187,14 +223,17 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
   ClientesRoute: typeof ClientesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   EmpresaRoute: typeof EmpresaRoute
   FinanceiroRoute: typeof FinanceiroRoute
   HistoricoRoute: typeof HistoricoRoute
   LixeiraRoute: typeof LixeiraRoute
+  LoginRoute: typeof LoginRoute
   ModelosRoute: typeof ModelosRoute
   OrcamentosRoute: typeof OrcamentosRoute
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   PrecificacaoRoute: typeof PrecificacaoRoute
+  PrestacaoDeServicosRoute: typeof PrestacaoDeServicosRoute
   ServicosRoute: typeof ServicosRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
 }
@@ -213,6 +252,13 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prestacao-de-servicos': {
+      id: '/prestacao-de-servicos'
+      path: '/prestacao-de-servicos'
+      fullPath: '/prestacao-de-servicos'
+      preLoaderRoute: typeof PrestacaoDeServicosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/precificacao': {
@@ -243,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModelosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lixeira': {
       id: '/lixeira'
       path: '/lixeira'
@@ -269,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/empresa'
       fullPath: '/empresa'
       preLoaderRoute: typeof EmpresaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/clientes': {
@@ -299,14 +359,17 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
   ClientesRoute: ClientesRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   EmpresaRoute: EmpresaRoute,
   FinanceiroRoute: FinanceiroRoute,
   HistoricoRoute: HistoricoRoute,
   LixeiraRoute: LixeiraRoute,
+  LoginRoute: LoginRoute,
   ModelosRoute: ModelosRoute,
   OrcamentosRoute: OrcamentosRoute,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   PrecificacaoRoute: PrecificacaoRoute,
+  PrestacaoDeServicosRoute: PrestacaoDeServicosRoute,
   ServicosRoute: ServicosRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
 }
