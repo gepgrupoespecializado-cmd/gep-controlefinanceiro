@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { uid } from "./format";
 
 /* ---------- Types ---------- */
@@ -376,8 +376,16 @@ function load(): DB {
   }
 }
 
-let state: DB = load();
+let state: DB = seed;
+let hydratedFromStorage = false;
 const listeners = new Set<() => void>();
+
+function hydrateFromStorageOnce() {
+  if (hydratedFromStorage || typeof window === "undefined") return;
+  hydratedFromStorage = true;
+  state = load();
+  listeners.forEach((l) => l());
+}
 
 function persist() {
   if (typeof window !== "undefined") {
@@ -420,7 +428,13 @@ function getSnapshot() {
 }
 
 export function useDB(): DB {
-  return useSyncExternalStore(subscribe, getSnapshot, () => seed);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, () => seed);
+
+  useEffect(() => {
+    hydrateFromStorageOnce();
+  }, []);
+
+  return snapshot;
 }
 
 /* ---------- Auto-financeiro helpers ---------- */
