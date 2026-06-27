@@ -7,6 +7,7 @@ import {
   Calendar,
   Wallet,
   Building2,
+  Settings,
   History,
   Trash,
   BookOpen,
@@ -31,7 +32,7 @@ import { useDB } from "@/lib/store";
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Serviços", url: "/servicos", icon: Wrench },
+  { title: "Prestação de Serviços", url: "/prestacao-de-servicos", icon: Wrench },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Modelos", url: "/modelos", icon: BookOpen },
   { title: "Precificação", url: "/precificacao", icon: Calculator },
@@ -40,6 +41,7 @@ const items = [
   { title: "Histórico", url: "/historico", icon: History },
   { title: "Lixeira", url: "/lixeira", icon: Trash },
   { title: "Empresa", url: "/empresa", icon: Building2 },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 const legalItems = [
