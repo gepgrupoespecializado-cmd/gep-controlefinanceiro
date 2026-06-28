@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { startLocalSession } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -14,6 +15,13 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const navigate = useNavigate();
+
+  function entrar() {
+    startLocalSession();
+    void navigate({ to: "/" });
+  }
+
   return (
     <div className="min-h-[70vh] grid place-items-center">
       <Card className="w-full max-w-md">
@@ -27,8 +35,8 @@ function LoginPage() {
               O aplicativo está operando em modo local/offline nesta versão.
             </p>
           </div>
-          <Button asChild className="w-full">
-            <Link to="/">Entrar no dashboard</Link>
+          <Button className="w-full" onClick={entrar}>
+            Entrar no dashboard
           </Button>
         </CardContent>
       </Card>

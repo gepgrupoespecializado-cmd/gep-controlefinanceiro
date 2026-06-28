@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Bell, MessageCircle, CheckCircle2, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   db, useDB, statusPagamento, situacaoPagamentoLabel,
   relatorios as relatoriosApi,
-  type Relatorio, type Lancamento, type SituacaoPagamento,
+  type Cliente, type Orcamento, type Relatorio, type Lancamento, type SituacaoPagamento,
 } from "@/lib/store";
 import { brl, dateBR } from "@/lib/format";
 import { toast } from "sonner";
@@ -38,7 +39,9 @@ const tipoBadge: Record<Alerta["tipo"], string> = {
 };
 
 function diasEntre(iso: string): number {
-  const d = new Date(iso); d.setHours(0, 0, 0, 0);
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return 0;
+  d.setHours(0, 0, 0, 0);
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   return Math.floor((+hoje - +d) / 86400000);
 }
@@ -50,10 +53,10 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
     const lista: Alerta[] = [];
 
     // 1) Relatórios com situação parcial/pendente
-    for (const r of data.relatorios.filter((x) => !x.arquivado)) {
+    for (const r of safeArray<Relatorio>(data.relatorios).filter((x) => x && !x.arquivado)) {
       const sit = r.situacaoPagamento;
       if (sit !== "parcial" && sit !== "pendente") continue;
-      const cli = data.clientes.find((c) => c.id === r.clienteId);
+      const cli = safeArray<Cliente>(data.clientes).find((c) => c.id === r.clienteId);
       const total = r.valorOrcamento ?? r.valor ?? 0;
       const recebido = r.valorRecebido ?? 0;
       const saldo = Math.max(0, total - (sit === "parcial" ? recebido : 0));
@@ -74,7 +77,7 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
     }
 
     // 2) Lançamentos pendentes/vencidos sem relatório (entradas manuais)
-    for (const l of data.lancamentos.filter((x) => !x.arquivado && x.tipo === "entrada")) {
+    for (const l of safeArray<Lancamento>(data.lancamentos).filter((x) => x && !x.arquivado && x.tipo === "entrada")) {
       if (l.origemTipo === "agendamento") continue; // já coberto pelo relatório
       const st = statusPagamento(l);
       if (st === "recebido") continue;
@@ -82,8 +85,8 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
       const dias = diasEntre(ref);
       const cliNome = (() => {
         if (l.origemTipo === "orcamento") {
-          const o = data.orcamentos.find((x) => x.id === l.origemId);
-          const c = o && data.clientes.find((x) => x.id === o.clienteId);
+          const o = safeArray<Orcamento>(data.orcamentos).find((x) => x.id === l.origemId);
+          const c = o && safeArray<Cliente>(data.clientes).find((x) => x.id === o.clienteId);
           return c?.nome ?? l.descricao;
         }
         return l.descricao;
@@ -128,7 +131,7 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
   const totalVencido = alertas.filter((a) => a.tipo === "vencido").length;
 
   function lembreteWhatsApp(a: Alerta) {
-    const cli = a.clienteId ? data.clientes.find((c) => c.id === a.clienteId) : undefined;
+    const cli = a.clienteId ? safeArray<Cliente>(data.clientes).find((c) => c.id === a.clienteId) : undefined;
     const fone = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
     const empresa = data.empresa.nome || "nossa equipe";
     const linhas = [
@@ -220,10 +223,14 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
         </ul>
         {limite && alertas.length > limite && (
           <div className="p-2 text-center text-xs text-muted-foreground border-t">
-            +{alertas.length - limite} alerta(s). Veja todos no <a href="/financeiro" className="text-primary underline">Financeiro</a>.
+            +{alertas.length - limite} alerta(s). Veja todos no <Link to="/financeiro" className="text-primary underline">Financeiro</Link>.
           </div>
         )}
       </CardContent>
     </Card>
   );
+}
+
+function safeArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
 }
