@@ -32,6 +32,7 @@ import { useDB } from "@/lib/store";
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Serviços", url: "/servicos", icon: Wrench },
   { title: "Prestação de Serviços", url: "/prestacao-de-servicos", icon: Wrench },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Modelos", url: "/modelos", icon: BookOpen },
