@@ -353,25 +353,50 @@ const seed: DB = {
   proximoRelatorio: 1,
 };
 
+const asArray = <T,>(value: unknown, fallback: T[] = []): T[] =>
+  Array.isArray(value) ? value : fallback;
+
+const asNumber = (value: unknown, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+function normalizeDB(parsed: Partial<DB> | null | undefined): DB {
+  const source = parsed && typeof parsed === "object" ? parsed : {};
+  const empresa = source.empresa && typeof source.empresa === "object" ? source.empresa : {};
+
+  return {
+    ...seed,
+    ...source,
+    clientes: asArray<Cliente>(source.clientes),
+    servicos: asArray<Servico>(source.servicos, seed.servicos),
+    orcamentos: asArray<Orcamento>(source.orcamentos).map((o: any) => ({
+      descricaoServicos: "",
+      validadeDias: 7,
+      ...o,
+      itens: asArray<OrcamentoItem>(o?.itens),
+      formasPagamento: asArray<FormaPagamento>(o?.formasPagamento),
+    })),
+    proximoOrcamento: asNumber(source.proximoOrcamento, 1),
+    agendamentos: asArray<Agendamento>(source.agendamentos),
+    lancamentos: asArray<Lancamento>(source.lancamentos),
+    empresa: { ...seed.empresa, ...empresa },
+    historico: asArray<HistoricoEntry>(source.historico),
+    modelos: asArray<ModeloDescricao>(source.modelos).length
+      ? asArray<ModeloDescricao>(source.modelos)
+      : seed.modelos,
+    relatorios: asArray<Relatorio>(source.relatorios),
+    proximoRelatorio: asNumber(source.proximoRelatorio, 1),
+  };
+}
+
 function load(): DB {
   if (typeof window === "undefined") return seed;
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return seed;
     const parsed = JSON.parse(raw);
-    const merged: DB = { ...seed, ...parsed };
-    merged.empresa = { ...seed.empresa, ...(parsed.empresa ?? {}) };
-    merged.modelos = (parsed.modelos && parsed.modelos.length ? parsed.modelos : seed.modelos);
-    merged.orcamentos = (parsed.orcamentos ?? []).map((o: any) => ({
-      descricaoServicos: "",
-      validadeDias: 7,
-      ...o,
-      formasPagamento: Array.isArray(o.formasPagamento) ? o.formasPagamento : [],
-    }));
-    merged.relatorios = Array.isArray(parsed.relatorios) ? parsed.relatorios : [];
-    merged.proximoRelatorio = parsed.proximoRelatorio ?? 1;
-    return merged;
-  } catch {
+    return normalizeDB(parsed);
+  } catch (error) {
+    console.warn("Falha ao carregar dados locais; usando base segura.", error);
     return seed;
   }
 }
@@ -383,13 +408,23 @@ const listeners = new Set<() => void>();
 function hydrateFromStorageOnce() {
   if (hydratedFromStorage || typeof window === "undefined") return;
   hydratedFromStorage = true;
-  state = load();
-  listeners.forEach((l) => l());
+  try {
+    state = load();
+  } catch (error) {
+    console.error("Falha inesperada na hidratação dos dados locais.", error);
+    state = seed;
+  } finally {
+    listeners.forEach((l) => l());
+  }
 }
 
 function persist() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(normalizeDB(state)));
+    } catch (error) {
+      console.error("Não foi possível salvar os dados locais.", error);
+    }
   }
   listeners.forEach((l) => l());
 }
@@ -813,7 +848,10 @@ function sincronizarFinanceiroRelatorio(r: Relatorio) {
 }
 
 export const totalOrcamento = (o: Orcamento) =>
-  o.itens.reduce((sum, i) => sum + i.quantidade * i.valorUnit, 0);
+  asArray<OrcamentoItem>(o.itens).reduce(
+    (sum, i) => sum + (Number(i.quantidade) || 0) * (Number(i.valorUnit) || 0),
+    0,
+  );
 
 export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
   const emissao = new Date(o.criadoEm);

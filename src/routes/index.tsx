@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useDB, totalOrcamento, statusPagamento } from "@/lib/store";
 import { brl } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
+import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,10 +34,10 @@ function Index() {
   const mes = now.getMonth();
   const ano = now.getFullYear();
 
-  const ags = db.agendamentos.filter((a) => !a.arquivado);
-  const orcs = db.orcamentos.filter((o) => !o.arquivado);
-  const lans = db.lancamentos.filter((l) => !l.arquivado);
-  const clis = db.clientes.filter((c) => !c.arquivado);
+  const ags = safeArray(db.agendamentos).filter((a) => !a.arquivado);
+  const orcs = safeArray(db.orcamentos).filter((o) => !o.arquivado);
+  const lans = safeArray(db.lancamentos).filter((l) => !l.arquivado);
+  const clis = safeArray(db.clientes).filter((c) => !c.arquivado);
   const concluidos = ags.filter((a) => a.status === "concluido").length;
 
   const receitaMes = lans
@@ -122,94 +123,106 @@ function Index() {
         </Card>
       </Link>
 
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-xs text-muted-foreground">{s.label}</p>
-                  <p className="mt-1 text-2xl font-black tabular-nums">{s.value}</p>
+      <ComponentErrorBoundary name="Cards principais">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          {stats.map((s) => (
+            <Card key={s.label} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs text-muted-foreground">{s.label}</p>
+                    <p className="mt-1 text-2xl font-black tabular-nums">{s.value}</p>
+                  </div>
+                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.color} text-white`}>
+                    <s.icon className="h-5 w-5" />
+                  </div>
                 </div>
-                <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${s.color} text-white`}>
-                  <s.icon className="h-5 w-5" />
-                </div>
-              </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </ComponentErrorBoundary>
+
+      <ComponentErrorBoundary name="Financeiro da Home">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Receita do mês</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-emerald-600">{brl(receitaMes)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Faturamento do mês</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-primary">{brl(faturamentoMes)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Recebido + a receber</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Lucro do mês</CardTitle></CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-black ${lucroMes >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(lucroMes)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Receita − despesas</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Contas a receber</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-amber-600">{brl(aReceber)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Pendente + vencido</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Receita anual</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-2xl font-black text-primary">{brl(receitaAno)}</p>
+              <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" />Ano {ano}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Saldo atual</CardTitle></CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-black ${saldo >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(saldo)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Entradas {brl(entradas)} · Saídas {brl(saidas)}</p>
+            </CardContent>
+          </Card>
+        </div>
+      </ComponentErrorBoundary>
 
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Receita do mês</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-emerald-600">{brl(receitaMes)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Faturamento do mês</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-primary">{brl(faturamentoMes)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Recebido + a receber</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Lucro do mês</CardTitle></CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-black ${lucroMes >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(lucroMes)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Receita − despesas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Contas a receber</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-amber-600">{brl(aReceber)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Pendente + vencido</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Receita anual</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-black text-primary">{brl(receitaAno)}</p>
-            <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="h-3 w-3" />Ano {ano}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Saldo atual</CardTitle></CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-black ${saldo >= 0 ? "text-emerald-600" : "text-destructive"}`}>{brl(saldo)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Entradas {brl(entradas)} · Saídas {brl(saidas)}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <ComponentErrorBoundary name="Alertas de pagamento">
+        <AlertasPagamento limite={5} titulo="🔔 Alertas de pagamento" />
+      </ComponentErrorBoundary>
 
-      <AlertasPagamento limite={5} titulo="🔔 Alertas de pagamento" />
-
-      <Card>
-        <CardHeader><CardTitle className="text-base">Últimos orçamentos</CardTitle></CardHeader>
-        <CardContent>
-          {orcs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum orçamento ainda. <Link className="text-primary underline" to="/orcamentos">Criar o primeiro</Link>.</p>
-          ) : (
-            <ul className="divide-y">
-              {orcs.slice(0, 5).map((o) => {
-                const cli = db.clientes.find((c) => c.id === o.clienteId);
-                return (
-                  <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">ORC-{String(o.numero).padStart(6, "0")}</p>
-                      <p className="truncate text-xs text-muted-foreground">{cli?.nome ?? "Cliente"}</p>
-                    </div>
-                    <p className="text-sm font-bold tabular-nums">{brl(totalOrcamento(o))}</p>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <ComponentErrorBoundary name="Últimos orçamentos">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Últimos orçamentos</CardTitle></CardHeader>
+          <CardContent>
+            {orcs.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum orçamento ainda. <Link className="text-primary underline" to="/orcamentos">Criar o primeiro</Link>.</p>
+            ) : (
+              <ul className="divide-y">
+                {orcs.slice(0, 5).map((o) => {
+                  const cli = clis.find((c) => c.id === o.clienteId);
+                  return (
+                    <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">ORC-{String(o.numero).padStart(6, "0")}</p>
+                        <p className="truncate text-xs text-muted-foreground">{cli?.nome ?? "Cliente"}</p>
+                      </div>
+                      <p className="text-sm font-bold tabular-nums">{brl(totalOrcamento(o))}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </ComponentErrorBoundary>
     </div>
   );
+}
+
+function safeArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value : [];
 }

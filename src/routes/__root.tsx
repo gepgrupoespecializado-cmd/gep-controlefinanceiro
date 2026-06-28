@@ -43,33 +43,63 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    if (typeof sessionStorage === "undefined") return;
+    const key = `gep_recovery_attempt:${window.location.pathname}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    const timer = window.setTimeout(() => {
+      router.invalidate();
+      reset();
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
+    <SafeHomeFallback
+      onRetry={() => {
+        router.invalidate();
+        reset();
+      }}
+    />
+  );
+}
+
+function SafeHomeFallback({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="min-h-screen bg-background px-4 py-6 text-foreground">
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Modo seguro</p>
+          <h1 className="mt-2 text-2xl font-black">Controle de Prestação de Serviços GEP</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O sistema abriu uma versão simplificada para manter o acesso ativo.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Recarregar tela
+            </button>
+            <a
+              href="/"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+            >
+              Home
+            </a>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ["Clientes", "/clientes"],
+            ["Orçamentos", "/orcamentos"],
+            ["Agenda", "/agenda"],
+            ["Financeiro", "/financeiro"],
+          ].map(([label, href]) => (
+            <a key={href} href={href} className="rounded-lg border border-border bg-card p-4 text-sm font-semibold hover:bg-accent">
+              {label}
+            </a>
+          ))}
         </div>
       </div>
     </div>
@@ -102,11 +132,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "twitter:description",
         content: "Gestão completa: clientes, orçamentos, agenda e financeiro.",
       },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/thKHzcKUBNTEpraHe9CuaAJUlWR2/social-images/social-1781606040124-1000655129.webp" },
-      { name: "description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
-      { property: "og:description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
-      { name: "twitter:description", content: "- ServiceFlow Pro is a comprehensive business service management app with offline capabilities and cross-platform accessibility." },
     ],
     links: [
       {
