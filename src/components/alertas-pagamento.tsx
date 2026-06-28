@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   db, useDB, statusPagamento, situacaoPagamentoLabel,
   relatorios as relatoriosApi,
-  type Relatorio, type Lancamento, type SituacaoPagamento,
+  type Cliente, type Orcamento, type Relatorio, type Lancamento, type SituacaoPagamento,
 } from "@/lib/store";
 import { brl, dateBR } from "@/lib/format";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
     for (const r of safeArray<Relatorio>(data.relatorios).filter((x) => !x.arquivado)) {
       const sit = r.situacaoPagamento;
       if (sit !== "parcial" && sit !== "pendente") continue;
-      const cli = safeArray(data.clientes).find((c) => c.id === r.clienteId);
+      const cli = safeArray<Cliente>(data.clientes).find((c) => c.id === r.clienteId);
       const total = r.valorOrcamento ?? r.valor ?? 0;
       const recebido = r.valorRecebido ?? 0;
       const saldo = Math.max(0, total - (sit === "parcial" ? recebido : 0));
@@ -82,8 +82,8 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
       const dias = diasEntre(ref);
       const cliNome = (() => {
         if (l.origemTipo === "orcamento") {
-          const o = safeArray(data.orcamentos).find((x) => x.id === l.origemId);
-          const c = o && safeArray(data.clientes).find((x) => x.id === o.clienteId);
+          const o = safeArray<Orcamento>(data.orcamentos).find((x) => x.id === l.origemId);
+          const c = o && safeArray<Cliente>(data.clientes).find((x) => x.id === o.clienteId);
           return c?.nome ?? l.descricao;
         }
         return l.descricao;
@@ -128,7 +128,7 @@ export function AlertasPagamento({ limite, titulo = "Alertas de pagamento" }: { 
   const totalVencido = alertas.filter((a) => a.tipo === "vencido").length;
 
   function lembreteWhatsApp(a: Alerta) {
-    const cli = a.clienteId ? safeArray(data.clientes).find((c) => c.id === a.clienteId) : undefined;
+    const cli = a.clienteId ? safeArray<Cliente>(data.clientes).find((c) => c.id === a.clienteId) : undefined;
     const fone = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
     const empresa = data.empresa.nome || "nossa equipe";
     const linhas = [

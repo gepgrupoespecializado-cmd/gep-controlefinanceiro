@@ -13,7 +13,15 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDB, totalOrcamento, statusPagamento } from "@/lib/store";
+import {
+  useDB,
+  totalOrcamento,
+  statusPagamento,
+  type Agendamento,
+  type Cliente,
+  type Lancamento,
+  type Orcamento,
+} from "@/lib/store";
 import { brl } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
@@ -34,10 +42,10 @@ function Index() {
   const mes = now.getMonth();
   const ano = now.getFullYear();
 
-  const ags = safeArray(db.agendamentos).filter((a) => !a.arquivado);
-  const orcs = safeArray(db.orcamentos).filter((o) => !o.arquivado);
-  const lans = safeArray(db.lancamentos).filter((l) => !l.arquivado);
-  const clis = safeArray(db.clientes).filter((c) => !c.arquivado);
+  const ags = safeArray<Agendamento>(db.agendamentos).filter((a) => !a.arquivado);
+  const orcs = safeArray<Orcamento>(db.orcamentos).filter((o) => !o.arquivado);
+  const lans = safeArray<Lancamento>(db.lancamentos).filter((l) => !l.arquivado);
+  const clis = safeArray<Cliente>(db.clientes).filter((c) => !c.arquivado);
   const concluidos = ags.filter((a) => a.status === "concluido").length;
 
   const receitaMes = lans
