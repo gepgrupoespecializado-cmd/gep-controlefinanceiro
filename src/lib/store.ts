@@ -356,34 +356,263 @@ const seed: DB = {
 const asArray = <T,>(value: unknown, fallback: T[] = []): T[] =>
   Array.isArray(value) ? value : fallback;
 
-const asNumber = (value: unknown, fallback: number) =>
-  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const asRecordArray = <T,>(
+  value: unknown,
+  mapper: (item: Record<string, unknown>) => T,
+  fallback: T[] = [],
+): T[] => (Array.isArray(value) ? value.filter(isRecord).map(mapper) : fallback);
+
+const asString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" ? value : fallback;
+
+const asOptionalString = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
+const asBoolean = (value: unknown, fallback = false): boolean =>
+  typeof value === "boolean" ? value : fallback;
+
+const asNumber = (value: unknown, fallback: number) => {
+  const n = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim()
+      ? Number(value.replace(",", "."))
+      : NaN;
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const valid = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+  typeof value === "string" && allowed.includes(value as T) ? (value as T) : fallback;
+
+const CLIENTE_FREQS = ["semanal", "quinzenal", "mensal", "trimestral", "avulso"] as const satisfies readonly ClienteFreq[];
+const ORCAMENTO_STATUS = ["rascunho", "enviado", "aprovado", "recusado"] as const satisfies readonly OrcamentoStatus[];
+const FORMAS_PAGAMENTO = ["pix", "dinheiro", "debito", "credito", "transferencia", "boleto", "outro"] as const satisfies readonly FormaPagamento[];
+const AGENDA_STATUS = ["agendado", "em_andamento", "concluido", "cancelado"] as const satisfies readonly AgendaStatus[];
+const RECORRENCIAS = ["nenhuma", "semanal", "quinzenal", "mensal", "trimestral", "personalizada"] as const satisfies readonly Recorrencia[];
+const RELATORIO_STATUS = ["sucesso", "observacoes", "retorno"] as const satisfies readonly RelatorioStatus[];
+const SITUACOES_PAGAMENTO = ["pago", "parcial", "pendente"] as const satisfies readonly SituacaoPagamento[];
+const LANCAMENTO_TIPOS = ["entrada", "saida"] as const satisfies readonly LancamentoTipo[];
+const ORIGENS_LANCAMENTO = ["orcamento", "agendamento", "manual"] as const;
+const PDF_TEMAS = ["azul_corporativo", "azul_escuro", "verde_empresarial", "cinza_executivo", "preto_premium", "classico", "moderno", "executivo", "simples"] as const satisfies readonly PdfTema[];
+const HISTORICO_ENTIDADES = ["cliente", "servico", "orcamento", "agendamento", "lancamento", "empresa"] as const satisfies readonly HistoricoEntidade[];
+const HISTORICO_ACOES = ["criado", "editado", "arquivado", "restaurado", "excluido", "status"] as const;
+
+function stringArray(value: unknown): string[] {
+  return asArray<unknown>(value).filter((item): item is string => typeof item === "string");
+}
+
+function normalizeCliente(c: Record<string, unknown>, now: string): Cliente {
+  return {
+    id: asString(c.id, uid()),
+    nome: asString(c.nome, "Cliente sem nome"),
+    telefone: asOptionalString(c.telefone),
+    whatsapp: asOptionalString(c.whatsapp),
+    email: asOptionalString(c.email),
+    endereco: asOptionalString(c.endereco),
+    cep: asOptionalString(c.cep),
+    rua: asOptionalString(c.rua),
+    numero: asOptionalString(c.numero),
+    complemento: asOptionalString(c.complemento),
+    bairro: asOptionalString(c.bairro),
+    cidade: asOptionalString(c.cidade),
+    estado: asOptionalString(c.estado),
+    observacoes: asOptionalString(c.observacoes),
+    frequencia: valid(c.frequencia, CLIENTE_FREQS, "avulso"),
+    criadoEm: asString(c.criadoEm, now),
+    arquivado: asBoolean(c.arquivado, false),
+    atualizadoEm: asOptionalString(c.atualizadoEm),
+  };
+}
+
+function normalizeServico(s: Record<string, unknown>): Servico {
+  return {
+    id: asString(s.id, uid()),
+    nome: asString(s.nome, "Serviço sem nome"),
+    descricao: asOptionalString(s.descricao),
+    valor: asNumber(s.valor, 0),
+    tempoEstimado: asOptionalString(s.tempoEstimado),
+    arquivado: asBoolean(s.arquivado, false),
+    atualizadoEm: asOptionalString(s.atualizadoEm),
+  };
+}
+
+function normalizeOrcamentoItem(i: Record<string, unknown>): OrcamentoItem {
+  return {
+    servicoId: asOptionalString(i.servicoId),
+    descricao: asString(i.descricao, "Item sem descrição"),
+    quantidade: asNumber(i.quantidade, 1),
+    valorUnit: asNumber(i.valorUnit, 0),
+  };
+}
+
+function normalizeOrcamento(o: Record<string, unknown>, now: string): Orcamento {
+  return {
+    id: asString(o.id, uid()),
+    numero: asNumber(o.numero, 1),
+    clienteId: asString(o.clienteId),
+    itens: asRecordArray(o.itens, normalizeOrcamentoItem),
+    prazo: asOptionalString(o.prazo),
+    observacoes: asOptionalString(o.observacoes),
+    descricaoServicos: asString(o.descricaoServicos),
+    validadeDias: asNumber(o.validadeDias, 7),
+    formasPagamento: asArray<unknown>(o.formasPagamento)
+      .filter((f): f is FormaPagamento => typeof f === "string" && FORMAS_PAGAMENTO.includes(f as FormaPagamento)),
+    status: valid(o.status, ORCAMENTO_STATUS, "rascunho"),
+    criadoEm: asString(o.criadoEm, now),
+    arquivado: asBoolean(o.arquivado, false),
+    atualizadoEm: asOptionalString(o.atualizadoEm),
+  };
+}
+
+function normalizeAgendamento(a: Record<string, unknown>, now: string): Agendamento {
+  return {
+    id: asString(a.id, uid()),
+    clienteId: asString(a.clienteId),
+    servicoId: asOptionalString(a.servicoId),
+    titulo: asString(a.titulo, "Serviço agendado"),
+    data: asString(a.data, now),
+    observacoes: asOptionalString(a.observacoes),
+    status: valid(a.status, AGENDA_STATUS, "agendado"),
+    valor: asNumber(a.valor, 0),
+    horaInicio: asOptionalString(a.horaInicio),
+    horaFim: asOptionalString(a.horaFim),
+    responsavel: asOptionalString(a.responsavel),
+    endereco: asOptionalString(a.endereco),
+    orcamentoId: asOptionalString(a.orcamentoId),
+    recorrencia: valid(a.recorrencia, RECORRENCIAS, "nenhuma"),
+    intervaloDias: asNumber(a.intervaloDias, 7),
+    relatorioId: asOptionalString(a.relatorioId),
+    arquivado: asBoolean(a.arquivado, false),
+    atualizadoEm: asOptionalString(a.atualizadoEm),
+  };
+}
+
+function normalizeLancamento(l: Record<string, unknown>, now: string): Lancamento {
+  return {
+    id: asString(l.id, uid()),
+    tipo: valid(l.tipo, LANCAMENTO_TIPOS, "entrada"),
+    descricao: asString(l.descricao, "Lançamento"),
+    valor: asNumber(l.valor, 0),
+    data: asString(l.data, now),
+    categoria: asOptionalString(l.categoria),
+    pago: asBoolean(l.pago, false),
+    vencimento: asOptionalString(l.vencimento),
+    origemTipo: typeof l.origemTipo === "string" && ORIGENS_LANCAMENTO.includes(l.origemTipo as typeof ORIGENS_LANCAMENTO[number]) ? l.origemTipo as Lancamento["origemTipo"] : undefined,
+    origemId: asOptionalString(l.origemId),
+    arquivado: asBoolean(l.arquivado, false),
+    atualizadoEm: asOptionalString(l.atualizadoEm),
+  };
+}
+
+function normalizeRelatorio(r: Record<string, unknown>, now: string): Relatorio {
+  return {
+    id: asString(r.id, uid()),
+    numero: asNumber(r.numero, 1),
+    agendamentoId: asString(r.agendamentoId),
+    clienteId: asString(r.clienteId),
+    orcamentoId: asOptionalString(r.orcamentoId),
+    servicoExecutado: asString(r.servicoExecutado, "Serviço executado"),
+    descricao: asString(r.descricao),
+    observacoes: asOptionalString(r.observacoes),
+    status: valid(r.status, RELATORIO_STATUS, "sucesso"),
+    dataExecucao: asString(r.dataExecucao, now),
+    horaInicio: asOptionalString(r.horaInicio),
+    horaFim: asOptionalString(r.horaFim),
+    responsavel: asOptionalString(r.responsavel),
+    valor: asNumber(r.valor, 0),
+    fotosAntes: stringArray(r.fotosAntes),
+    fotosDurante: stringArray(r.fotosDurante),
+    fotosDepois: stringArray(r.fotosDepois),
+    assinaturaTecnico: asOptionalString(r.assinaturaTecnico),
+    assinaturaCliente: asOptionalString(r.assinaturaCliente),
+    criadoEm: asString(r.criadoEm, now),
+    arquivado: asBoolean(r.arquivado, false),
+    valorOrcamento: asNumber(r.valorOrcamento, 0),
+    valorRecebido: asNumber(r.valorRecebido, 0),
+    formasPagamentoRecebimento: asArray<unknown>(r.formasPagamentoRecebimento)
+      .filter((f): f is FormaPagamento => typeof f === "string" && FORMAS_PAGAMENTO.includes(f as FormaPagamento)),
+    parcelas: asNumber(r.parcelas, 1),
+    taxaCartao: asNumber(r.taxaCartao, 0),
+    observacoesFinanceiras: asOptionalString(r.observacoesFinanceiras),
+    dataPagamento: asOptionalString(r.dataPagamento),
+    situacaoPagamento: valid(r.situacaoPagamento, SITUACOES_PAGAMENTO, "pendente"),
+    recebidoPor: asOptionalString(r.recebidoPor),
+  };
+}
+
+function normalizeModelo(m: Record<string, unknown>, now: string): ModeloDescricao {
+  return {
+    id: asString(m.id, uid()),
+    nome: asString(m.nome, "Modelo"),
+    conteudo: asString(m.conteudo),
+    favorito: asBoolean(m.favorito, false),
+    criadoEm: asString(m.criadoEm, now),
+  };
+}
+
+function normalizeHistorico(h: Record<string, unknown>, now: string): HistoricoEntry {
+  return {
+    id: asString(h.id, uid()),
+    entidade: valid(h.entidade, HISTORICO_ENTIDADES, "cliente"),
+    entidadeId: asString(h.entidadeId),
+    entidadeNome: asString(h.entidadeNome, "Registro"),
+    acao: valid(h.acao, HISTORICO_ACOES, "editado"),
+    campo: asOptionalString(h.campo),
+    antes: asOptionalString(h.antes),
+    depois: asOptionalString(h.depois),
+    data: asString(h.data, now),
+    usuario: asString(h.usuario, USUARIO_PADRAO),
+  };
+}
+
+function normalizeEmpresa(value: unknown): Empresa {
+  const empresa = isRecord(value) ? value : {};
+  const custos = isRecord(empresa.custosPadrao) ? empresa.custosPadrao : undefined;
+  return {
+    ...seed.empresa,
+    nome: asString(empresa.nome, seed.empresa.nome),
+    cnpj: asString(empresa.cnpj),
+    telefone: asString(empresa.telefone),
+    whatsapp: asString(empresa.whatsapp),
+    email: asString(empresa.email),
+    endereco: asString(empresa.endereco),
+    redesSociais: asString(empresa.redesSociais),
+    logoDataUrl: asOptionalString(empresa.logoDataUrl),
+    temaPdf: valid(empresa.temaPdf, PDF_TEMAS, seed.empresa.temaPdf ?? "classico"),
+    corPdf: asString(empresa.corPdf, seed.empresa.corPdf),
+    corSecundariaPdf: asOptionalString(empresa.corSecundariaPdf),
+    custosPadrao: custos ? {
+      valorHora: asNumber(custos.valorHora, 0),
+      margemLucro: asNumber(custos.margemLucro, 0),
+      taxaCartao: asNumber(custos.taxaCartao, 0),
+      custoOperacionalMensal: asNumber(custos.custoOperacionalMensal, 0),
+      valorKm: asNumber(custos.valorKm, 0),
+      valorMinimoAtendimento: asNumber(custos.valorMinimoAtendimento, 0),
+      imposto: asNumber(custos.imposto, 0),
+    } : seed.empresa.custosPadrao,
+  };
+}
 
 function normalizeDB(parsed: Partial<DB> | null | undefined): DB {
   const source = parsed && typeof parsed === "object" ? parsed : {};
-  const empresa = source.empresa && typeof source.empresa === "object" ? source.empresa : {};
+  const now = new Date().toISOString();
+  const modelos = asRecordArray(source.modelos, (m) => normalizeModelo(m, now));
 
   return {
     ...seed,
     ...source,
-    clientes: asArray<Cliente>(source.clientes),
-    servicos: asArray<Servico>(source.servicos, seed.servicos),
-    orcamentos: asArray<Orcamento>(source.orcamentos).map((o: any) => ({
-      descricaoServicos: "",
-      validadeDias: 7,
-      ...o,
-      itens: asArray<OrcamentoItem>(o?.itens),
-      formasPagamento: asArray<FormaPagamento>(o?.formasPagamento),
-    })),
+    clientes: asRecordArray(source.clientes, (c) => normalizeCliente(c, now)),
+    servicos: asRecordArray(source.servicos, normalizeServico, seed.servicos),
+    orcamentos: asRecordArray(source.orcamentos, (o) => normalizeOrcamento(o, now)),
     proximoOrcamento: asNumber(source.proximoOrcamento, 1),
-    agendamentos: asArray<Agendamento>(source.agendamentos),
-    lancamentos: asArray<Lancamento>(source.lancamentos),
-    empresa: { ...seed.empresa, ...empresa },
-    historico: asArray<HistoricoEntry>(source.historico),
-    modelos: asArray<ModeloDescricao>(source.modelos).length
-      ? asArray<ModeloDescricao>(source.modelos)
-      : seed.modelos,
-    relatorios: asArray<Relatorio>(source.relatorios),
+    agendamentos: asRecordArray(source.agendamentos, (a) => normalizeAgendamento(a, now)),
+    lancamentos: asRecordArray(source.lancamentos, (l) => normalizeLancamento(l, now)),
+    empresa: normalizeEmpresa(source.empresa),
+    historico: asRecordArray(source.historico, (h) => normalizeHistorico(h, now)),
+    modelos: modelos.length ? modelos : seed.modelos,
+    relatorios: asRecordArray(source.relatorios, (r) => normalizeRelatorio(r, now)),
     proximoRelatorio: asNumber(source.proximoRelatorio, 1),
   };
 }
@@ -411,7 +640,7 @@ function hydrateFromStorageOnce() {
   try {
     state = load();
   } catch (error) {
-    console.error("Falha inesperada na hidratação dos dados locais.", error);
+    console.warn("Falha inesperada na hidratação dos dados locais.", error);
     state = seed;
   } finally {
     listeners.forEach((l) => l());
@@ -423,7 +652,7 @@ function persist() {
     try {
       localStorage.setItem(KEY, JSON.stringify(normalizeDB(state)));
     } catch (error) {
-      console.error("Não foi possível salvar os dados locais.", error);
+      console.warn("Não foi possível salvar os dados locais.", error);
     }
   }
   listeners.forEach((l) => l());
