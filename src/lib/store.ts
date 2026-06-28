@@ -596,7 +596,7 @@ function normalizeEmpresa(value: unknown): Empresa {
 }
 
 function normalizeDB(parsed: Partial<DB> | null | undefined): DB {
-  const source = parsed && typeof parsed === "object" ? parsed : {};
+  const source: Partial<DB> = parsed && typeof parsed === "object" ? parsed : {};
   const now = new Date().toISOString();
   const modelos = asRecordArray(source.modelos, (m) => normalizeModelo(m, now));
 
