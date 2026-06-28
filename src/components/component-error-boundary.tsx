@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
+import { logAppError } from "@/lib/safe-error";
 
 type Props = {
   children: ReactNode;
@@ -19,7 +20,11 @@ export class ComponentErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    console.error(`Falha no componente ${this.props.name ?? "sem nome"}`, error, info.componentStack);
+    logAppError(error, {
+      boundary: "component_error_boundary",
+      component: this.props.name ?? "sem nome",
+      componentStack: info.componentStack,
+    });
   }
 
   render() {

@@ -1,9 +1,10 @@
 import { QueryClient } from "@tanstack/react-query";
 import { Link, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { logAppError } from "./lib/safe-error";
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+  logAppError(error, { boundary: "default_router_error_component" });
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
