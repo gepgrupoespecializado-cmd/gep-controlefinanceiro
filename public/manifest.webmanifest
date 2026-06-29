@@ -3,10 +3,16 @@
   "short_name": "GEP Serviços",
   "description": "Gestão profissional de clientes, orçamentos, agenda e financeiro",
   "start_url": "/",
+  "scope": "/",
+  "id": "/",
+  "lang": "pt-BR",
+  "orientation": "portrait",
   "display": "standalone",
   "background_color": "#0b1b3d",
   "theme_color": "#0b1b3d",
   "icons": [
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icon-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
