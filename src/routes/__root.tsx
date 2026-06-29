@@ -18,6 +18,8 @@ import { OnlineStatus } from "@/components/online-status";
 import { installGlobalErrorHandlers, logAppError } from "@/lib/safe-error";
 import { isLocalAuthenticated, isPublicRoute } from "@/lib/auth";
 import { registerServiceWorker } from "@/lib/pwa";
+import { InstallPrompt } from "@/components/install-prompt";
+import { SplashScreen } from "@/components/splash-screen";
 
 function NotFoundComponent() {
   return (
@@ -133,6 +135,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "author", content: "GEP Serviços Especializado" },
       { name: "theme-color", content: "#0b1b3d" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "GEP Serviços" },
+      { name: "application-name", content: "GEP Serviços" },
       { property: "og:title", content: "Controle de Prestação de Serviços GEP" },
       {
         property: "og:description",
@@ -205,6 +212,8 @@ function RootComponent() {
           </div>
         </div>
         <Toaster richColors position="top-right" />
+        <InstallPrompt />
+        <SplashScreen />
       </SidebarProvider>
     </QueryClientProvider>
   );
