@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2, CheckCircle2, Search } from "lucide-react";
+import { Plus, ArrowDownCircle, ArrowUpCircle, Pencil, Trash2, CheckCircle2, Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +42,32 @@ function FinanceiroPage() {
     pago: true, vencimento: "",
   });
   const [periodo, setPeriodo] = useState<"diario" | "semanal" | "mensal" | "anual">("mensal");
+
+  function exportarCSV() {
+    const rows = [["Data", "Tipo", "Descrição", "Categoria", "Vencimento", "Status", "Valor"]];
+    lista.forEach((l) => {
+      rows.push([
+        dateBR(l.data),
+        l.tipo === "entrada" ? "Entrada" : "Saída",
+        (l.descricao ?? "").replace(/[\r\n;]/g, " "),
+        (l.categoria ?? "").replace(/[\r\n;]/g, " "),
+        l.vencimento ? dateBR(l.vencimento) : "",
+        statusPagLabel[statusPagamento(l)],
+        String(l.valor).replace(".", ","),
+      ]);
+    });
+    const csv = "\uFEFF" + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `financeiro-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exportado ${lista.length} lançamento(s)`);
+  }
 
   const ativos = data.lancamentos.filter((l) => !l.arquivado);
   const entradasRecebidas = ativos.filter((l) => l.tipo === "entrada" && statusPagamento(l) === "recebido").reduce((s, l) => s + l.valor, 0);
@@ -146,7 +172,12 @@ function FinanceiroPage() {
           <h1 className="truncate text-xl sm:text-2xl font-black">Financeiro</h1>
           <p className="text-xs text-muted-foreground">Fluxo de caixa e relatórios</p>
         </div>
-        <Button onClick={abrirNovo}><Plus className="h-4 w-4" />Lançamento</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportarCSV} title="Exportar CSV/Excel">
+            <Download className="h-4 w-4" /><span className="hidden sm:inline">Exportar</span>
+          </Button>
+          <Button onClick={abrirNovo}><Plus className="h-4 w-4" />Lançamento</Button>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>{editId ? "Editar lançamento" : "Novo lançamento"}</DialogTitle></DialogHeader>
