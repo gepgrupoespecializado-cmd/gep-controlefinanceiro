@@ -6,23 +6,30 @@ export function renderErrorPage(): string {
     <title>Controle de Prestação de Serviços GEP</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-      body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
-      .card { max-width: 28rem; width: 100%; text-align: center; padding: 2rem; }
-      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-      p { color: #4b5563; margin: 0 0 1.5rem; }
-      .actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
-      a, button { padding: 0.5rem 1rem; border-radius: 0.375rem; font: inherit; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
-      .primary { background: #111; color: #fff; }
-      .secondary { background: #fff; color: #111; border-color: #d1d5db; }
+      html,body{height:100%;margin:0;background:#0b1b3d;color:#fff;font:15px/1.5 system-ui,-apple-system,sans-serif}
+      .wrap{min-height:100vh;display:grid;place-items:center;padding:1.5rem;text-align:center}
+      .brand{font-weight:800;letter-spacing:.2px;font-size:1.05rem;margin-bottom:.75rem;opacity:.95}
+      .spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:spin 1s linear infinite;margin:0 auto .75rem}
+      p{opacity:.85;margin:.25rem 0}
+      @keyframes spin{to{transform:rotate(360deg)}}
     </style>
+    <script>
+      (function(){
+        try{
+          var k='gep_boot_retry';
+          var n=parseInt(sessionStorage.getItem(k)||'0',10);
+          if(n<2){sessionStorage.setItem(k,String(n+1));setTimeout(function(){location.reload()},700);}
+          else{sessionStorage.removeItem(k);}
+        }catch(e){setTimeout(function(){location.reload()},1200);}
+      })();
+    </script>
   </head>
   <body>
-    <div class="card">
-      <h1>Modo seguro ativado</h1>
-      <p>O sistema abriu uma recuperação simplificada para manter o acesso disponível.</p>
-      <div class="actions">
-        <button class="primary" onclick="location.reload()">Recarregar</button>
-        <a class="secondary" href="/">Home</a>
+    <div class="wrap">
+      <div>
+        <div class="brand">Controle de Prestação de Serviços GEP</div>
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Carregando…</p>
       </div>
     </div>
   </body>
