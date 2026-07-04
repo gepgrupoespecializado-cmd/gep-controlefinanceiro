@@ -49,12 +49,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     logAppError(error, { boundary: "tanstack_root_error_component" });
     if (typeof sessionStorage === "undefined") return;
     const key = `gep_recovery_attempt:${window.location.pathname}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+    const attempts = parseInt(sessionStorage.getItem(key) || "0", 10);
+    if (attempts >= 2) return;
+    sessionStorage.setItem(key, String(attempts + 1));
     const timer = window.setTimeout(() => {
       router.invalidate();
       reset();
-    }, 250);
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [error]);
 
@@ -70,41 +71,16 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 function SafeHomeFallback({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="min-h-screen bg-background px-4 py-6 text-foreground">
-      <div className="mx-auto max-w-3xl space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Modo seguro</p>
-          <h1 className="mt-2 text-2xl font-black">Controle de Prestação de Serviços GEP</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            O sistema abriu uma versão simplificada para manter o acesso ativo.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              onClick={onRetry}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              Recarregar tela
-            </button>
-            <Link
-              to="/"
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-            >
-              Home
-            </Link>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[
-            ["Clientes", "/clientes"],
-            ["Orçamentos", "/orcamentos"],
-            ["Agenda", "/agenda"],
-            ["Financeiro", "/financeiro"],
-          ].map(([label, href]) => (
-            <a key={href} href={href} className="rounded-lg border border-border bg-card p-4 text-sm font-semibold hover:bg-accent">
-              {label}
-            </a>
-          ))}
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="max-w-md text-center space-y-4">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <button
+          onClick={onRetry}
+          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          Tentar novamente
+        </button>
       </div>
     </div>
   );

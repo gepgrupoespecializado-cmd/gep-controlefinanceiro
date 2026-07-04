@@ -8,27 +8,15 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Modo seguro ativado
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          O aplicativo manteve uma área segura para você continuar navegando.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={reset}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Recarregar
-          </button>
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Home
-          </Link>
-        </div>
+      <div className="max-w-md text-center space-y-4">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+        <button
+          onClick={reset}
+          className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          Tentar novamente
+        </button>
       </div>
     </div>
   );
