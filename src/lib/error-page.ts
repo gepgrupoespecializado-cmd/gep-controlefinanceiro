@@ -18,9 +18,9 @@ export function renderErrorPage(): string {
         try{
           var k='gep_boot_retry';
           var n=parseInt(sessionStorage.getItem(k)||'0',10);
-          if(n<2){sessionStorage.setItem(k,String(n+1));setTimeout(function(){location.reload()},700);}
+          if(n<1){sessionStorage.setItem(k,String(n+1));setTimeout(function(){location.reload()},900);}
           else{sessionStorage.removeItem(k);}
-        }catch(e){setTimeout(function(){location.reload()},1200);}
+        }catch(e){}
       })();
     </script>
   </head>
