@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2, Loader2, FileText, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +37,7 @@ function montaEndereco(f: Partial<FormState>) {
 
 function ClientesPage() {
   const data = useDB();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [freqFilter, setFreqFilter] = useState<ClienteFreq | "todos">("todos");
   const [open, setOpen] = useState(false);
