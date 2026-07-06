@@ -146,7 +146,7 @@ export function NovoAtendimentoDialog({ trigger }: Props) {
       <ClienteFormDialog
         open={novoOpen}
         onOpenChange={setNovoOpen}
-        onSaved={(id) => {
+        onCreated={(id) => {
           setNovoOpen(false);
           setSelectedId(id);
         }}
