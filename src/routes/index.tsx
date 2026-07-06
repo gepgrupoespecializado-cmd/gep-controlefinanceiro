@@ -6,11 +6,10 @@ import {
   CheckCircle2,
   TrendingUp,
   Wallet,
-  Plus,
   UserPlus,
-  CalendarPlus,
   Clock,
   Calculator,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import { brl } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { InstallAppCard } from "@/components/install-app-card";
+import { NovoAtendimentoDialog } from "@/components/novo-atendimento-dialog";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -149,41 +149,24 @@ function Index() {
           </div>
         </div>
         <div className="mt-5 flex flex-wrap gap-2">
-          <Button asChild size="sm" className="bg-white text-primary hover:bg-white/90">
-            <Link to="/orcamentos"><Plus className="h-4 w-4" />Novo orçamento</Link>
-          </Button>
-          <Button asChild size="sm" className="bg-white text-primary hover:bg-white/90">
-            <Link to="/precificacao"><Calculator className="h-4 w-4" />Precificação Inteligente</Link>
-          </Button>
-          <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
+          <NovoAtendimentoDialog
+            trigger={
+              <Button size="lg" className="bg-white text-primary hover:bg-white/90 font-bold shadow-lg">
+                <Sparkles className="h-4 w-4" /> Novo Atendimento
+              </Button>
+            }
+          />
+          <Button asChild size="lg" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
             <Link to="/clientes"><UserPlus className="h-4 w-4" />Novo cliente</Link>
           </Button>
-          <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
-            <Link to="/agenda"><CalendarPlus className="h-4 w-4" />Agendar serviço</Link>
+          <Button asChild size="lg" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
+            <Link to="/precificacao"><Calculator className="h-4 w-4" />Calcular preço</Link>
           </Button>
-          <Button asChild size="sm" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
+          <Button asChild size="lg" variant="secondary" className="bg-white/15 text-white hover:bg-white/25 border-0">
             <Link to="/financeiro"><Wallet className="h-4 w-4" />Financeiro</Link>
           </Button>
         </div>
       </div>
-
-      {/* Acesso destacado — Precificação Inteligente */}
-      <Link to="/precificacao" className="block group">
-        <Card className="overflow-hidden border-primary/30 hover:border-primary/60 transition-colors">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-[var(--primary-glow,#1e40af)] text-white">
-              <Calculator className="h-7 w-7" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-base sm:text-lg font-black">🧮 Precificação Inteligente</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Calcule mão de obra, materiais, deslocamento, impostos e margem em segundos — e gere o orçamento direto.
-              </p>
-            </div>
-            <Button size="sm" variant="outline" className="hidden sm:inline-flex">Abrir</Button>
-          </CardContent>
-        </Card>
-      </Link>
 
       <ComponentErrorBoundary name="Cards principais">
         <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">

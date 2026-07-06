@@ -51,16 +51,28 @@ function OrcamentosPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = sessionStorage.getItem("gep_precificacao_draft");
-    if (!raw) return;
-    try {
-      const d = JSON.parse(raw);
+    const cliHandoff = sessionStorage.getItem("gep_novo_atendimento_cliente");
+    if (raw) {
+      try {
+        const d = JSON.parse(raw);
+        resetForm();
+        setItens([{ descricao: d.descricao || "Serviço calculado", quantidade: d.quantidade || 1, valorUnit: Number(d.valorUnit) || 0 }]);
+        setDescricaoServicos(`Valor calculado pela Calculadora de Precificação.\nCusto total: R$ ${Number(d.detalhes?.custo || 0).toFixed(2)}\nLucro estimado: R$ ${Number(d.detalhes?.lucro || 0).toFixed(2)}\nMargem: ${Number(d.detalhes?.margem || 0).toFixed(1)}%`);
+        if (cliHandoff) setClienteId(cliHandoff);
+        setOpen(true);
+        toast.success("Valor da calculadora pronto — selecione o cliente para finalizar");
+      } catch {}
+      sessionStorage.removeItem("gep_precificacao_draft");
+      sessionStorage.removeItem("gep_novo_atendimento_cliente");
+      return;
+    }
+    if (cliHandoff) {
       resetForm();
-      setItens([{ descricao: d.descricao || "Serviço calculado", quantidade: d.quantidade || 1, valorUnit: Number(d.valorUnit) || 0 }]);
-      setDescricaoServicos(`Valor calculado pela Calculadora de Precificação.\nCusto total: R$ ${Number(d.detalhes?.custo || 0).toFixed(2)}\nLucro estimado: R$ ${Number(d.detalhes?.lucro || 0).toFixed(2)}\nMargem: ${Number(d.detalhes?.margem || 0).toFixed(1)}%`);
+      setClienteId(cliHandoff);
       setOpen(true);
-      toast.success("Valor da calculadora pronto — selecione o cliente para finalizar");
-    } catch {}
-    sessionStorage.removeItem("gep_precificacao_draft");
+      sessionStorage.removeItem("gep_novo_atendimento_cliente");
+      toast.success("Cliente selecionado — monte o orçamento");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

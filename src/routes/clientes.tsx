@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Search, Phone, Mail, MapPin, MessageCircle, Pencil, Trash2, Loader2, FileText, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +37,7 @@ function montaEndereco(f: Partial<FormState>) {
 
 function ClientesPage() {
   const data = useDB();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [freqFilter, setFreqFilter] = useState<ClienteFreq | "todos">("todos");
   const [open, setOpen] = useState(false);
@@ -225,6 +226,44 @@ function ClientesPage() {
                   </div>
                   <div className="flex gap-2 text-[11px] text-muted-foreground pt-2 border-t">
                     <span>{orcs} orçamento(s)</span><span>·</span><span>{ags} agendamento(s)</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-2 border-t">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => {
+                        sessionStorage.setItem("gep_novo_atendimento_cliente", c.id);
+                        navigate({ to: "/orcamentos" });
+                      }}
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Orçar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2 text-xs"
+                      onClick={() => {
+                        sessionStorage.setItem("gep_novo_atendimento_cliente", c.id);
+                        navigate({ to: "/agenda" });
+                      }}
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5" /> Agendar
+                    </Button>
+                    {(c.whatsapp || c.telefone) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => {
+                          const num = (c.whatsapp || c.telefone || "").replace(/\D/g, "");
+                          const url = `https://wa.me/${num.length <= 11 ? "55" + num : num}`;
+                          window.open(url, "_blank", "noopener");
+                        }}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
