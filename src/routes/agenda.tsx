@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Calendar as CalendarIcon, Pencil, Trash2, FileCheck2, MapPin, Clock, User as UserIcon, Search, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,28 @@ function AgendaPage() {
     observacoes: "", status: "agendado" as AgendaStatus,
     recorrencia: "nenhuma" as Recorrencia, intervaloDias: 7,
   });
+
+  // Handoff de "Novo Atendimento": abre o dialog com cliente pré-selecionado
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const cliId = sessionStorage.getItem("gep_novo_atendimento_cliente");
+    if (!cliId) return;
+    sessionStorage.removeItem("gep_novo_atendimento_cliente");
+    const cli = data.clientes.find((c) => c.id === cliId);
+    if (!cli) return;
+    const d = new Date();
+    setEditId(null);
+    setForm({
+      clienteId: cliId, servicoId: "", titulo: `Serviço — ${cli.nome}`,
+      data: d.toISOString().slice(0, 10), hora: "09:00", horaFim: "",
+      responsavel: "", endereco: cli.endereco ?? "",
+      observacoes: "", status: "agendado",
+      recorrencia: "nenhuma", intervaloDias: 7,
+    });
+    setOpen(true);
+    toast.success("Cliente selecionado — confirme data e horário");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const diasComEvento = useMemo(() => {
     const set = new Set<string>();
