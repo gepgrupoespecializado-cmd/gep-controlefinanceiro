@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, History as HistoryIcon, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,15 @@ function HistoricoPage() {
   const data = useDB();
   const [q, setQ] = useState("");
   const [ent, setEnt] = useState<HistoricoEntidade | "todos">("todos");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const pref = sessionStorage.getItem("gep_historico_busca");
+    if (pref) {
+      setQ(pref);
+      sessionStorage.removeItem("gep_historico_busca");
+    }
+  }, []);
 
   const filtrado = useMemo(() => {
     const term = q.trim().toLowerCase();
