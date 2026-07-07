@@ -10,6 +10,7 @@ import {
   Clock,
   Calculator,
   Sparkles,
+  CalendarClock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ function Index() {
     const lans = safeArray<Lancamento>(db.lancamentos).filter((l) => !l?.arquivado);
     const clis = safeArray<Cliente>(db.clientes).filter((c) => !c?.arquivado);
     const concluidos = ags.filter((a) => a?.status === "concluido").length;
+    const agendados = ags.filter((a) => a?.status !== "concluido" && a?.status !== "cancelado").length;
 
     const isInMonth = (iso: string | undefined) => {
       const d = safeDate(iso);
@@ -103,6 +105,7 @@ function Index() {
     const stats = [
       { label: "Clientes ativos", value: clis.length, icon: Users, color: "from-blue-500 to-blue-600" },
       { label: "Orçamentos emitidos", value: orcs.length, icon: FileText, color: "from-indigo-500 to-indigo-600" },
+      { label: "Serviços agendados", value: agendados, icon: CalendarClock, color: "from-fuchsia-500 to-purple-600" },
       { label: "Serviços concluídos", value: concluidos, icon: CheckCircle2, color: "from-emerald-500 to-emerald-600" },
       { label: "Contas a receber", value: brl(aReceber), icon: Clock, color: "from-amber-500 to-orange-500" },
     ];
@@ -169,7 +172,7 @@ function Index() {
       </div>
 
       <ComponentErrorBoundary name="Cards principais">
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-5">
           {stats.map((s) => (
             <Card key={s.label} className="overflow-hidden">
               <CardContent className="p-4">
