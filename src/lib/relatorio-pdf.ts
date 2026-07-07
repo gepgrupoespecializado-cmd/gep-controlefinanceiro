@@ -224,10 +224,15 @@ export function gerarRelatorioPDF(
   doc.line(xC, y + 50, xC + halfW, y + 50);
   doc.text(`Cliente — ${cliente?.nome ?? ""}`, xC, y + 64);
 
-  // Rodapé
-  doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
-  doc.text(`RPS-${padNum(r.numero)} · ${empresa.nome || "Controle de Prestação de Serviços GEP"}`, M, H - 22);
-  doc.text(new Date().toLocaleString("pt-BR"), W - M, H - 22, { align: "right" });
+  // Rodapé corporativo
+  doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.8);
+  doc.line(M, H - 50, W - M, H - 50);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
+  doc.text("GEP Grupo Especializado · Controle de Prestação de Serviços GEP", W / 2, H - 38, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setTextColor(110, 110, 110);
+  doc.text("Responsável: Eduardo Pennicha · Documento gerado automaticamente pelo sistema.", W / 2, H - 26, { align: "center" });
+  doc.text(`RPS-${padNum(r.numero)}`, M, H - 14);
+  doc.text("Todos os direitos reservados.", W - M, H - 14, { align: "right" });
   void pageBreakIfNeeded;
 
   return doc;

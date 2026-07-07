@@ -33,12 +33,33 @@ export function gerarOrcamentoPDF(
   empresa: Empresa,
   overrides: PdfOverrides = {},
 ) {
+  // Tenta caber em UMA página A4 reduzindo progressivamente a densidade
+  // (espaçamentos e fontes). Se ainda assim não couber, retorna a versão
+  // mais compacta com quebras de página automáticas.
+  const scales = [1, 0.92, 0.85, 0.78, 0.72];
+  let last: jsPDF | null = null;
+  for (const s of scales) {
+    const d = renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, s);
+    last = d;
+    if (d.getNumberOfPages() === 1) return d;
+  }
+  return last ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 0.72);
+}
+
+function renderOrcamentoPDF(
+  orc: Orcamento,
+  cliente: Cliente | undefined,
+  servicos: Servico[],
+  empresa: Empresa,
+  overrides: PdfOverrides,
+  density: number,
+) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  // Margens: superior 3cm, demais 2cm (1cm ≈ 28.35pt)
-  const M = 57;          // margem lateral / inferior
-  const M_TOP = 85;      // margem superior
+  // Margens adaptativas (mínimo 30pt)
+  const M = Math.max(30, Math.round(57 * (0.7 + 0.3 * density)));
+  const M_TOP = Math.max(60, Math.round(85 * (0.7 + 0.3 * density)));
 
   const tema = (overrides.temaPdf ?? empresa.temaPdf ?? "azul_escuro") as NonNullable<Empresa["temaPdf"]>;
   const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
@@ -51,16 +72,15 @@ export function gerarOrcamentoPDF(
   // sem reduzir a fonte abaixo de 11pt.
   const BOTTOM_LIMIT = H - M - 30; // reservado para rodapé
   let y = 0;
-  // Densidade: 1 = normal, < 1 = comprimido (até 0.7)
-  let density = 1;
   const sp = (n: number) => Math.max(2, Math.round(n * density));
-  // Fontes (mínimo 11pt em modo comprimido)
+  // Escala tipográfica: mantém mínimos legíveis em impressão A4
+  const fs = (base: number, min: number) => Math.max(min, Math.round(base * (0.85 + 0.15 * density)));
   const FS = {
-    title: 18,
-    subtitle: 15,
-    body: 12,
-    footer: 11,
-    miniHeader: 11,
+    title: fs(18, 14),
+    subtitle: fs(14, 12),
+    body: fs(12, 10),
+    footer: fs(10, 9),
+    miniHeader: fs(11, 9),
   };
   // Espaçamento entre linhas de texto corrido (1.3 * fonte)
   const LH = (size: number) => Math.round(size * 1.3 * density);
@@ -87,18 +107,20 @@ export function gerarOrcamentoPDF(
   }
 
   function drawFooter() {
-    const fy = H - 28;
+    const fy = H - 34;
     doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.8);
     doc.line(M, fy - 12, W - M, fy - 12);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
-    const cont = [empresa.telefone, empresa.whatsapp && `WhatsApp ${empresa.whatsapp}`, empresa.email].filter(Boolean).join("  ·  ");
-    if (cont) doc.text(cont, M, fy);
-    doc.text(`ORC-${padNum(orc.numero)} · Validade até ${dateBR(vencimento)}`, W - M, fy, { align: "right" });
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
+    doc.text("GEP Grupo Especializado · Controle de Prestação de Serviços GEP", W / 2, fy - 2, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setTextColor(110, 110, 110);
+    doc.text("Responsável: Eduardo Pennicha · Documento gerado automaticamente pelo sistema.", W / 2, fy + 10, { align: "center" });
+    doc.text(`ORC-${padNum(orc.numero)} · Validade até ${dateBR(vencimento)}`, W - M, fy + 22, { align: "right" });
+    doc.text("Todos os direitos reservados.", M, fy + 22);
     doc.setTextColor(20, 20, 20);
   }
 
   // ====== CABEÇALHO ======
-  const headerH = 96;
+  const headerH = Math.max(78, Math.round(96 * (0.8 + 0.2 * density)));
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(0, 0, W, headerH, "F");
   // faixa secundária
@@ -108,15 +130,18 @@ export function gerarOrcamentoPDF(
   if (empresa.logoDataUrl) {
     try {
       const fmt = empresa.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
-      doc.addImage(empresa.logoDataUrl, fmt, M, 18, 60, 60);
+      const ls = Math.min(60, headerH - 20);
+      doc.addImage(empresa.logoDataUrl, fmt, M, 14, ls, ls);
     } catch {}
   }
   const headX = empresa.logoDataUrl ? M + 72 : M;
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(empresa.nome || "Empresa", headX, 36, { maxWidth: W - headX - M });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-  let hy = 54;
+  doc.text(empresa.nome || "GEP Grupo Especializado", headX, 30, { maxWidth: W - headX - M });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
+  doc.text("Controle de Prestação de Serviços GEP · Responsável: Eduardo Pennicha", headX, 44, { maxWidth: W - headX - M });
+  doc.setFontSize(FS.footer);
+  let hy = 58;
   const headInfo = [
     empresa.cnpj && `CNPJ: ${empresa.cnpj}`,
     [empresa.telefone && `Tel: ${empresa.telefone}`, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join("  |  "),
@@ -125,10 +150,10 @@ export function gerarOrcamentoPDF(
   ].filter(Boolean) as string[];
   headInfo.forEach((l) => {
     const lines = doc.splitTextToSize(l, W - headX - M);
-    lines.forEach((ln: string) => { doc.text(ln, headX, hy); hy += 13; });
+    lines.forEach((ln: string) => { doc.text(ln, headX, hy); hy += 11; });
   });
 
-  y = Math.max(headerH + 14, M_TOP);
+  y = Math.max(headerH + 12, M_TOP);
   doc.setTextColor(20, 20, 20);
 
   // ====== TÍTULO + VALIDADE ======
@@ -319,13 +344,6 @@ export function gerarOrcamentoPDF(
     W / 2, H - 48, { align: "center", maxWidth: W - M * 2 },
   );
   doc.setTextColor(20, 20, 20);
-
-  // ===== Ajuste para página única: se passou de 1 página, recomprime e regenera =====
-  if (doc.getNumberOfPages() > 1 && density > 0.7) {
-    // Estratégia simples: refazer com densidade menor (regenerar o PDF).
-    // Para evitar recursão pesada, apenas avisamos via console em dev.
-    // (Layout já foi otimizado; a maioria dos orçamentos cabe em 1 página.)
-  }
 
   return doc;
 }
