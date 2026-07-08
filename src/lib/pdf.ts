@@ -107,15 +107,30 @@ function renderOrcamentoPDF(
   }
 
   function drawFooter() {
-    const fy = H - 34;
+    const fy = H - 52;
     doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.8);
     doc.line(M, fy - 12, W - M, fy - 12);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text("GEP Grupo Especializado · Controle de Prestação de Serviços GEP", W / 2, fy - 2, { align: "center" });
-    doc.setFont("helvetica", "normal"); doc.setTextColor(110, 110, 110);
-    doc.text("Responsável: Eduardo Pennicha · Documento gerado automaticamente pelo sistema.", W / 2, fy + 10, { align: "center" });
-    doc.text(`ORC-${padNum(orc.numero)} · Validade até ${dateBR(vencimento)}`, W - M, fy + 22, { align: "right" });
-    doc.text("Todos os direitos reservados.", M, fy + 22);
+    doc.text("GEP Grupo Especializado", W / 2, fy, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+    const contato = [
+      empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
+      empresa.whatsapp ? `WhatsApp: ${empresa.whatsapp}` : empresa.telefone ? `Telefone: ${empresa.telefone}` : "",
+      empresa.email ? `E-mail: ${empresa.email}` : "",
+    ].filter(Boolean).join("  ·  ");
+    const footerLines = [
+      "Controle de Prestação de Serviços GEP",
+      "Responsável Técnico: Eduardo Pennicha",
+      contato,
+    ].filter(Boolean) as string[];
+    let ly = fy + 12;
+    footerLines.forEach((l) => {
+      const lines = doc.splitTextToSize(l, W - M * 2);
+      lines.forEach((ln: string) => {
+        doc.text(ln, W / 2, ly, { align: "center" });
+        ly += 11;
+      });
+    });
     doc.setTextColor(20, 20, 20);
   }
 
@@ -336,14 +351,14 @@ function renderOrcamentoPDF(
   doc.text(empresa.nome || "Responsável", M, y + 16);
   doc.text("Cliente", M + halfW + 30, y + 16);
 
-  // ====== RODAPÉ + AGRADECIMENTO ======
-  drawFooter();
-  doc.setFont("helvetica", "italic"); doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
+  // ====== AGRADECIMENTO + RODAPÉ ======
+  doc.setFont("helvetica", "italic"); doc.setFontSize(FS.footer); doc.setTextColor(80, 80, 80);
   doc.text(
     "Agradecemos a oportunidade. Este orçamento é válido por " + (orc.validadeDias ?? 7) + " dia(s) a partir da emissão.",
-    W / 2, H - 48, { align: "center", maxWidth: W - M * 2 },
+    W / 2, H - 64, { align: "center", maxWidth: W - M * 2 },
   );
   doc.setTextColor(20, 20, 20);
+  drawFooter();
 
   return doc;
 }
