@@ -97,40 +97,23 @@ function renderOrcamentoPDF(
 
   function drawMiniHeader() {
     doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(0, 0, W, 32, "F");
+    doc.rect(0, 0, W, 18, "F");
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.miniHeader);
-    doc.text(`${empresa.nome || "Empresa"} — ORC-${padNum(orc.numero)}`, M, 20);
-    doc.text(`Pág. ${doc.getNumberOfPages()}`, W - M, 20, { align: "right" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.miniHeader);
+    doc.text(`Pág. ${doc.getNumberOfPages()}`, W - M, 12, { align: "right" });
     doc.setTextColor(20, 20, 20);
     y = M_TOP;
   }
 
   function drawFooter() {
     const fy = H - 52;
-    doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.8);
-    doc.line(M, fy - 12, W - M, fy - 12);
+    doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.6);
+    doc.line(M, fy - 10, W - M, fy - 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
     doc.text("GEP Grupo Especializado", W / 2, fy, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-    const contato = [
-      empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
-      empresa.whatsapp ? `WhatsApp: ${empresa.whatsapp}` : empresa.telefone ? `Telefone: ${empresa.telefone}` : "",
-      empresa.email ? `E-mail: ${empresa.email}` : "",
-    ].filter(Boolean).join("  ·  ");
-    const footerLines = [
-      "Controle de Prestação de Serviços GEP",
-      "Responsável Técnico: Eduardo Pennicha",
-      contato,
-    ].filter(Boolean) as string[];
-    let ly = fy + 12;
-    footerLines.forEach((l) => {
-      const lines = doc.splitTextToSize(l, W - M * 2);
-      lines.forEach((ln: string) => {
-        doc.text(ln, W / 2, ly, { align: "center" });
-        ly += 11;
-      });
-    });
+    doc.text("Controle de Prestação de Serviços GEP", W / 2, fy + 12, { align: "center" });
+    doc.text("Responsável Técnico: Eduardo Pennicha", W / 2, fy + 24, { align: "center" });
     doc.setTextColor(20, 20, 20);
   }
 
@@ -140,7 +123,7 @@ function renderOrcamentoPDF(
   doc.rect(0, 0, W, headerH, "F");
   // faixa secundária
   doc.setFillColor(sec[0], sec[1], sec[2]);
-  doc.rect(0, headerH, W, 4, "F");
+  doc.rect(0, headerH, W, 3, "F");
 
   if (empresa.logoDataUrl) {
     try {
@@ -154,7 +137,7 @@ function renderOrcamentoPDF(
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
   doc.text(empresa.nome || "GEP Grupo Especializado", headX, 30, { maxWidth: W - headX - M });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  doc.text("Controle de Prestação de Serviços GEP · Responsável: Eduardo Pennicha", headX, 44, { maxWidth: W - headX - M });
+  doc.text("Controle de Prestação de Serviços GEP", headX, 44, { maxWidth: W - headX - M });
   doc.setFontSize(FS.footer);
   let hy = 58;
   const headInfo = [
@@ -171,22 +154,21 @@ function renderOrcamentoPDF(
   y = Math.max(headerH + 12, M_TOP);
   doc.setTextColor(20, 20, 20);
 
-  // ====== TÍTULO + VALIDADE ======
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M, y);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  doc.text(`Emitido em ${dateBR(emissao)}`, W - M, y, { align: "right" });
-  y += sp(16);
-
+  // ====== TÍTULO + EMISSÃO + VALIDADE (bloco único) ======
   doc.setFillColor(tint[0], tint[1], tint[2]);
-  doc.roundedRect(M, y, W - M * 2, 26, 5, 5, "F");
+  doc.roundedRect(M, y, W - M * 2, 38, 5, 5, "F");
   doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-  doc.text(`Validade: ${orc.validadeDias ?? 7} dia(s) — válido até ${dateBR(vencimento)}`, M + 10, y + 17);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
+  doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M + 10, y + 16);
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  doc.text(`Emissão ${dateBR(emissao)}`, W - M - 10, y + 17, { align: "right" });
+  doc.setTextColor(60, 60, 60);
+  doc.text(`Emissão: ${dateBR(emissao)}`, M + 10, y + 30);
+  doc.text(
+    `Validade: ${orc.validadeDias ?? 7} dia(s) — até ${dateBR(vencimento)}`,
+    W - M - 10, y + 30, { align: "right" },
+  );
   doc.setTextColor(20, 20, 20);
-  y += sp(36);
+  y += sp(48);
 
   // ====== CLIENTE ======
   ensure(70);
@@ -351,13 +333,7 @@ function renderOrcamentoPDF(
   doc.text(empresa.nome || "Responsável", M, y + 16);
   doc.text("Cliente", M + halfW + 30, y + 16);
 
-  // ====== AGRADECIMENTO + RODAPÉ ======
-  doc.setFont("helvetica", "italic"); doc.setFontSize(FS.footer); doc.setTextColor(80, 80, 80);
-  doc.text(
-    "Agradecemos a oportunidade. Este orçamento é válido por " + (orc.validadeDias ?? 7) + " dia(s) a partir da emissão.",
-    W / 2, H - 64, { align: "center", maxWidth: W - M * 2 },
-  );
-  doc.setTextColor(20, 20, 20);
+  // ====== RODAPÉ ======
   drawFooter();
 
   return doc;
