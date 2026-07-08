@@ -207,8 +207,8 @@ export function gerarRelatorioPDF(
   }
 
   // ===== ASSINATURAS (sempre exibe os campos) =====
-  if (y > H - 120) { doc.addPage(); y = M_TOP; }
-  y = Math.max(y, H - 120);
+  if (y > H - 140) { doc.addPage(); y = M_TOP; }
+  y = Math.max(y, H - 140);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
   doc.setTextColor(brand[0], brand[1], brand[2]);
   doc.text("ASSINATURAS", M, y);
@@ -225,14 +225,30 @@ export function gerarRelatorioPDF(
   doc.text(`Cliente — ${cliente?.nome ?? ""}`, xC, y + 64);
 
   // Rodapé corporativo
+  const fy = H - 52;
   doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.8);
-  doc.line(M, H - 50, W - M, H - 50);
+  doc.line(M, fy - 12, W - M, fy - 12);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("GEP Grupo Especializado · Controle de Prestação de Serviços GEP", W / 2, H - 38, { align: "center" });
-  doc.setFont("helvetica", "normal"); doc.setTextColor(110, 110, 110);
-  doc.text("Responsável: Eduardo Pennicha · Documento gerado automaticamente pelo sistema.", W / 2, H - 26, { align: "center" });
-  doc.text(`RPS-${padNum(r.numero)}`, M, H - 14);
-  doc.text("Todos os direitos reservados.", W - M, H - 14, { align: "right" });
+  doc.text("GEP Grupo Especializado", W / 2, fy, { align: "center" });
+  doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
+  const contato = [
+    empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
+    empresa.whatsapp ? `WhatsApp: ${empresa.whatsapp}` : empresa.telefone ? `Telefone: ${empresa.telefone}` : "",
+    empresa.email ? `E-mail: ${empresa.email}` : "",
+  ].filter(Boolean).join("  ·  ");
+  const footerLines = [
+    "Controle de Prestação de Serviços GEP",
+    "Responsável Técnico: Eduardo Pennicha",
+    contato,
+  ].filter(Boolean) as string[];
+  let ly = fy + 12;
+  footerLines.forEach((l) => {
+    const lines = doc.splitTextToSize(l, W - M * 2);
+    lines.forEach((ln: string) => {
+      doc.text(ln, W / 2, ly, { align: "center" });
+      ly += 11;
+    });
+  });
   void pageBreakIfNeeded;
 
   return doc;
