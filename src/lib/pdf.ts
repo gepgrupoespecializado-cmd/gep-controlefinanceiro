@@ -84,6 +84,9 @@ function renderOrcamentoPDF(
   };
   // Espaçamento entre linhas de texto corrido (1.3 * fonte)
   const LH = (size: number) => Math.round(size * 1.3 * density);
+  const SECTION_HEADER_H = 30;
+  const SECTION_GAP = 16;
+  const SECTION_PAD_X = 10;
 
   /** Garante espaço; se não couber, abre nova página e redesenha mini-header. */
   function ensure(space: number) {
@@ -115,6 +118,22 @@ function renderOrcamentoPDF(
     doc.text("Controle de Prestação de Serviços GEP", W / 2, fy + 12, { align: "center" });
     doc.text("Responsável Técnico: Eduardo Pennicha", W / 2, fy + 24, { align: "center" });
     doc.setTextColor(20, 20, 20);
+  }
+
+  /**
+   * Desenha uma barra azul de seção com altura fixa e devolve o cursor já
+   * posicionado abaixo do cabeçalho, com folga suficiente para o conteúdo.
+   */
+  function drawSectionHeader(title: string, minContentSpace = LH(FS.body)) {
+    ensure(SECTION_HEADER_H + SECTION_GAP + minContentSpace);
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(M, y, W - M * 2, SECTION_HEADER_H, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(FS.subtitle);
+    doc.text(title, M + SECTION_PAD_X, y + SECTION_HEADER_H / 2 + FS.subtitle * 0.35);
+    doc.setTextColor(20, 20, 20);
+    y += SECTION_HEADER_H + SECTION_GAP;
   }
 
   // ====== CABEÇALHO ======
@@ -260,14 +279,7 @@ function renderOrcamentoPDF(
 
   // ====== DESCRIÇÃO DOS SERVIÇOS ======
   if (orc.descricaoServicos && orc.descricaoServicos.trim()) {
-    ensure(44);
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y, W - M * 2, 22, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS", M + 8, y + 15);
-    doc.setTextColor(20, 20, 20);
-    y += 28;
+    drawSectionHeader("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS");
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const lhDesc = LH(FS.body);
     const blocos = orc.descricaoServicos.replace(/\r/g, "").split("\n");
@@ -286,14 +298,7 @@ function renderOrcamentoPDF(
 
   // ====== FORMAS DE PAGAMENTO ======
   {
-    ensure(54);
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y, W - M * 2, 22, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text("FORMAS DE PAGAMENTO", M + 8, y + 15);
-    doc.setTextColor(20, 20, 20);
-    y += 28;
+    drawSectionHeader("FORMAS DE PAGAMENTO");
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const lhP = LH(FS.body);
     const formas = (orc.formasPagamento && orc.formasPagamento.length
@@ -323,9 +328,7 @@ function renderOrcamentoPDF(
       y += sp(18);
     }
     if (orc.observacoes) {
-      ensure(28);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-      doc.text("Observações:", M, y); y += LH(FS.body);
+      drawSectionHeader("OBSERVAÇÕES");
       doc.setFont("helvetica", "normal");
       doc.setFontSize(FS.body);
       const obs = doc.splitTextToSize(orc.observacoes, W - M * 2);
