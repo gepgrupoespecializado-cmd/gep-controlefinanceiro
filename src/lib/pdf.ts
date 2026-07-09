@@ -331,8 +331,8 @@ function renderOrcamentoPDF(
   }
 
   // ====== ASSINATURAS ======
-  ensure(96);
-  y += sp(24);
+  ensure(56);
+  y += Math.max(14, sp(18));
   const halfW = (W - M * 2 - 30) / 2;
   doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.6);
   doc.line(M, y, M + halfW, y);
