@@ -187,18 +187,9 @@ function renderOrcamentoPDF(
     W - M - 10, y + 30, { align: "right" },
   );
   doc.setTextColor(20, 20, 20);
-  y += sp(48);
+  y += 50;
 
   // ====== CLIENTE ======
-  ensure(70);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("CLIENTE", M, y); y += 4;
-  doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(1.2);
-  doc.line(M, y, M + 80, y);
-  doc.setTextColor(20, 20, 20);
-  y += sp(12);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const cliLines = cliente
     ? [
         `Nome: ${cliente.nome}`,
@@ -208,6 +199,8 @@ function renderOrcamentoPDF(
         cliente.endereco && `Endereço: ${cliente.endereco}`,
       ].filter(Boolean) as string[]
     : ["Cliente não informado"];
+  drawSectionHeader("CLIENTE");
+  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   cliLines.forEach((l) => {
     const lines = doc.splitTextToSize(l, W - M * 2);
     lines.forEach((ln: string) => { ensure(LH(FS.body)); doc.text(ln, M, y); y += LH(FS.body); });
@@ -275,7 +268,7 @@ function renderOrcamentoPDF(
   doc.text("VALOR TOTAL", W - M - 230, y + 14);
   doc.text(brl(totalOrcamento(orc)), W - M - 8, y + 14, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += sp(34);
+  y += 40;
 
   // ====== DESCRIÇÃO DOS SERVIÇOS ======
   if (orc.descricaoServicos && orc.descricaoServicos.trim()) {
@@ -318,7 +311,7 @@ function renderOrcamentoPDF(
 
   // ====== PRAZO + OBSERVAÇÕES ======
   if (orc.prazo || orc.observacoes) {
-    y += sp(8);
+    y += Math.max(8, sp(8));
     if (orc.prazo) {
       ensure(20);
       doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
