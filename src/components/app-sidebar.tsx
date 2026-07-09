@@ -6,15 +6,10 @@ import {
   FileText,
   Calendar,
   Wallet,
-  Building2,
   Settings,
-  History,
-  Trash,
-  BookOpen,
   Calculator,
   Scale,
   ShieldCheck,
-  Download,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,24 +24,15 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useDB } from "@/lib/store";
-import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { InstallAppCard } from "@/components/install-app-card";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Serviços", url: "/servicos", icon: Wrench },
   { title: "Prestação de Serviços", url: "/prestacao-de-servicos", icon: Wrench },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
-  { title: "Modelos", url: "/modelos", icon: BookOpen },
-  { title: "Precificação", url: "/precificacao", icon: Calculator },
   { title: "Agenda", url: "/agenda", icon: Calendar },
+  { title: "Precificação", url: "/precificacao", icon: Calculator },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
-  { title: "Histórico", url: "/historico", icon: History },
-  { title: "Lixeira", url: "/lixeira", icon: Trash },
-  { title: "Empresa", url: "/empresa", icon: Building2 },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
@@ -60,7 +46,6 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const data = useDB();
-  const [openInstall, setOpenInstall] = useState(false);
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false);
@@ -130,34 +115,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <div className="px-2 py-2">
-              <Button
-                size="sm"
-                className="w-full justify-start gap-2"
-                onClick={() => {
-                  setOpenInstall(true);
-                  if (isMobile) setOpenMobile(false);
-                }}
-              >
-                <Download className="h-4 w-4" />
-                {!collapsed && <span>📲 Instalar Aplicativo</span>}
-              </Button>
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
-
-      <Dialog open={openInstall} onOpenChange={setOpenInstall}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Instalar aplicativo GEP</DialogTitle>
-          </DialogHeader>
-          <InstallAppCard />
-        </DialogContent>
-      </Dialog>
     </Sidebar>
   );
 }
