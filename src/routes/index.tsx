@@ -26,7 +26,6 @@ import {
 import { brl } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
-import { InstallAppCard } from "@/components/install-app-card";
 import { NovoAtendimentoDialog } from "@/components/novo-atendimento-dialog";
 
 export const Route = createFileRoute("/")({
@@ -240,10 +239,6 @@ function Index() {
 
       <ComponentErrorBoundary name="Alertas de pagamento">
         <AlertasPagamento limite={5} titulo="🔔 Alertas de pagamento" />
-      </ComponentErrorBoundary>
-
-      <ComponentErrorBoundary name="Instalar aplicativo">
-        <InstallAppCard />
       </ComponentErrorBoundary>
 
       <ComponentErrorBoundary name="Últimos orçamentos">
