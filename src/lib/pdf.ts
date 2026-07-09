@@ -196,42 +196,54 @@ function renderOrcamentoPDF(
   y += sp(6);
 
   // ====== ITENS ======
-  ensure(36);
+  const HEADER_H = 24;
+  const PAD_X = 10;
+  const PAD_Y = 8;
+  const MIN_ROW_H = 32;
+  ensure(HEADER_H + MIN_ROW_H);
   doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.rect(M, y, W - M * 2, 22, "F");
+  doc.rect(M, y, W - M * 2, HEADER_H, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-  doc.text("DESCRIÇÃO", M + 8, y + 15);
-  doc.text("QTD", W - M - 200, y + 15, { align: "right" });
-  doc.text("VALOR UNIT.", W - M - 90, y + 15, { align: "right" });
-  doc.text("TOTAL", W - M - 8, y + 15, { align: "right" });
+  // Centralização vertical do cabeçalho (baseline ≈ meio + 0.35*fonte)
+  const headBaseline = y + HEADER_H / 2 + FS.body * 0.35;
+  doc.text("DESCRIÇÃO", M + PAD_X, headBaseline);
+  doc.text("QTD", W - M - 200, headBaseline, { align: "right" });
+  doc.text("VALOR UNIT.", W - M - 90, headBaseline, { align: "right" });
+  doc.text("TOTAL", W - M - PAD_X, headBaseline, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += 28;
+  y += HEADER_H;
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const lhItem = LH(FS.body);
   orc.itens.forEach((it, idx) => {
     const nome = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
-    const lines = doc.splitTextToSize(nome, W - M * 2 - 230);
-    const blockH = Math.max(lines.length * lhItem, lhItem) + 4;
-    ensure(blockH);
+    const lines = doc.splitTextToSize(nome, W - M * 2 - 230 - PAD_X);
+    const contentH = lines.length * lhItem;
+    const rowH = Math.max(MIN_ROW_H, contentH + PAD_Y * 2);
+    ensure(rowH);
     if (idx % 2 === 1) {
       doc.setFillColor(248, 248, 250);
-      doc.rect(M, y - 11, W - M * 2, blockH, "F");
+      doc.rect(M, y, W - M * 2, rowH, "F");
     }
+    // Baseline da primeira linha (com padding superior + ascent aproximado)
+    const firstBaseline = y + (rowH - contentH) / 2 + FS.body * 0.85;
     lines.forEach((ln: string, i: number) => {
-      doc.text(ln, M + 8, y);
+      const by = firstBaseline + i * lhItem;
+      doc.text(ln, M + PAD_X, by);
       if (i === 0) {
-        doc.text(String(it.quantidade), W - M - 200, y, { align: "right" });
-        doc.text(brl(it.valorUnit), W - M - 90, y, { align: "right" });
+        // Numéricos centralizados verticalmente na linha inteira
+        const midBaseline = y + rowH / 2 + FS.body * 0.35;
+        doc.text(String(it.quantidade), W - M - 200, midBaseline, { align: "right" });
+        doc.text(brl(it.valorUnit), W - M - 90, midBaseline, { align: "right" });
         doc.setFont("helvetica", "bold");
-        doc.text(brl(it.quantidade * it.valorUnit), W - M - 8, y, { align: "right" });
+        doc.text(brl(it.quantidade * it.valorUnit), W - M - PAD_X, midBaseline, { align: "right" });
         doc.setFont("helvetica", "normal");
       }
-      y += lhItem;
     });
-    y += 2;
+    y += rowH;
   });
+  y += sp(4);
 
   // ====== TOTAL ======
   ensure(40);
