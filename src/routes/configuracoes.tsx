@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2, Palette, Calculator, FileText } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useDB } from "@/lib/store";
@@ -37,7 +37,7 @@ function ConfiguracoesPage() {
           <div className="min-w-0">
             <p className="font-semibold truncate">{data.empresa.nome || "GEP Serviços Especializado"}</p>
             <p className="text-xs text-muted-foreground truncate">
-              Dados comerciais, logo, tema dos PDFs e cores principais.
+              Dados comerciais, logo, CNPJ, endereço, contatos, cores do sistema e configuração do PDF.
             </p>
           </div>
           <Button asChild>
@@ -45,30 +45,6 @@ function ConfiguracoesPage() {
           </Button>
         </CardContent>
       </Card>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <Palette className="h-5 w-5 text-primary" />
-            <p className="text-sm font-semibold">Identidade visual</p>
-            <p className="text-xs text-muted-foreground">Cores, logo e aparência dos documentos.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <FileText className="h-5 w-5 text-primary" />
-            <p className="text-sm font-semibold">Modelos e PDFs</p>
-            <p className="text-xs text-muted-foreground">Descrições padrão e layouts profissionais.</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <Calculator className="h-5 w-5 text-primary" />
-            <p className="text-sm font-semibold">Custos operacionais</p>
-            <p className="text-xs text-muted-foreground">Valores usados na precificação inteligente.</p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
