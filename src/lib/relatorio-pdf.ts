@@ -37,6 +37,9 @@ export function gerarRelatorioPDF(
   const FS = { title: 18, subtitle: 15, body: 12, footer: 11 };
   const LH = (s: number) => Math.round(s * 1.3);
   const BOTTOM = H - M - 30;
+  const SECTION_HEADER_H = 30;
+  const SECTION_GAP = 16;
+  const SECTION_PAD_X = 10;
   function pageBreakIfNeeded(space: number, yRef: { y: number }) {
     if (yRef.y + space > BOTTOM) { doc.addPage(); yRef.y = M_TOP; }
   }
@@ -64,6 +67,25 @@ export function gerarRelatorioPDF(
 
   // Título
   let y = Math.max(headerH + 18, M_TOP);
+  function ensure(space: number) {
+    if (y + space > BOTTOM) {
+      doc.addPage();
+      y = M_TOP;
+    }
+  }
+
+  function drawSectionHeader(title: string, minContentSpace = LH(FS.body)) {
+    ensure(SECTION_HEADER_H + SECTION_GAP + minContentSpace);
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(M, y, W - M * 2, SECTION_HEADER_H, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(FS.subtitle);
+    doc.text(title, M + SECTION_PAD_X, y + SECTION_HEADER_H / 2 + FS.subtitle * 0.35);
+    doc.setTextColor(20, 20, 20);
+    y += SECTION_HEADER_H + SECTION_GAP;
+  }
+
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
   doc.text("RELATÓRIO DE PRESTAÇÃO DE SERVIÇO", W / 2, y, { align: "center" });
@@ -113,13 +135,7 @@ export function gerarRelatorioPDF(
   y += 8;
 
   // Serviços executados
-  doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.rect(M, y - 12, W - M * 2, 22, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("SERVIÇOS EXECUTADOS", M + 8, y + 3);
-  y += 22;
-  doc.setTextColor(20, 20, 20);
+  drawSectionHeader("SERVIÇOS EXECUTADOS");
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const descLines = doc.splitTextToSize(r.descricao || "—", W - M * 2);
   descLines.forEach((ln: string) => {
@@ -130,9 +146,7 @@ export function gerarRelatorioPDF(
 
   // Observações
   if (r.observacoes) {
-    if (y > BOTTOM - 40) { doc.addPage(); y = M_TOP; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text("OBSERVAÇÕES", M, y); y += 17;
+    drawSectionHeader("OBSERVAÇÕES");
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const obs = doc.splitTextToSize(r.observacoes, W - M * 2);
     obs.forEach((ln: string) => {
@@ -172,14 +186,7 @@ export function gerarRelatorioPDF(
     (r.formasPagamentoRecebimento && r.formasPagamentoRecebimento.length > 0) ||
     !!r.observacoesFinanceiras || !!r.situacaoPagamento;
   if (temPagamento) {
-    if (y > BOTTOM - 140) { doc.addPage(); y = M_TOP; }
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y, W - M * 2, 22, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text("PAGAMENTO", M + 8, y + 15);
-    doc.setTextColor(20, 20, 20);
-    y += 28;
+    drawSectionHeader("PAGAMENTO", 96);
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const formas = (r.formasPagamentoRecebimento ?? []).map((f) => formaPagamentoLabel[f]).join(", ") || "—";
     const linhas: string[] = [
