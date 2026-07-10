@@ -17,6 +17,28 @@ function lighten([r, g, b]: [number, number, number], pct = 0.85): [number, numb
   ];
 }
 
+/** Aplica marca d'água centralizada (logo da empresa) com baixa opacidade. */
+function aplicarMarcaDagua(doc: jsPDF, empresa: Empresa) {
+  if (!empresa.logoDataUrl) return;
+  try {
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const size = Math.min(W, H) * 0.55;
+    const x = (W - size) / 2;
+    const y = (H - size) / 2;
+    const fmt = empresa.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+    const anyDoc = doc as unknown as {
+      GState: new (o: { opacity: number }) => unknown;
+      setGState: (s: unknown) => void;
+    };
+    const gsOn = new anyDoc.GState({ opacity: 0.1 });
+    const gsOff = new anyDoc.GState({ opacity: 1 });
+    anyDoc.setGState(gsOn);
+    doc.addImage(empresa.logoDataUrl, fmt, x, y, size, size, undefined, "FAST");
+    anyDoc.setGState(gsOff);
+  } catch {}
+}
+
 /**
  * Permite gerar o PDF com tema/cor sobrescritos (preview ao vivo).
  */
@@ -113,10 +135,10 @@ function renderOrcamentoPDF(
     doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.6);
     doc.line(M, fy - 10, W - M, fy - 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text("GEP Grupo Especializado", W / 2, fy, { align: "center" });
+    doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", W / 2, fy, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-    doc.text("Controle de Prestação de Serviços GEP", W / 2, fy + 12, { align: "center" });
-    doc.text("Responsável Técnico: Eduardo Pennicha", W / 2, fy + 24, { align: "center" });
+    doc.text("Responsável: Eduardo Pennicha", W / 2, fy + 12, { align: "center" });
+    doc.text("Todos os direitos reservados.", W / 2, fy + 24, { align: "center" });
     doc.setTextColor(20, 20, 20);
   }
 
@@ -138,6 +160,8 @@ function renderOrcamentoPDF(
 
   // ====== CABEÇALHO ======
   const headerH = Math.max(78, Math.round(96 * (0.8 + 0.2 * density)));
+  // Marca d'água (desenhada antes do cabeçalho para ficar ao fundo)
+  aplicarMarcaDagua(doc, empresa);
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(0, 0, W, headerH, "F");
   // faixa secundária
@@ -154,11 +178,9 @@ function renderOrcamentoPDF(
   const headX = empresa.logoDataUrl ? M + 72 : M;
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(empresa.nome || "GEP Grupo Especializado", headX, 30, { maxWidth: W - headX - M });
+  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", headX, 32, { maxWidth: W - headX - M });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  doc.text("Controle de Prestação de Serviços GEP", headX, 44, { maxWidth: W - headX - M });
-  doc.setFontSize(FS.footer);
-  let hy = 58;
+  let hy = 48;
   const headInfo = [
     empresa.cnpj && `CNPJ: ${empresa.cnpj}`,
     [empresa.telefone && `Tel: ${empresa.telefone}`, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join("  |  "),
