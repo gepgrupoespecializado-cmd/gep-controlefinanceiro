@@ -3,13 +3,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Download, Share2, RefreshCw } from "lucide-react";
-import { gerarOrcamentoPDF, baixarPDF } from "@/lib/pdf";
+import { Download, Share2, RefreshCw, ExternalLink } from "lucide-react";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
 import {
   pdfTemaPreset, totalOrcamento, validadeOrcamento,
   type Orcamento, type Cliente, type Servico, type Empresa, type PdfTema,
 } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
+
+// Renderiza as páginas do PDF em <canvas> usando pdf.js para garantir
+// pré-visualização funcional em Android, iOS, Web e PWA (o <iframe> com
+// blob PDF não abre inline em navegadores móveis).
+async function renderPdfPreview(blob: Blob, container: HTMLDivElement) {
+  const pdfjs: any = await import("pdfjs-dist");
+  // Worker via CDN (compatível com Vite/edge sem custom bundling)
+  const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  const buf = await blob.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buf }).promise;
+  container.innerHTML = "";
+  const maxPages = Math.min(pdf.numPages, 3);
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1 });
+    const containerWidth = container.clientWidth || 700;
+    const scale = Math.min(2, (containerWidth - 16) / viewport.width);
+    const scaled = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.floor(scaled.width * ratio);
+    canvas.height = Math.floor(scaled.height * ratio);
+    canvas.style.width = `${scaled.width}px`;
+    canvas.style.height = `${scaled.height}px`;
+    canvas.className = "mx-auto mb-3 rounded shadow-sm bg-white";
+    const ctx = canvas.getContext("2d")!;
+    ctx.scale(ratio, ratio);
+    await page.render({ canvasContext: ctx, viewport: scaled }).promise;
+    container.appendChild(canvas);
+  }
+}
 
 interface Props {
   open: boolean;
@@ -33,6 +65,8 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
   const [cor, setCor] = useState<string>(empresa.corPdf ?? pdfTemaPreset.azul_escuro.principal);
   const [corSec, setCorSec] = useState<string>(empresa.corSecundariaPdf ?? pdfTemaPreset.azul_escuro.secundaria);
   const [url, setUrl] = useState<string>("");
+  const [previewRef, setPreviewRef] = useState<HTMLDivElement | null>(null);
+  const [previewErr, setPreviewErr] = useState<string>("");
 
   useEffect(() => {
     if (open) {
@@ -42,19 +76,30 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
     }
   }, [open, empresa]);
 
-  const blobUrl = useMemo(() => {
+  const blob = useMemo(() => {
     if (!open || !orcamento) return "";
     const doc = gerarOrcamentoPDF(orcamento, cliente, servicos, empresa, {
       temaPdf: tema, corPdf: cor, corSecundariaPdf: corSec,
     });
-    const blob = doc.output("blob");
-    return URL.createObjectURL(blob);
+    return doc.output("blob") as Blob;
   }, [open, orcamento, cliente, servicos, empresa, tema, cor, corSec]);
 
   useEffect(() => {
-    setUrl(blobUrl);
-    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
-  }, [blobUrl]);
+    if (!blob) { setUrl(""); return; }
+    const u = URL.createObjectURL(blob as Blob);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [blob]);
+
+  useEffect(() => {
+    if (!blob || !previewRef) return;
+    let cancelled = false;
+    setPreviewErr("");
+    renderPdfPreview(blob as Blob, previewRef).catch((e) => {
+      if (!cancelled) setPreviewErr(String(e?.message || e));
+    });
+    return () => { cancelled = true; };
+  }, [blob, previewRef]);
 
   function aplicarTema(t: PdfTema) {
     setTema(t);
@@ -70,20 +115,25 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
     baixarPDF(doc, `ORC-${padNum(orcamento.numero)}.pdf`);
   }
 
-  function whatsapp() {
+  async function compartilhar() {
     if (!orcamento) return;
+    const doc = gerarOrcamentoPDF(orcamento, cliente, servicos, empresa, {
+      temaPdf: tema, corPdf: cor, corSecundariaPdf: corSec,
+    });
     const { vencimento } = validadeOrcamento(orcamento);
     const txt = [
       `*Orçamento ORC-${padNum(orcamento.numero)}*`,
       `Cliente: ${cliente?.nome ?? ""}`,
       `Total: ${brl(totalOrcamento(orcamento))}`,
       `Validade até: ${dateBR(vencimento)}`,
-      "",
-      "*DESCRIÇÃO DOS SERVIÇOS:*",
-      orcamento.descricaoServicos,
     ].filter(Boolean).join("\n");
-    const tel = cliente?.whatsapp?.replace(/\D/g, "") || "";
-    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(txt)}`, "_blank");
+    await compartilharPDF({
+      doc,
+      filename: `ORC-${padNum(orcamento.numero)}.pdf`,
+      titulo: `Orçamento ORC-${padNum(orcamento.numero)}`,
+      mensagem: txt,
+      telefone: cliente?.whatsapp,
+    });
   }
 
   return (
@@ -141,18 +191,26 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
             </p>
           </div>
 
-          <div className="min-h-[60vh] rounded-md border bg-muted/30 overflow-hidden">
-            {url ? (
-              <iframe src={url} title="Pré-visualização" className="h-[70vh] w-full" />
-            ) : (
-              <div className="grid place-items-center h-full text-sm text-muted-foreground">Gerando...</div>
+          <div className="rounded-md border bg-muted/30 overflow-auto max-h-[70vh] p-2">
+            <div ref={setPreviewRef} className="min-h-[40vh]" />
+            {previewErr && (
+              <p className="text-xs text-destructive text-center mt-2">
+                Falha ao gerar prévia: {previewErr}
+              </p>
+            )}
+            {!previewErr && url && (
+              <div className="flex justify-center mt-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => window.open(url, "_blank")}>
+                  <ExternalLink className="h-4 w-4" /> Abrir em nova aba
+                </Button>
+              </div>
             )}
           </div>
         </div>
 
         <DialogFooter className="flex-wrap gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Fechar</Button>
-          <Button variant="outline" onClick={whatsapp}><Share2 className="h-4 w-4" />WhatsApp</Button>
+          <Button variant="outline" onClick={compartilhar}><Share2 className="h-4 w-4" />Compartilhar</Button>
           <Button onClick={baixar}><Download className="h-4 w-4" />Baixar PDF</Button>
         </DialogFooter>
       </DialogContent>
