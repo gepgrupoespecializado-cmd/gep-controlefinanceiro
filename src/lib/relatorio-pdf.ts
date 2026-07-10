@@ -235,30 +235,10 @@ export function gerarRelatorioPDF(
     y += 8;
   }
 
-  // ===== ASSINATURAS (sempre exibe os campos) =====
-  if (y > H - 140) { doc.addPage(); y = M_TOP; }
-  y = Math.max(y, H - 140);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("ASSINATURAS", M, y);
-  doc.setTextColor(20, 20, 20);
-  y += 10;
-  const halfW = (W - M * 2 - 20) / 2;
-  if (r.assinaturaTecnico) { try { doc.addImage(r.assinaturaTecnico, "PNG", M, y, halfW, 44); } catch {} }
-  doc.setDrawColor(120); doc.line(M, y + 50, M + halfW, y + 50);
-  doc.setFontSize(FS.footer); doc.setFont("helvetica", "normal");
-  doc.text(`Responsável Técnico — ${r.responsavel || empresa.nome || ""}`, M, y + 64);
-  const xC = M + halfW + 20;
-  if (r.assinaturaCliente) { try { doc.addImage(r.assinaturaCliente, "PNG", xC, y, halfW, 44); } catch {} }
-  doc.line(xC, y + 50, xC + halfW, y + 50);
-  doc.text(`Cliente — ${cliente?.nome ?? ""}`, xC, y + 64);
-
   // Rodapé corporativo
   const fy = H - 52;
-  doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.8);
-  doc.line(M, fy - 12, W - M, fy - 12);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", W / 2, fy, { align: "center" });
+  doc.text("GEP SERVIÇOS ESPECIALIZADOS LTDA", W / 2, fy, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
   const footerLines = [
     "Responsável: Eduardo Pennicha",

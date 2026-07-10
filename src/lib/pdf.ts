@@ -133,10 +133,8 @@ function renderOrcamentoPDF(
 
   function drawFooter() {
     const fy = H - 52;
-    doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(0.6);
-    doc.line(M, fy - 10, W - M, fy - 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", W / 2, fy, { align: "center" });
+    doc.text("GEP SERVIÇOS ESPECIALIZADOS LTDA", W / 2, fy, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
     doc.text("Responsável: Eduardo Pennicha", W / 2, fy + 12, { align: "center" });
     doc.text("Todos os direitos reservados.", W / 2, fy + 24, { align: "center" });
@@ -352,17 +350,6 @@ function renderOrcamentoPDF(
       obs.forEach((ln: string) => { ensure(lhO); doc.text(ln, M, y); y += lhO; });
     }
   }
-
-  // ====== ASSINATURAS ======
-  ensure(56);
-  y += Math.max(14, sp(18));
-  const halfW = (W - M * 2 - 30) / 2;
-  doc.setDrawColor(80, 80, 80); doc.setLineWidth(0.6);
-  doc.line(M, y, M + halfW, y);
-  doc.line(M + halfW + 30, y, W - M, y);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-  doc.text(empresa.nome || "Responsável", M, y + 16);
-  doc.text("Cliente", M + halfW + 30, y + 16);
 
   // ====== RODAPÉ ======
   drawFooter();
