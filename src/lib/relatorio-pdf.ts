@@ -258,18 +258,12 @@ export function gerarRelatorioPDF(
   doc.setDrawColor(brand[0], brand[1], brand[2]); doc.setLineWidth(0.8);
   doc.line(M, fy - 12, W - M, fy - 12);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("GEP Grupo Especializado", W / 2, fy, { align: "center" });
+  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", W / 2, fy, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-  const contato = [
-    empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
-    empresa.whatsapp ? `WhatsApp: ${empresa.whatsapp}` : empresa.telefone ? `Telefone: ${empresa.telefone}` : "",
-    empresa.email ? `E-mail: ${empresa.email}` : "",
-  ].filter(Boolean).join("  ·  ");
   const footerLines = [
-    "Controle de Prestação de Serviços GEP",
-    "Responsável Técnico: Eduardo Pennicha",
-    contato,
-  ].filter(Boolean) as string[];
+    "Responsável: Eduardo Pennicha",
+    "Todos os direitos reservados.",
+  ];
   let ly = fy + 12;
   footerLines.forEach((l) => {
     const lines = doc.splitTextToSize(l, W - M * 2);
