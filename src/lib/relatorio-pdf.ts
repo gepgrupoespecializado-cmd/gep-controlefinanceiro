@@ -14,6 +14,26 @@ function detectFmt(dataUrl: string): "PNG" | "JPEG" {
   return dataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
 }
 
+function aplicarMarcaDagua(doc: jsPDF, empresa: Empresa) {
+  if (!empresa.logoDataUrl) return;
+  try {
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const size = Math.min(W, H) * 0.55;
+    const x = (W - size) / 2;
+    const y = (H - size) / 2;
+    const anyDoc = doc as unknown as {
+      GState: new (o: { opacity: number }) => unknown;
+      setGState: (s: unknown) => void;
+    };
+    const gsOn = new anyDoc.GState({ opacity: 0.1 });
+    const gsOff = new anyDoc.GState({ opacity: 1 });
+    anyDoc.setGState(gsOn);
+    doc.addImage(empresa.logoDataUrl, detectFmt(empresa.logoDataUrl), x, y, size, size, undefined, "FAST");
+    anyDoc.setGState(gsOff);
+  } catch {}
+}
+
 function enderecoCompleto(c?: Cliente) {
   if (!c) return "—";
   if (c.endereco) return c.endereco;
@@ -46,6 +66,7 @@ export function gerarRelatorioPDF(
 
   // Cabeçalho
   const headerH = 96;
+  aplicarMarcaDagua(doc, empresa);
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(0, 0, W, headerH, "F");
   if (empresa.logoDataUrl) {
@@ -54,7 +75,7 @@ export function gerarRelatorioPDF(
   const headX = empresa.logoDataUrl ? M + 72 : M;
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(empresa.nome || "Controle de Prestação de Serviços GEP", headX, 36, { maxWidth: W - headX - M });
+  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", headX, 36, { maxWidth: W - headX - M });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const head = [
     empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
@@ -70,6 +91,7 @@ export function gerarRelatorioPDF(
   function ensure(space: number) {
     if (y + space > BOTTOM) {
       doc.addPage();
+      aplicarMarcaDagua(doc, empresa);
       y = M_TOP;
     }
   }
