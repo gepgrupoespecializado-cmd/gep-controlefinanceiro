@@ -115,6 +115,7 @@ function renderOrcamentoPDF(
     if (y + space > BOTTOM_LIMIT) {
       drawFooter();
       doc.addPage();
+      aplicarMarcaDagua(doc, empresa);
       y = M_TOP;
       drawMiniHeader();
     }
