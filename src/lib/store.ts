@@ -207,6 +207,10 @@ export interface Empresa {
   temaPdf?: PdfTema;
   corPdf?: string; // hex, ex: "#0b1b3d"
   corSecundariaPdf?: string; // hex — títulos/bordas/destaques
+  /** Modo do modelo mensal do PDF (12 cores anuais). */
+  pdfMesModo?: "auto" | "manual" | "off";
+  /** Mês selecionado manualmente (1-12) quando pdfMesModo = "manual". */
+  pdfMesManual?: number;
   /** Configuração de Custos da Empresa — usada na Calculadora de Precificação. */
   custosPadrao?: {
     valorHora?: number;
@@ -229,7 +233,10 @@ export type PdfTema =
   | "classico"
   | "moderno"
   | "executivo"
-  | "simples";
+  | "simples"
+  // 12 cores anuais (campanhas nacionais + corporativas)
+  | "mes_01" | "mes_02" | "mes_03" | "mes_04" | "mes_05" | "mes_06"
+  | "mes_07" | "mes_08" | "mes_09" | "mes_10" | "mes_11" | "mes_12";
 
 export const pdfTemaPreset: Record<PdfTema, { principal: string; secundaria: string }> = {
   azul_corporativo: { principal: "#1d4ed8", secundaria: "#60a5fa" },
@@ -241,7 +248,57 @@ export const pdfTemaPreset: Record<PdfTema, { principal: string; secundaria: str
   moderno:          { principal: "#1d4ed8", secundaria: "#60a5fa" },
   executivo:        { principal: "#0b1b3d", secundaria: "#9ca3af" },
   simples:          { principal: "#111111", secundaria: "#6b7280" },
+  // Modelos mensais — cor principal segue a campanha do mês
+  mes_01: { principal: "#0D47A1", secundaria: "#F5F5F5" }, // Janeiro Branco (títulos em azul-marinho)
+  mes_02: { principal: "#7B1FA2", secundaria: "#CE93D8" }, // Fevereiro Roxo
+  mes_03: { principal: "#0D47A1", secundaria: "#5472D3" }, // Março Azul-Marinho
+  mes_04: { principal: "#2E7D32", secundaria: "#81C784" }, // Abril Verde
+  mes_05: { principal: "#F9A825", secundaria: "#FFD54F" }, // Maio Amarelo Ouro
+  mes_06: { principal: "#C62828", secundaria: "#EF9A9A" }, // Junho Vermelho
+  mes_07: { principal: "#00897B", secundaria: "#4DB6AC" }, // Julho Verde-Esmeralda
+  mes_08: { principal: "#B8860B", secundaria: "#E6C260" }, // Agosto Dourado
+  mes_09: { principal: "#FDD835", secundaria: "#FFF176" }, // Setembro Amarelo
+  mes_10: { principal: "#E91E63", secundaria: "#F48FB1" }, // Outubro Rosa
+  mes_11: { principal: "#1565C0", secundaria: "#64B5F6" }, // Novembro Azul
+  mes_12: { principal: "#B71C1C", secundaria: "#B8860B" }, // Dezembro Vermelho Natalino + dourado
 };
+
+/** Metadados dos 12 modelos mensais de PDF. */
+export const pdfMesInfo: {
+  mes: number; key: PdfTema; nome: string; campanha: string; emoji: string;
+}[] = [
+  { mes: 1,  key: "mes_01", nome: "Janeiro Branco",     campanha: "Saúde Mental",         emoji: "🤍" },
+  { mes: 2,  key: "mes_02", nome: "Fevereiro Roxo",     campanha: "Conscientização",      emoji: "💜" },
+  { mes: 3,  key: "mes_03", nome: "Março Azul-Marinho", campanha: "Ciclo Corporativo",    emoji: "🔵" },
+  { mes: 4,  key: "mes_04", nome: "Abril Verde",        campanha: "Segurança no Trabalho",emoji: "🍃" },
+  { mes: 5,  key: "mes_05", nome: "Maio Amarelo",       campanha: "Atenção e Segurança",  emoji: "💛" },
+  { mes: 6,  key: "mes_06", nome: "Junho Vermelho",     campanha: "Solidariedade",        emoji: "❤️" },
+  { mes: 7,  key: "mes_07", nome: "Julho Esmeralda",    campanha: "Renovação",            emoji: "💚" },
+  { mes: 8,  key: "mes_08", nome: "Agosto Dourado",     campanha: "Premium",              emoji: "✨" },
+  { mes: 9,  key: "mes_09", nome: "Setembro Amarelo",   campanha: "Valorização da Vida",  emoji: "🌻" },
+  { mes: 10, key: "mes_10", nome: "Outubro Rosa",       campanha: "Prevenção",            emoji: "🌸" },
+  { mes: 11, key: "mes_11", nome: "Novembro Azul",      campanha: "Saúde do Homem",       emoji: "💙" },
+  { mes: 12, key: "mes_12", nome: "Dezembro Vermelho",  campanha: "Solidariedade / Natal",emoji: "🎄" },
+];
+
+/**
+ * Resolve o tema efetivo do PDF considerando o modo mensal.
+ * - "auto": usa o mês atual
+ * - "manual": usa `pdfMesManual`
+ * - "off" / indefinido: usa o `temaPdf` configurado
+ */
+export function resolvePdfTemaAtivo(empresa: Empresa, override?: PdfTema): PdfTema {
+  if (override) return override;
+  const modo = empresa.pdfMesModo ?? "off";
+  if (modo === "auto") {
+    const mm = new Date().getMonth() + 1;
+    return (`mes_${String(mm).padStart(2, "0")}` as PdfTema);
+  }
+  if (modo === "manual" && empresa.pdfMesManual && empresa.pdfMesManual >= 1 && empresa.pdfMesManual <= 12) {
+    return (`mes_${String(empresa.pdfMesManual).padStart(2, "0")}` as PdfTema);
+  }
+  return empresa.temaPdf ?? "azul_escuro";
+}
 
 export interface ModeloDescricao {
   id: string;
@@ -409,7 +466,13 @@ const RELATORIO_STATUS = ["sucesso", "observacoes", "retorno"] as const satisfie
 const SITUACOES_PAGAMENTO = ["pago", "parcial", "pendente"] as const satisfies readonly SituacaoPagamento[];
 const LANCAMENTO_TIPOS = ["entrada", "saida"] as const satisfies readonly LancamentoTipo[];
 const ORIGENS_LANCAMENTO = ["orcamento", "agendamento", "manual"] as const;
-const PDF_TEMAS = ["azul_corporativo", "azul_escuro", "verde_empresarial", "cinza_executivo", "preto_premium", "classico", "moderno", "executivo", "simples"] as const satisfies readonly PdfTema[];
+const PDF_TEMAS = [
+  "azul_corporativo", "azul_escuro", "verde_empresarial", "cinza_executivo", "preto_premium",
+  "classico", "moderno", "executivo", "simples",
+  "mes_01", "mes_02", "mes_03", "mes_04", "mes_05", "mes_06",
+  "mes_07", "mes_08", "mes_09", "mes_10", "mes_11", "mes_12",
+] as const satisfies readonly PdfTema[];
+const PDF_MES_MODOS = ["auto", "manual", "off"] as const;
 const HISTORICO_ENTIDADES = ["cliente", "servico", "orcamento", "agendamento", "lancamento", "empresa"] as const satisfies readonly HistoricoEntidade[];
 const HISTORICO_ACOES = ["criado", "editado", "arquivado", "restaurado", "excluido", "status"] as const;
 
@@ -597,6 +660,11 @@ function normalizeEmpresa(value: unknown): Empresa {
     temaPdf: valid(empresa.temaPdf, PDF_TEMAS, seed.empresa.temaPdf ?? "classico"),
     corPdf: asString(empresa.corPdf, seed.empresa.corPdf),
     corSecundariaPdf: asOptionalString(empresa.corSecundariaPdf),
+    pdfMesModo: valid(empresa.pdfMesModo, PDF_MES_MODOS, "off"),
+    pdfMesManual: (() => {
+      const n = asNumber(empresa.pdfMesManual, 0);
+      return n >= 1 && n <= 12 ? Math.floor(n) : undefined;
+    })(),
     custosPadrao: custos ? {
       valorHora: asNumber(custos.valorHora, 0),
       margemLucro: asNumber(custos.margemLucro, 0),

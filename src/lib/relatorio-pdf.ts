@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Relatorio } from "./store";
-import { relatorioStatusLabel, formaPagamentoLabel, situacaoPagamentoLabel } from "./store";
+import { relatorioStatusLabel, formaPagamentoLabel, situacaoPagamentoLabel, pdfTemaPreset, resolvePdfTemaAtivo } from "./store";
 import { brl, dateBR, padNum } from "./format";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -53,7 +53,10 @@ export function gerarRelatorioPDF(
   // Margens: superior 3cm, demais 2cm
   const M = 57;
   const M_TOP = 85;
-  const brand = hexToRgb(empresa.corPdf ?? "#0b1b3d");
+  const tema = resolvePdfTemaAtivo(empresa);
+  const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
+  const modoMensal = empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual";
+  const brand = hexToRgb(modoMensal ? preset.principal : (empresa.corPdf ?? preset.principal));
   const FS = { title: 18, subtitle: 15, body: 12, footer: 11 };
   const LH = (s: number) => Math.round(s * 1.3);
   const BOTTOM = H - M - 30;
