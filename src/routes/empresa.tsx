@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { db, useDB, pdfTemaPreset, type PdfTema } from "@/lib/store";
+import { db, useDB, pdfTemaPreset, pdfMesInfo, type PdfTema } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/empresa")({
@@ -32,8 +32,23 @@ function EmpresaPage() {
 
   function aplicarTema(t: PdfTema) {
     const p = pdfTemaPreset[t];
-    setForm({ ...form, temaPdf: t, corPdf: p.principal, corSecundariaPdf: p.secundaria });
+    setForm({
+      ...form,
+      temaPdf: t,
+      corPdf: p.principal,
+      corSecundariaPdf: p.secundaria,
+      // Selecionar um modelo manual desliga o modo mensal automático
+      pdfMesModo: "off",
+    });
   }
+
+  const mesAtual = new Date().getMonth() + 1;
+  const mesEfetivo =
+    form.pdfMesModo === "auto"
+      ? mesAtual
+      : form.pdfMesModo === "manual"
+        ? form.pdfMesManual ?? mesAtual
+        : null;
 
   function salvar() {
     db.updateEmpresa(form);
@@ -95,8 +110,67 @@ function EmpresaPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Personalização do PDF</CardTitle></CardHeader>
         <CardContent className="grid gap-4">
+          <div className="grid gap-2 rounded-lg border p-3 bg-muted/30">
+            <Label className="text-xs font-semibold">📅 Modelos mensais (12 cores anuais)</Label>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <label className="inline-flex items-center gap-1.5">
+                <input
+                  type="radio" name="pdfMesModo"
+                  checked={(form.pdfMesModo ?? "off") === "off"}
+                  onChange={() => setForm({ ...form, pdfMesModo: "off" })}
+                />
+                Desligado (usar modelo abaixo)
+              </label>
+              <label className="inline-flex items-center gap-1.5">
+                <input
+                  type="radio" name="pdfMesModo"
+                  checked={form.pdfMesModo === "auto"}
+                  onChange={() => setForm({ ...form, pdfMesModo: "auto" })}
+                />
+                Automático (mês atual)
+              </label>
+              <label className="inline-flex items-center gap-1.5">
+                <input
+                  type="radio" name="pdfMesModo"
+                  checked={form.pdfMesModo === "manual"}
+                  onChange={() => setForm({ ...form, pdfMesModo: "manual", pdfMesManual: form.pdfMesManual ?? mesAtual })}
+                />
+                Manual
+              </label>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+              {pdfMesInfo.map((m) => {
+                const p = pdfTemaPreset[m.key];
+                const ativo = mesEfetivo === m.mes;
+                const clickable = form.pdfMesModo === "manual";
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    disabled={!clickable}
+                    onClick={() => setForm({ ...form, pdfMesModo: "manual", pdfMesManual: m.mes })}
+                    className={`text-left rounded-md border p-2 text-[11px] transition-colors ${ativo ? "border-primary ring-2 ring-primary/30" : "hover:bg-muted"} ${!clickable ? "opacity-70 cursor-default" : ""}`}
+                    title={`${m.nome} — ${m.campanha}`}
+                  >
+                    <div className="h-6 rounded mb-1" style={{ background: p.principal }} />
+                    <div className="flex items-center gap-1">
+                      <span>{m.emoji}</span>
+                      <span className="font-semibold truncate">{m.nome}</span>
+                    </div>
+                    <div className="text-muted-foreground truncate">{m.campanha}</div>
+                  </button>
+                );
+              })}
+            </div>
+            {mesEfetivo && (
+              <p className="text-[11px] text-muted-foreground">
+                Modelo ativo: <b>{pdfMesInfo[mesEfetivo - 1].emoji} {pdfMesInfo[mesEfetivo - 1].nome}</b>. Aplicado automaticamente em todos os PDFs (orçamentos e relatórios).
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-2">
-            <Label className="text-xs">Modelo de PDF</Label>
+            <Label className="text-xs">Modelo de PDF (usado quando o modo mensal está desligado)</Label>
             <div className="grid sm:grid-cols-2 gap-2">
               {temas.map((t) => {
                 const ativo = (form.temaPdf ?? "azul_escuro") === t.value;
