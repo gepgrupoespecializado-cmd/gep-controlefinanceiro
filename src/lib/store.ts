@@ -466,7 +466,13 @@ const RELATORIO_STATUS = ["sucesso", "observacoes", "retorno"] as const satisfie
 const SITUACOES_PAGAMENTO = ["pago", "parcial", "pendente"] as const satisfies readonly SituacaoPagamento[];
 const LANCAMENTO_TIPOS = ["entrada", "saida"] as const satisfies readonly LancamentoTipo[];
 const ORIGENS_LANCAMENTO = ["orcamento", "agendamento", "manual"] as const;
-const PDF_TEMAS = ["azul_corporativo", "azul_escuro", "verde_empresarial", "cinza_executivo", "preto_premium", "classico", "moderno", "executivo", "simples"] as const satisfies readonly PdfTema[];
+const PDF_TEMAS = [
+  "azul_corporativo", "azul_escuro", "verde_empresarial", "cinza_executivo", "preto_premium",
+  "classico", "moderno", "executivo", "simples",
+  "mes_01", "mes_02", "mes_03", "mes_04", "mes_05", "mes_06",
+  "mes_07", "mes_08", "mes_09", "mes_10", "mes_11", "mes_12",
+] as const satisfies readonly PdfTema[];
+const PDF_MES_MODOS = ["auto", "manual", "off"] as const;
 const HISTORICO_ENTIDADES = ["cliente", "servico", "orcamento", "agendamento", "lancamento", "empresa"] as const satisfies readonly HistoricoEntidade[];
 const HISTORICO_ACOES = ["criado", "editado", "arquivado", "restaurado", "excluido", "status"] as const;
 
@@ -654,6 +660,11 @@ function normalizeEmpresa(value: unknown): Empresa {
     temaPdf: valid(empresa.temaPdf, PDF_TEMAS, seed.empresa.temaPdf ?? "classico"),
     corPdf: asString(empresa.corPdf, seed.empresa.corPdf),
     corSecundariaPdf: asOptionalString(empresa.corSecundariaPdf),
+    pdfMesModo: valid(empresa.pdfMesModo, PDF_MES_MODOS, "off"),
+    pdfMesManual: (() => {
+      const n = asNumber(empresa.pdfMesManual, 0);
+      return n >= 1 && n <= 12 ? Math.floor(n) : undefined;
+    })(),
     custosPadrao: custos ? {
       valorHora: asNumber(custos.valorHora, 0),
       margemLucro: asNumber(custos.margemLucro, 0),
