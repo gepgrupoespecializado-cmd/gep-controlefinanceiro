@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Orcamento, Servico } from "./store";
-import { totalOrcamento, validadeOrcamento, formaPagamentoLabel, pdfTemaPreset } from "./store";
+import { totalOrcamento, validadeOrcamento, formaPagamentoLabel, pdfTemaPreset, resolvePdfTemaAtivo } from "./store";
 import { brl, dateBR, padNum } from "./format";
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -83,10 +83,13 @@ function renderOrcamentoPDF(
   const M = Math.max(30, Math.round(57 * (0.7 + 0.3 * density)));
   const M_TOP = Math.max(60, Math.round(85 * (0.7 + 0.3 * density)));
 
-  const tema = (overrides.temaPdf ?? empresa.temaPdf ?? "azul_escuro") as NonNullable<Empresa["temaPdf"]>;
+  const tema = resolvePdfTemaAtivo(empresa, overrides.temaPdf);
   const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
-  const brand = hexToRgb(overrides.corPdf ?? empresa.corPdf ?? preset.principal);
-  const sec   = hexToRgb(overrides.corSecundariaPdf ?? empresa.corSecundariaPdf ?? preset.secundaria);
+  // Overrides de cor só aplicam quando o modo mensal está desligado
+  // (para preservar a paleta oficial do mês selecionado/atual).
+  const modoMensal = !overrides.temaPdf && (empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual");
+  const brand = hexToRgb(modoMensal ? preset.principal : (overrides.corPdf ?? empresa.corPdf ?? preset.principal));
+  const sec   = hexToRgb(modoMensal ? preset.secundaria : (overrides.corSecundariaPdf ?? empresa.corSecundariaPdf ?? preset.secundaria));
   const tint  = lighten(brand, 0.88);
   const { emissao, vencimento } = validadeOrcamento(orc);
 
