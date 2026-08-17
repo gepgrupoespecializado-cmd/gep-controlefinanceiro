@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Clock, Wrench, Pencil, Trash2, Search, Copy } from "lucide-react";
+import { Plus, Clock, Wrench, Pencil, Trash2, Search, Copy, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,6 +25,38 @@ function ServicosPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [form, setForm] = useState({ nome: "", descricao: "", valor: 0, tempoEstimado: "" });
+
+  // ===== Categoria PORTEIRO (acréscimo) =====
+  const PORTEIRO_DESC =
+    "Prestação de serviços de portaria e controle de acesso, conforme condições estabelecidas na proposta.";
+  const PORTEIRO_FUNCOES = [
+    "Porteiro Diurno — Escala 44 horas semanais",
+    "Porteiro Noturno — Escala 44 horas semanais",
+    "Porteiro Diurno — Escala 12x36",
+    "Porteiro Noturno — Escala 12x36",
+    "Porteiro Avulso",
+  ];
+  const [openPorteiro, setOpenPorteiro] = useState(false);
+  const [porteiroFuncao, setPorteiroFuncao] = useState(PORTEIRO_FUNCOES[0]);
+  const [porteiroDesc, setPorteiroDesc] = useState(PORTEIRO_DESC);
+  const [porteiroValor, setPorteiroValor] = useState("");
+
+  function abrirPorteiro() {
+    setPorteiroFuncao(PORTEIRO_FUNCOES[0]);
+    setPorteiroDesc(PORTEIRO_DESC);
+    setPorteiroValor("");
+    setOpenPorteiro(true);
+  }
+  function salvarPorteiro() {
+    db.addServico({
+      nome: porteiroFuncao,
+      descricao: porteiroDesc,
+      valor: porteiroValor.trim() === "" ? 0 : Number(porteiroValor.replace(",", ".")) || 0,
+      tempoEstimado: "",
+    });
+    toast.success("Função de porteiro cadastrada");
+    setOpenPorteiro(false);
+  }
 
   const ativos = useMemo(
     () => data.servicos.filter((s) => !s.arquivado && s.nome.toLowerCase().includes(q.toLowerCase())),
@@ -56,6 +88,44 @@ function ServicosPage() {
           <p className="text-xs text-muted-foreground">{ativos.length} ativo(s)</p>
         </div>
         <Button onClick={abrirNovo}><Plus className="h-4 w-4" />Novo serviço</Button>
+        <Button variant="outline" className="col-span-2 sm:col-span-1" onClick={abrirPorteiro}>
+          <ShieldCheck className="h-4 w-4" />Porteiro
+        </Button>
+        <Dialog open={openPorteiro} onOpenChange={setOpenPorteiro}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Nova função — Porteiro</DialogTitle></DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Função *</Label>
+                <select
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={porteiroFuncao}
+                  onChange={(e) => setPorteiroFuncao(e.target.value)}
+                >
+                  {PORTEIRO_FUNCOES.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Descrição</Label>
+                <Textarea value={porteiroDesc} onChange={(e) => setPorteiroDesc(e.target.value)} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Valor do Serviço (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder=""
+                  value={porteiroValor}
+                  onChange={(e) => setPorteiroValor(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setOpenPorteiro(false)}>Cancelar</Button>
+              <Button onClick={salvarPorteiro}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>{editId ? "Editar serviço" : "Novo serviço"}</DialogTitle></DialogHeader>
