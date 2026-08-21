@@ -113,6 +113,10 @@ function renderOrcamentoPDF(
   const SECTION_GAP = 16;
   const SECTION_PAD_X = 10;
 
+  // Quando verdadeiro, o cabeçalho da tabela de itens é redesenhado a cada
+  // nova página (lista de serviços dinâmica, sem limite de quantidade).
+  let repeatItemsHeader = false;
+
   /** Garante espaço; se não couber, abre nova página e redesenha mini-header. */
   function ensure(space: number) {
     if (y + space > BOTTOM_LIMIT) {
@@ -121,8 +125,10 @@ function renderOrcamentoPDF(
       aplicarMarcaDagua(doc, empresa);
       y = M_TOP;
       drawMiniHeader();
+      if (repeatItemsHeader) drawItemsHeader();
     }
   }
+
 
   function drawMiniHeader() {
     doc.setFillColor(brand[0], brand[1], brand[2]);
