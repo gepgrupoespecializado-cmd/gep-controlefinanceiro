@@ -113,6 +113,10 @@ function renderOrcamentoPDF(
   const SECTION_GAP = 16;
   const SECTION_PAD_X = 10;
 
+  // Quando verdadeiro, o cabeçalho da tabela de itens é redesenhado a cada
+  // nova página (lista de serviços dinâmica, sem limite de quantidade).
+  let repeatItemsHeader = false;
+
   /** Garante espaço; se não couber, abre nova página e redesenha mini-header. */
   function ensure(space: number) {
     if (y + space > BOTTOM_LIMIT) {
@@ -121,8 +125,10 @@ function renderOrcamentoPDF(
       aplicarMarcaDagua(doc, empresa);
       y = M_TOP;
       drawMiniHeader();
+      if (repeatItemsHeader) drawItemsHeader();
     }
   }
+
 
   function drawMiniHeader() {
     doc.setFillColor(brand[0], brand[1], brand[2]);
@@ -231,24 +237,31 @@ function renderOrcamentoPDF(
   });
   y += sp(6);
 
-  // ====== ITENS ======
+  // ====== ITENS (lista dinâmica, sem limite de quantidade) ======
   const HEADER_H = 24;
   const PAD_X = 10;
   const PAD_Y = 8;
   const MIN_ROW_H = 32;
+
+  function drawItemsHeader() {
+    doc.setFillColor(brand[0], brand[1], brand[2]);
+    doc.rect(M, y, W - M * 2, HEADER_H, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
+    // Centralização vertical do cabeçalho (baseline ≈ meio + 0.35*fonte)
+    const headBaseline = y + HEADER_H / 2 + FS.body * 0.35;
+    doc.text("DESCRIÇÃO", M + PAD_X, headBaseline);
+    doc.text("QTD", W - M - 200, headBaseline, { align: "right" });
+    doc.text("VALOR UNIT.", W - M - 90, headBaseline, { align: "right" });
+    doc.text("TOTAL", W - M - PAD_X, headBaseline, { align: "right" });
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "normal");
+    y += HEADER_H;
+  }
+
   ensure(HEADER_H + MIN_ROW_H);
-  doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.rect(M, y, W - M * 2, HEADER_H, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-  // Centralização vertical do cabeçalho (baseline ≈ meio + 0.35*fonte)
-  const headBaseline = y + HEADER_H / 2 + FS.body * 0.35;
-  doc.text("DESCRIÇÃO", M + PAD_X, headBaseline);
-  doc.text("QTD", W - M - 200, headBaseline, { align: "right" });
-  doc.text("VALOR UNIT.", W - M - 90, headBaseline, { align: "right" });
-  doc.text("TOTAL", W - M - PAD_X, headBaseline, { align: "right" });
-  doc.setTextColor(20, 20, 20);
-  y += HEADER_H;
+  drawItemsHeader();
+  repeatItemsHeader = true;
 
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const lhItem = LH(FS.body);
@@ -258,6 +271,7 @@ function renderOrcamentoPDF(
     const contentH = lines.length * lhItem;
     const rowH = Math.max(MIN_ROW_H, contentH + PAD_Y * 2);
     ensure(rowH);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     if (idx % 2 === 1) {
       doc.setFillColor(248, 248, 250);
       doc.rect(M, y, W - M * 2, rowH, "F");
@@ -279,7 +293,9 @@ function renderOrcamentoPDF(
     });
     y += rowH;
   });
+  repeatItemsHeader = false;
   y += sp(4);
+
 
   // ====== TOTAL ======
   ensure(40);
