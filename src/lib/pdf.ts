@@ -213,7 +213,7 @@ function renderOrcamentoPDF(
   doc.setTextColor(60, 60, 60);
   doc.text(`Emissão: ${dateBR(emissao)}`, M + 10, y + 30);
   doc.text(
-    `Validade: ${orc.validadeDias ?? 7} dia(s) — até ${dateBR(vencimento)}`,
+    `Validade da proposta: ${orc.validadeDias ?? 7} dias — até ${dateBR(vencimento)}`,
     W - M - 10, y + 30, { align: "right" },
   );
   doc.setTextColor(20, 20, 20);
@@ -237,23 +237,25 @@ function renderOrcamentoPDF(
   });
   y += sp(6);
 
-  // ====== ITENS (lista dinâmica, sem limite de quantidade) ======
+  // ====== SERVIÇO / ESCOPO / INVESTIMENTO (lista dinâmica, sem limite) ======
   const HEADER_H = 24;
   const PAD_X = 10;
   const PAD_Y = 8;
   const MIN_ROW_H = 32;
+  const INV_W = 100;                       // coluna INVESTIMENTO
+  const COL_SERV_W = Math.round((W - M * 2 - INV_W) * 0.42);
+  const COL_ESC_X = M + COL_SERV_W + PAD_X;
+  const COL_ESC_W = W - M * 2 - INV_W - COL_SERV_W - PAD_X * 2;
 
   function drawItemsHeader() {
     doc.setFillColor(brand[0], brand[1], brand[2]);
     doc.rect(M, y, W - M * 2, HEADER_H, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-    // Centralização vertical do cabeçalho (baseline ≈ meio + 0.35*fonte)
     const headBaseline = y + HEADER_H / 2 + FS.body * 0.35;
-    doc.text("DESCRIÇÃO", M + PAD_X, headBaseline);
-    doc.text("QTD", W - M - 200, headBaseline, { align: "right" });
-    doc.text("VALOR UNIT.", W - M - 90, headBaseline, { align: "right" });
-    doc.text("TOTAL", W - M - PAD_X, headBaseline, { align: "right" });
+    doc.text("SERVIÇO", M + PAD_X, headBaseline);
+    doc.text("ESCOPO", COL_ESC_X, headBaseline);
+    doc.text("INVESTIMENTO", W - M - PAD_X, headBaseline, { align: "right" });
     doc.setTextColor(20, 20, 20);
     doc.setFont("helvetica", "normal");
     y += HEADER_H;
@@ -266,9 +268,16 @@ function renderOrcamentoPDF(
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const lhItem = LH(FS.body);
   orc.itens.forEach((it, idx) => {
-    const nome = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
-    const lines = doc.splitTextToSize(nome, W - M * 2 - 230 - PAD_X);
-    const contentH = lines.length * lhItem;
+    const base = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
+    const nome = it.categoria ? `${it.categoria} — ${base}` : base;
+    const qtdInfo = it.unidade && it.quantidade
+      ? `${it.quantidade} ${it.unidade}`
+      : (it.quantidade > 1 ? `${it.quantidade} un.` : "");
+    const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(" — ");
+
+    const servLines = doc.splitTextToSize(nome, COL_SERV_W) as string[];
+    const escLines = escopoTxt ? (doc.splitTextToSize(escopoTxt, COL_ESC_W) as string[]) : [];
+    const contentH = Math.max(servLines.length, escLines.length || 1) * lhItem;
     const rowH = Math.max(MIN_ROW_H, contentH + PAD_Y * 2);
     ensure(rowH);
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
@@ -276,39 +285,70 @@ function renderOrcamentoPDF(
       doc.setFillColor(248, 248, 250);
       doc.rect(M, y, W - M * 2, rowH, "F");
     }
-    // Baseline da primeira linha (com padding superior + ascent aproximado)
-    const firstBaseline = y + (rowH - contentH) / 2 + FS.body * 0.85;
-    lines.forEach((ln: string, i: number) => {
-      const by = firstBaseline + i * lhItem;
-      doc.text(ln, M + PAD_X, by);
-      if (i === 0) {
-        // Numéricos centralizados verticalmente na linha inteira
-        const midBaseline = y + rowH / 2 + FS.body * 0.35;
-        doc.text(String(it.quantidade), W - M - 200, midBaseline, { align: "right" });
-        doc.text(brl(it.valorUnit), W - M - 90, midBaseline, { align: "right" });
-        doc.setFont("helvetica", "bold");
-        doc.text(brl(it.quantidade * it.valorUnit), W - M - PAD_X, midBaseline, { align: "right" });
-        doc.setFont("helvetica", "normal");
-      }
-    });
+    const top = y + (rowH - contentH) / 2 + FS.body * 0.85;
+    servLines.forEach((ln, i) => doc.text(ln, M + PAD_X, top + i * lhItem));
+    doc.setTextColor(90, 90, 90); doc.setFontSize(FS.footer);
+    escLines.forEach((ln, i) => doc.text(ln, COL_ESC_X, top + i * lhItem));
+    doc.setTextColor(20, 20, 20); doc.setFontSize(FS.body);
+    doc.setFont("helvetica", "bold");
+    doc.text(brl(it.quantidade * it.valorUnit), W - M - PAD_X, y + rowH / 2 + FS.body * 0.35, { align: "right" });
+    doc.setFont("helvetica", "normal");
     y += rowH;
   });
   repeatItemsHeader = false;
   y += sp(4);
 
 
-  // ====== TOTAL ======
-  ensure(40);
+  // ====== INVESTIMENTO (destaque financeiro) ======
+  ensure(56);
   doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(1);
   doc.line(M, y, W - M, y); y += sp(12);
+  const BOX_H = 42;
   doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.roundedRect(W - M - 240, y - 4, 240, 28, 4, 4, "F");
+  doc.roundedRect(M, y, W - M * 2, BOX_H, 5, 5, "F");
   doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("VALOR TOTAL", W - M - 230, y + 14);
-  doc.text(brl(totalOrcamento(orc)), W - M - 8, y + 14, { align: "right" });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer);
+  doc.text("INVESTIMENTO", M + 12, y + 16);
+  doc.setFont("helvetica", "normal");
+  doc.text(orc.itens.length > 1 ? "Valor total da proposta" : "Valor do serviço", M + 12, y + 31);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(Math.max(16, FS.title + 2));
+  doc.text(brl(totalOrcamento(orc)), W - M - 12, y + 28, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += 40;
+  y += BOX_H + 16;
+
+  // ====== ESCOPO DO SERVIÇO ======
+  const escopoItens = (orc.escopo ?? []).filter((s) => s && s.trim());
+  if (escopoItens.length) {
+    drawSectionHeader("ESCOPO DO SERVIÇO");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
+    const lhE = LH(FS.body);
+    escopoItens.forEach((item) => {
+      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
+      lines.forEach((ln, i) => {
+        ensure(lhE);
+        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
+        y += lhE;
+      });
+    });
+    y += sp(6);
+  }
+
+  // ====== NÃO INCLUSO ======
+  const naoIncluso = (orc.naoIncluso ?? []).filter((s) => s && s.trim());
+  if (naoIncluso.length) {
+    drawSectionHeader("NÃO INCLUSO");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
+    const lhN = LH(FS.body);
+    naoIncluso.forEach((item) => {
+      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
+      lines.forEach((ln, i) => {
+        ensure(lhN);
+        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
+        y += lhN;
+      });
+    });
+    y += sp(6);
+  }
 
   // ====== DESCRIÇÃO DOS SERVIÇOS ======
   if (orc.descricaoServicos && orc.descricaoServicos.trim()) {
