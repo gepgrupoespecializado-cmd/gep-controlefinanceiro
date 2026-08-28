@@ -624,6 +624,10 @@ function normalizeOrcamento(o: Record<string, unknown>, now: string): Orcamento 
     criadoEm: asString(o.criadoEm, now),
     arquivado: asBoolean(o.arquivado, false),
     atualizadoEm: asOptionalString(o.atualizadoEm),
+    escopo: asStringList(o.escopo),
+    naoIncluso: asStringList(o.naoIncluso),
+    condicoes: asStringList(o.condicoes),
+    diferencial: asOptionalString(o.diferencial),
   };
 }
 
