@@ -589,12 +589,22 @@ function normalizeServico(s: Record<string, unknown>): Servico {
   };
 }
 
+function asStringList(v: unknown): string[] {
+  return asArray<unknown>(v)
+    .filter((x): x is string => typeof x === "string")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
 function normalizeOrcamentoItem(i: Record<string, unknown>): OrcamentoItem {
   return {
     servicoId: asOptionalString(i.servicoId),
     descricao: asString(i.descricao, "Item sem descrição"),
     quantidade: asNumber(i.quantidade, 1),
     valorUnit: asNumber(i.valorUnit, 0),
+    categoria: asOptionalString(i.categoria),
+    unidade: asOptionalString(i.unidade),
+    escopo: asOptionalString(i.escopo),
   };
 }
 
