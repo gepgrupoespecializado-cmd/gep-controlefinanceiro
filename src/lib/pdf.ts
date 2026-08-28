@@ -213,7 +213,7 @@ function renderOrcamentoPDF(
   doc.setTextColor(60, 60, 60);
   doc.text(`Emissão: ${dateBR(emissao)}`, M + 10, y + 30);
   doc.text(
-    `Validade: ${orc.validadeDias ?? 7} dia(s) — até ${dateBR(vencimento)}`,
+    `Validade da proposta: ${orc.validadeDias ?? 7} dias — até ${dateBR(vencimento)}`,
     W - M - 10, y + 30, { align: "right" },
   );
   doc.setTextColor(20, 20, 20);
