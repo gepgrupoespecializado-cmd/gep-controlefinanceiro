@@ -64,11 +64,23 @@ export const situacaoPagamentoLabel: Record<SituacaoPagamento, string> = {
   pendente: "Pendente",
 };
 
+/** Unidades disponíveis para os itens do orçamento. */
+export const UNIDADES_ORCAMENTO = [
+  "Serviço", "Unidade", "m²", "Janela", "Vitrine", "Ambiente", "Hora", "Visita",
+] as const;
+export type UnidadeOrcamento = (typeof UNIDADES_ORCAMENTO)[number];
+
 export interface OrcamentoItem {
   servicoId?: string;
   descricao: string;
   quantidade: number;
   valorUnit: number;
+  /** Categoria comercial (ex.: "Limpeza Especializada de Vidros"). */
+  categoria?: string;
+  /** Unidade de medida do item (Serviço, m², Janela...). */
+  unidade?: string;
+  /** Escopo resumido do item, exibido na coluna ESCOPO do PDF. */
+  escopo?: string;
 }
 
 export interface Orcamento {
@@ -85,7 +97,69 @@ export interface Orcamento {
   criadoEm: string;
   arquivado?: boolean;
   atualizadoEm?: string;
+  /** Proposta comercial (novo modelo) — itens do escopo do serviço. */
+  escopo?: string[];
+  /** Itens que não fazem parte da proposta. */
+  naoIncluso?: string[];
+  /** Condições de execução do serviço. */
+  condicoes?: string[];
+  /** Mensagem curta de diferencial GEP. */
+  diferencial?: string;
 }
+
+/** Opções de validade da proposta (dias). */
+export const VALIDADE_OPCOES = [3, 5, 7, 10, 15, 30] as const;
+
+export const CONDICOES_PADRAO = [
+  "Serviço realizado mediante agendamento prévio.",
+  "Execução condicionada às condições adequadas de acesso e segurança.",
+  "Orçamento baseado nas condições observadas no momento da avaliação.",
+  "Alterações no escopo poderão gerar revisão do valor.",
+];
+
+export const NAO_INCLUSO_SUGESTOES = [
+  "Remoção de películas.",
+  "Remoção de adesivos.",
+  "Restauração ou polimento de vidros.",
+  "Tratamento de manchas permanentes.",
+  "Serviços adicionais não descritos nesta proposta.",
+];
+
+export const DIFERENCIAL_PADRAO =
+  "Nosso objetivo é entregar vidros limpos, transparentes e com excelente acabamento, valorizando a aparência do ambiente e proporcionando uma apresentação mais profissional.";
+
+/** Modelos de escopo prontos (editáveis após aplicar). */
+export const ESCOPO_MODELOS: { nome: string; itens: string[] }[] = [
+  {
+    nome: "Limpeza de janelas",
+    itens: [
+      "Limpeza dos vidros internos e externos contemplados na avaliação.",
+      "Remoção de poeira, gordura e resíduos superficiais.",
+      "Limpeza de esquadrias e acabamentos próximos aos vidros.",
+      "Utilização de produtos profissionais específicos.",
+      "Execução realizada por profissional especializado.",
+    ],
+  },
+  {
+    nome: "Vitrines",
+    itens: [
+      "Limpeza interna e externa das vitrines contempladas na avaliação.",
+      "Remoção de marcas de dedos.",
+      "Remoção de poeira e resíduos superficiais.",
+      "Limpeza de bordas e acabamentos.",
+      "Finalização para melhor apresentação visual.",
+    ],
+  },
+  {
+    nome: "Limpeza pós-obra",
+    itens: [
+      "Remoção de resíduos de obra nas superfícies contempladas na avaliação.",
+      "Remoção de poeira e resíduos superficiais.",
+      "Limpeza de esquadrias e acabamentos.",
+      "Utilização de produtos e equipamentos adequados.",
+    ],
+  },
+];
 
 export type AgendaStatus = "agendado" | "em_andamento" | "concluido" | "cancelado";
 
