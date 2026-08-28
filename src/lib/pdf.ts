@@ -273,7 +273,7 @@ function renderOrcamentoPDF(
     const qtdInfo = it.unidade && it.quantidade
       ? `${it.quantidade} ${it.unidade}`
       : (it.quantidade > 1 ? `${it.quantidade} un.` : "");
-    const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(escapeJoin(it.escopo, qtdInfo));
+    const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(" — ");
 
     const servLines = doc.splitTextToSize(nome, COL_SERV_W) as string[];
     const escLines = escopoTxt ? (doc.splitTextToSize(escopoTxt, COL_ESC_W) as string[]) : [];
