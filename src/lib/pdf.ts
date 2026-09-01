@@ -270,8 +270,9 @@ function renderOrcamentoPDF(
   orc.itens.forEach((it, idx) => {
     const base = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
     const nome = it.categoria ? `${it.categoria} — ${base}` : base;
-    const qtdInfo = it.unidade && it.quantidade
-      ? `${it.quantidade} ${it.unidade}`
+    const unidade = it.unidade && it.unidade !== "Serviço" ? it.unidade : "";
+    const qtdInfo = unidade
+      ? `${it.quantidade} ${unidade}`
       : (it.quantidade > 1 ? `${it.quantidade} un.` : "");
     const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(" — ");
 
