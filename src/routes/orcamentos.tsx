@@ -305,8 +305,8 @@ function OrcamentosPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs">Itens</Label>
-                  <Button type="button" size="sm" variant="ghost" onClick={adicionarItem}><Plus className="h-3 w-3" />Item</Button>
+                  <Label className="text-xs font-semibold">Serviços *</Label>
+                  <Button type="button" size="sm" variant="ghost" onClick={adicionarItem}><Plus className="h-3 w-3" />Serviço</Button>
                 </div>
                 <div className="space-y-2">
                   {itens.map((it, idx) => (
@@ -317,22 +317,97 @@ function OrcamentosPage() {
                           {data.servicos.filter((s) => !s.arquivado).map((s) => <SelectItem key={s.id} value={s.id}>{s.nome} — {brl(s.valor)}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <Input placeholder="Descrição do serviço" value={it.descricao} onChange={(e) => atualizarItem(idx, { descricao: e.target.value })} />
-                      <div className="grid grid-cols-[80px_1fr_auto] gap-2 items-center">
+                      <Input
+                        placeholder="Categoria (ex: Limpeza Especializada de Vidros)"
+                        value={it.categoria ?? ""}
+                        onChange={(e) => atualizarItem(idx, { categoria: e.target.value })}
+                      />
+                      <Input placeholder="Tipo de serviço (ex: Janelas)" value={it.descricao} onChange={(e) => atualizarItem(idx, { descricao: e.target.value })} />
+                      <Input
+                        placeholder="Escopo resumido para a tabela do PDF (ex: faces internas e externas + esquadrias)"
+                        value={it.escopo ?? ""}
+                        onChange={(e) => atualizarItem(idx, { escopo: e.target.value })}
+                      />
+                      <div className="grid grid-cols-[70px_110px_1fr_auto] gap-2 items-center">
                         <Input type="number" step="1" min={1} value={it.quantidade} onChange={(e) => atualizarItem(idx, { quantidade: Number(e.target.value) || 1 })} />
+                        <Select value={it.unidade ?? "Serviço"} onValueChange={(v) => atualizarItem(idx, { unidade: v })}>
+                          <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {UNIDADES_ORCAMENTO.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                         <Input type="number" step="0.01" value={it.valorUnit} onChange={(e) => atualizarItem(idx, { valorUnit: Number(e.target.value) || 0 })} />
                         <Button variant="ghost" size="icon" onClick={() => removerItem(idx)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                       </div>
-                      <p className="text-right text-xs text-muted-foreground">Subtotal: <b>{brl(it.quantidade * it.valorUnit)}</b></p>
+                      <p className="text-right text-xs text-muted-foreground">Investimento: <b>{brl(it.quantidade * it.valorUnit)}</b></p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* DESCRIÇÃO DOS SERVIÇOS — obrigatório */}
+              {/* ESCOPO DO SERVIÇO — obrigatório */}
+              <div className="grid gap-2 rounded-lg border p-3">
+                <Label className="text-xs font-semibold">Escopo do serviço * (o que será executado)</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {ESCOPO_MODELOS.map((m) => (
+                    <Button
+                      key={m.nome}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      onClick={() => { setEscopo(m.itens); toast.success(`Modelo "${m.nome}" aplicado`); }}
+                    >
+                      <BookOpen className="h-3 w-3" />{m.nome}
+                    </Button>
+                  ))}
+                </div>
+                <ListaEditavel
+                  itens={escopo}
+                  onChange={setEscopo}
+                  placeholder="Ex: Limpeza dos vidros internos e externos contemplados na avaliação."
+                  addLabel="Adicionar item ao escopo"
+                />
+              </div>
+
+              {/* NÃO INCLUSO */}
+              <div className="grid gap-2 rounded-lg border p-3">
+                <Label className="text-xs font-semibold">Não incluso (opcional)</Label>
+                <ListaEditavel
+                  itens={naoIncluso}
+                  onChange={setNaoIncluso}
+                  placeholder="Ex: Remoção de películas."
+                  sugestoes={NAO_INCLUSO_SUGESTOES}
+                />
+              </div>
+
+              {/* CONDIÇÕES DO SERVIÇO */}
+              <div className="grid gap-2 rounded-lg border p-3">
+                <Label className="text-xs font-semibold">Condições do serviço</Label>
+                <ListaEditavel
+                  itens={condicoes}
+                  onChange={setCondicoes}
+                  placeholder="Ex: Serviço realizado mediante agendamento prévio."
+                  sugestoes={CONDICOES_PADRAO}
+                />
+              </div>
+
+              {/* DIFERENCIAL GEP */}
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-semibold">Diferencial GEP (opcional)</Label>
+                <Textarea
+                  value={diferencial}
+                  onChange={(e) => setDiferencial(e.target.value.slice(0, 400))}
+                  rows={3}
+                  placeholder={DIFERENCIAL_PADRAO}
+                />
+                <p className="text-[11px] text-muted-foreground">{diferencial.length}/400 caracteres.</p>
+              </div>
+
+              {/* Observações internas complementares (modelo antigo) */}
               <div className="grid gap-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">Descrição dos serviços a serem prestados *</Label>
+                  <Label className="text-xs">Descrição complementar (opcional)</Label>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setModelosOpen(true)}>
                     <BookOpen className="h-3.5 w-3.5" />Usar modelo
                   </Button>
@@ -340,13 +415,10 @@ function OrcamentosPage() {
                 <Textarea
                   value={descricaoServicos}
                   onChange={(e) => setDescricaoServicos(e.target.value)}
-                  rows={8}
-                  placeholder="Detalhe os serviços contratados de forma profissional. Use bullets, quebras de linha e itens detalhados."
+                  rows={4}
+                  placeholder="Texto livre. Exibido no PDF apenas quando o escopo não estiver preenchido."
                   className="font-mono text-sm"
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  Este texto aparecerá no PDF e no envio por WhatsApp.
-                </p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -363,8 +435,27 @@ function OrcamentosPage() {
                   </Select>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label className="text-xs">Validade (dias)</Label>
-                  <Input type="number" min={1} value={validadeDias} onChange={(e) => setValidadeDias(Number(e.target.value) || 7)} />
+                  <Label className="text-xs">Validade da proposta *</Label>
+                  <Select
+                    value={VALIDADE_OPCOES.includes(validadeDias as (typeof VALIDADE_OPCOES)[number]) ? String(validadeDias) : "custom"}
+                    onValueChange={(v) => { if (v !== "custom") setValidadeDias(Number(v)); }}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {VALIDADE_OPCOES.map((d) => <SelectItem key={d} value={String(d)}>{d} dias</SelectItem>)}
+                      <SelectItem value="custom">Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={validadeDias}
+                    onChange={(e) => setValidadeDias(Number(e.target.value) || 7)}
+                    className="h-8 text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Até {dateBR(new Date(Date.now() + validadeDias * 86400000).toISOString())}
+                  </p>
                 </div>
               </div>
 
