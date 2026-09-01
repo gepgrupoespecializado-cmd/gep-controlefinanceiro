@@ -270,8 +270,9 @@ function renderOrcamentoPDF(
   orc.itens.forEach((it, idx) => {
     const base = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
     const nome = it.categoria ? `${it.categoria} — ${base}` : base;
-    const qtdInfo = it.unidade && it.quantidade
-      ? `${it.quantidade} ${it.unidade}`
+    const unidade = it.unidade && it.unidade !== "Serviço" ? it.unidade : "";
+    const qtdInfo = unidade
+      ? `${it.quantidade} ${unidade}`
       : (it.quantidade > 1 ? `${it.quantidade} un.` : "");
     const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(" — ");
 
@@ -350,8 +351,8 @@ function renderOrcamentoPDF(
     y += sp(6);
   }
 
-  // ====== DESCRIÇÃO DOS SERVIÇOS ======
-  if (orc.descricaoServicos && orc.descricaoServicos.trim()) {
+  // ====== DESCRIÇÃO DOS SERVIÇOS (modelo antigo / complemento) ======
+  if (!escopoItens.length && orc.descricaoServicos && orc.descricaoServicos.trim()) {
     drawSectionHeader("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS");
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const lhDesc = LH(FS.body);
@@ -369,24 +370,56 @@ function renderOrcamentoPDF(
     y += sp(6);
   }
 
+  // ====== CONDIÇÕES DO SERVIÇO ======
+  const condicoes = (orc.condicoes ?? []).filter((s) => s && s.trim());
+  if (condicoes.length) {
+    drawSectionHeader("CONDIÇÕES DO SERVIÇO");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
+    doc.setTextColor(90, 90, 90);
+    const lhC = Math.max(12, Math.round(FS.footer * 1.35 * density));
+    condicoes.forEach((item) => {
+      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
+      lines.forEach((ln, i) => {
+        ensure(lhC);
+        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
+        y += lhC;
+      });
+    });
+    doc.setTextColor(20, 20, 20);
+    y += sp(6);
+  }
+
   // ====== FORMAS DE PAGAMENTO ======
   {
-    drawSectionHeader("FORMAS DE PAGAMENTO");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const lhP = LH(FS.body);
     const formas = (orc.formasPagamento && orc.formasPagamento.length
       ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
       : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
+    // Mantém título, chamada e a lista completa na mesma página
+    drawSectionHeader("FORMAS DE PAGAMENTO", lhP * (formas.length + 1));
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     ensure(lhP);
     doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
     y += lhP;
     formas.forEach((f) => { ensure(lhP); doc.text(`•  ${f}`, M + 14, y); y += lhP; });
-    y += 2;
-    const aviso = "Pagamentos no cartão de crédito poderão sofrer acréscimo referente às taxas da operadora. Consulte condições e parcelamentos no momento da contratação.";
-    doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
-    const av = doc.splitTextToSize(aviso, W - M * 2);
-    av.forEach((ln: string) => { ensure(14); doc.text(ln, M, y); y += 14; });
-    doc.setTextColor(20, 20, 20);
+    if (!orc.formasPagamento?.length || orc.formasPagamento.includes("credito")) {
+      y += 2;
+      const aviso = "Pagamentos no cartão de crédito poderão ter acréscimo referente às taxas da operadora. Consulte as condições de parcelamento no momento da contratação.";
+      doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
+      const av = doc.splitTextToSize(aviso, W - M * 2);
+      av.forEach((ln: string) => { ensure(14); doc.text(ln, M, y); y += 14; });
+      doc.setTextColor(20, 20, 20);
+    }
+  }
+
+  // ====== DIFERENCIAL GEP ======
+  if (orc.diferencial && orc.diferencial.trim()) {
+    y += Math.max(8, sp(8));
+    drawSectionHeader("DIFERENCIAL GEP");
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
+    const lhD = LH(FS.body);
+    const dl = doc.splitTextToSize(orc.diferencial.trim().slice(0, 400), W - M * 2) as string[];
+    dl.forEach((ln) => { ensure(lhD); doc.text(ln, M, y); y += lhD; });
   }
 
   // ====== PRAZO + OBSERVAÇÕES ======
