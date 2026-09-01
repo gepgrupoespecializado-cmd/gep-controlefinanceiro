@@ -16,7 +16,13 @@ import {
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
-import { db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel, type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento } from "@/lib/store";
+import { ListaEditavel } from "@/components/lista-editavel";
+import {
+  db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel,
+  UNIDADES_ORCAMENTO, VALIDADE_OPCOES, CONDICOES_PADRAO, NAO_INCLUSO_SUGESTOES,
+  DIFERENCIAL_PADRAO, ESCOPO_MODELOS,
+  type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento,
+} from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
 import { gerarOrcamentoPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
 import { toast } from "sonner";
