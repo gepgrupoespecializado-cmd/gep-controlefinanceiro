@@ -92,7 +92,8 @@ function OrcamentosPage() {
     setDescricaoServicos(""); setValidadeDias(7);
     setFormasPagamento(["pix", "dinheiro", "debito", "credito"]);
     setClienteBusca("");
-    setItens([{ descricao: "", quantidade: 1, valorUnit: 0 }]);
+    setItens([{ descricao: "", quantidade: 1, valorUnit: 0, unidade: "Serviço" }]);
+    setEscopo([]); setNaoIncluso([]); setCondicoes(CONDICOES_PADRAO); setDiferencial(DIFERENCIAL_PADRAO);
   }
   function abrirNovo() { resetForm(); setOpen(true); }
   function abrirEdicao(o: Orcamento) {
@@ -100,6 +101,10 @@ function OrcamentosPage() {
     setObs(o.observacoes ?? ""); setStatus(o.status); setItens(o.itens.map((i) => ({ ...i })));
     setDescricaoServicos(o.descricaoServicos ?? ""); setValidadeDias(o.validadeDias ?? 7);
     setFormasPagamento(o.formasPagamento?.length ? o.formasPagamento : ["pix", "dinheiro", "debito", "credito"]);
+    setEscopo(o.escopo ?? []);
+    setNaoIncluso(o.naoIncluso ?? []);
+    setCondicoes(o.condicoes ?? []);
+    setDiferencial(o.diferencial ?? "");
     setOpen(true);
   }
 
