@@ -391,12 +391,13 @@ function renderOrcamentoPDF(
 
   // ====== FORMAS DE PAGAMENTO ======
   {
-    drawSectionHeader("FORMAS DE PAGAMENTO");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     const lhP = LH(FS.body);
     const formas = (orc.formasPagamento && orc.formasPagamento.length
       ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
       : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
+    // Mantém título, chamada e a lista completa na mesma página
+    drawSectionHeader("FORMAS DE PAGAMENTO", lhP * (formas.length + 1));
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
     ensure(lhP);
     doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
     y += lhP;
