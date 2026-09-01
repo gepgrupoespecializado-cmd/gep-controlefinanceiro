@@ -50,8 +50,13 @@ function OrcamentosPage() {
   const [clienteBusca, setClienteBusca] = useState("");
   const [status, setStatus] = useState<OrcamentoStatus>("rascunho");
   const [itens, setItens] = useState<OrcamentoItem[]>([
-    { descricao: "", quantidade: 1, valorUnit: 0 },
+    { descricao: "", quantidade: 1, valorUnit: 0, unidade: "Serviço" },
   ]);
+  // Proposta comercial (novo modelo)
+  const [escopo, setEscopo] = useState<string[]>([]);
+  const [naoIncluso, setNaoIncluso] = useState<string[]>([]);
+  const [condicoes, setCondicoes] = useState<string[]>(CONDICOES_PADRAO);
+  const [diferencial, setDiferencial] = useState(DIFERENCIAL_PADRAO);
 
   // Recebe rascunho vindo da Calculadora de Precificação
   useEffect(() => {
