@@ -109,7 +109,7 @@ function OrcamentosPage() {
   }
 
   function adicionarItem() {
-    setItens([...itens, { descricao: "", quantidade: 1, valorUnit: 0 }]);
+    setItens([...itens, { descricao: "", quantidade: 1, valorUnit: 0, unidade: "Serviço" }]);
   }
   function atualizarItem(idx: number, patch: Partial<OrcamentoItem>) {
     setItens(itens.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
