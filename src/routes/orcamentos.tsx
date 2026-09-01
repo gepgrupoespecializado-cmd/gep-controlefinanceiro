@@ -139,21 +139,30 @@ function OrcamentosPage() {
   }, [data.clientes, clienteBusca]);
 
   function salvar() {
-    if (!clienteId) return toast.error("Selecione um cliente");
-    if (itens.length === 0 || itens.some((i) => !i.descricao.trim())) {
-      return toast.error("Adicione ao menos um item com descrição");
+    const faltando: string[] = [];
+    if (!clienteId) faltando.push("Cliente");
+    if (itens.length === 0 || itens.some((i) => !i.descricao.trim())) faltando.push("Serviço");
+    if (itens.every((i) => i.quantidade * i.valorUnit <= 0)) faltando.push("Valor");
+    if (escopo.filter((s) => s.trim()).length === 0) faltando.push("Escopo do serviço");
+    if (formasPagamento.length === 0) faltando.push("Forma de pagamento");
+    if (!validadeDias || validadeDias < 1) faltando.push("Validade");
+    if (faltando.length) {
+      return toast.error("Complete as informações obrigatórias antes de gerar o orçamento.", {
+        description: `Faltando: ${faltando.join(", ")}.`,
+      });
     }
-    if (!descricaoServicos.trim()) {
-      return toast.error("Informe a descrição dos serviços a serem prestados");
-    }
-    if (formasPagamento.length === 0) {
-      return toast.error("Selecione ao menos uma forma de pagamento");
-    }
+    const payload = {
+      clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias, formasPagamento,
+      escopo: escopo.filter((s) => s.trim()),
+      naoIncluso: naoIncluso.filter((s) => s.trim()),
+      condicoes: condicoes.filter((s) => s.trim()),
+      diferencial: diferencial.trim(),
+    };
     if (editId) {
-      db.updateOrcamento(editId, { clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias, formasPagamento });
+      db.updateOrcamento(editId, payload);
       toast.success("Orçamento atualizado");
     } else {
-      db.addOrcamento({ clienteId, itens, prazo, observacoes: obs, status, descricaoServicos, validadeDias, formasPagamento });
+      db.addOrcamento(payload);
       toast.success("Orçamento criado");
     }
     setOpen(false); resetForm();
@@ -166,11 +175,13 @@ function OrcamentosPage() {
     if (!o) return;
     const faltas: string[] = [];
     if (!data.empresa.nome) faltas.push("Nome da empresa");
-    if (!o.descricaoServicos?.trim()) faltas.push("Descrição dos serviços");
-    if (!o.itens.length || o.itens.some((i) => !i.descricao.trim())) faltas.push("Itens do orçamento");
+    if (!o.escopo?.length && !o.descricaoServicos?.trim()) faltas.push("Escopo do serviço");
+    if (!o.itens.length || o.itens.some((i) => !i.descricao.trim())) faltas.push("Serviço");
     if (!o.clienteId) faltas.push("Cliente");
     if (faltas.length) {
-      toast.error(`Existem informações obrigatórias não preenchidas: ${faltas.join(", ")}.`);
+      toast.error("Complete as informações obrigatórias antes de gerar o orçamento.", {
+        description: `Faltando: ${faltas.join(", ")}.`,
+      });
       return;
     }
     const cli = data.clientes.find((c) => c.id === o.clienteId);
@@ -179,19 +190,25 @@ function OrcamentosPage() {
     const filename = `ORC-${padNum(o.numero)}.pdf`;
     if (action === "download") baixarPDF(doc, filename);
     else {
-      const tot = totalOrcamento(o);
       const { vencimento } = validadeOrcamento(o);
-      const partes = [
-        `*Orçamento ORC-${padNum(o.numero)}*`,
-        `Cliente: ${cli?.nome ?? ""}`,
-        `Total: ${brl(tot)}`,
-        o.prazo ? `Prazo: ${o.prazo}` : "",
-        `Validade até: ${dateBR(vencimento)}`,
+      const primeiroNome = (cli?.nome ?? "").split(" ")[0] || "";
+      const servico = o.itens[0]?.categoria
+        ? `${o.itens[0].categoria} — ${o.itens[0].descricao}`
+        : (o.itens[0]?.descricao ?? "serviço");
+      const txt = [
+        `Olá, ${primeiroNome}. Tudo bem?`,
         "",
-        "*DESCRIÇÃO DOS SERVIÇOS:*",
-        o.descricaoServicos,
-      ].filter(Boolean);
-      const txt = partes.join("\n");
+        `Conforme conversamos, estou encaminhando o orçamento da GEP Serviços Especializados referente ao serviço de ${servico}.`,
+        "",
+        "No documento estão descritos o escopo do serviço, valor e condições da proposta.",
+        "",
+        `Proposta ORC-${padNum(o.numero)} — ${brl(totalOrcamento(o))} — válida até ${dateBR(vencimento)}.`,
+        "",
+        "Fico à disposição para qualquer dúvida.",
+        "",
+        "Eduardo",
+        "GEP Serviços Especializados",
+      ].join("\n");
       const tel = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
       const res = await compartilharPDF({ doc, filename, titulo: `Orçamento ORC-${padNum(o.numero)}`, mensagem: txt, telefone: tel });
       if (res === "shared") toast.success("Orçamento compartilhado");
