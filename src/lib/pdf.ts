@@ -1,41 +1,63 @@
 import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Orcamento, Servico } from "./store";
-import { totalOrcamento, validadeOrcamento, formaPagamentoLabel, pdfTemaPreset, resolvePdfTemaAtivo } from "./store";
+import {
+  totalOrcamento, subtotalOrcamento, validadeOrcamento, formaPagamentoLabel,
+  pdfTemaPreset, resolvePdfTemaAtivo,
+} from "./store";
 import { brl, dateBR, padNum } from "./format";
 
-function hexToRgb(hex: string): [number, number, number] {
+type RGB = [number, number, number];
+
+function hexToRgb(hex: string): RGB {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   if (!m) return [11, 27, 61];
   const n = parseInt(m[1], 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-function lighten([r, g, b]: [number, number, number], pct = 0.85): [number, number, number] {
+function lighten([r, g, b]: RGB, pct = 0.85): RGB {
   return [
     Math.round(r + (255 - r) * pct),
     Math.round(g + (255 - g) * pct),
     Math.round(b + (255 - b) * pct),
   ];
 }
+function detectFmt(dataUrl: string): "PNG" | "JPEG" {
+  return dataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+}
 
-/** Aplica marca d'água centralizada (logo da empresa) com baixa opacidade. */
+/** Dimensões naturais de uma imagem data URL (fallback quadrado). */
+function imgSize(doc: jsPDF, dataUrl: string): { w: number; h: number } {
+  try {
+    const p = doc.getImageProperties(dataUrl);
+    if (p.width > 0 && p.height > 0) return { w: p.width, h: p.height };
+  } catch {}
+  return { w: 1, h: 1 };
+}
+
+/** Desenha imagem "contida" (sem distorção) dentro de uma caixa, centralizada. */
+function drawImageContain(doc: jsPDF, dataUrl: string, x: number, y: number, boxW: number, boxH: number, compression?: "FAST") {
+  const { w, h } = imgSize(doc, dataUrl);
+  const scale = Math.min(boxW / w, boxH / h);
+  const dw = w * scale, dh = h * scale;
+  const dx = x + (boxW - dw) / 2, dy = y + (boxH - dh) / 2;
+  try { doc.addImage(dataUrl, detectFmt(dataUrl), dx, dy, dw, dh, undefined, compression); } catch {}
+  return { x: dx, y: dy, w: dw, h: dh };
+}
+
+/** Marca d'água centralizada (logo da empresa) com baixa opacidade, sem distorção. */
 function aplicarMarcaDagua(doc: jsPDF, empresa: Empresa) {
   if (!empresa.logoDataUrl) return;
   try {
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    const size = Math.min(W, H) * 0.55;
-    const x = (W - size) / 2;
-    const y = (H - size) / 2;
-    const fmt = empresa.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+    const size = Math.min(W, H) * 0.5;
     const anyDoc = doc as unknown as {
       GState: new (o: { opacity: number }) => unknown;
       setGState: (s: unknown) => void;
     };
-    const gsOn = new anyDoc.GState({ opacity: 0.1 });
-    const gsOff = new anyDoc.GState({ opacity: 1 });
-    anyDoc.setGState(gsOn);
-    doc.addImage(empresa.logoDataUrl, fmt, x, y, size, size, undefined, "FAST");
-    anyDoc.setGState(gsOff);
+    anyDoc.setGState(new anyDoc.GState({ opacity: 0.06 }));
+    drawImageContain(doc, empresa.logoDataUrl, (W - size) / 2, (H - size) / 2, size, size, "FAST");
+    anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
   } catch {}
 }
 
@@ -56,17 +78,20 @@ export function gerarOrcamentoPDF(
   overrides: PdfOverrides = {},
 ) {
   // Tenta caber em UMA página A4 reduzindo progressivamente a densidade
-  // (espaçamentos e fontes). Se ainda assim não couber, retorna a versão
-  // mais compacta com quebras de página automáticas.
-  const scales = [1, 0.92, 0.85, 0.78, 0.72];
+  // (espaçamentos, fotos e fontes dentro dos mínimos legíveis). Se ainda
+  // assim não couber, devolve a versão mais compacta com paginação automática.
+  const scales = [1, 0.92, 0.85, 0.78, 0.72, 0.66];
   let last: jsPDF | null = null;
   for (const s of scales) {
     const d = renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, s);
     last = d;
     if (d.getNumberOfPages() === 1) return d;
   }
-  return last ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 0.72);
+  return last ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 0.66);
 }
+
+const EMPRESA_NOME = "GEP FACILITIES";
+const EMPRESA_SUB = "SERVIÇOS ESPECIALIZADOS";
 
 function renderOrcamentoPDF(
   orc: Orcamento,
@@ -79,373 +104,440 @@ function renderOrcamentoPDF(
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
-  // Margens adaptativas (mínimo 30pt)
-  const M = Math.max(30, Math.round(57 * (0.7 + 0.3 * density)));
-  const M_TOP = Math.max(60, Math.round(85 * (0.7 + 0.3 * density)));
+  const M = Math.max(34, Math.round(46 * (0.75 + 0.25 * density)));
+  const CW = W - M * 2; // largura útil
 
+  // ---- Paleta: azul da identidade + branco + cinza claro + texto escuro ----
   const tema = resolvePdfTemaAtivo(empresa, overrides.temaPdf);
   const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
-  // Overrides de cor só aplicam quando o modo mensal está desligado
-  // (para preservar a paleta oficial do mês selecionado/atual).
   const modoMensal = !overrides.temaPdf && (empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual");
-  const brand = hexToRgb(modoMensal ? preset.principal : (overrides.corPdf ?? empresa.corPdf ?? preset.principal));
-  const sec   = hexToRgb(modoMensal ? preset.secundaria : (overrides.corSecundariaPdf ?? empresa.corSecundariaPdf ?? preset.secundaria));
-  const tint  = lighten(brand, 0.88);
+  const brand: RGB = hexToRgb(modoMensal ? preset.principal : (overrides.corPdf ?? empresa.corPdf ?? preset.principal));
+  const tint: RGB = lighten(brand, 0.9);
+  const TEXT: RGB = [28, 35, 50];
+  const MUTED: RGB = [105, 112, 125];
+  const LINE: RGB = [214, 219, 228];
+  const FILL: RGB = [244, 246, 249];
+
   const { emissao, vencimento } = validadeOrcamento(orc);
+  const validadeDias = orc.validadeDias ?? 7;
 
-  // Layout adaptativo: tenta caber em uma página, comprimindo espaçamentos
-  // sem reduzir a fonte abaixo de 11pt.
-  const BOTTOM_LIMIT = H - M - 30; // reservado para rodapé
-  let y = 0;
-  const sp = (n: number) => Math.max(2, Math.round(n * density));
-  // Escala tipográfica: mantém mínimos legíveis em impressão A4
-  const fs = (base: number, min: number) => Math.max(min, Math.round(base * (0.85 + 0.15 * density)));
+  // ---- Tipografia (hierarquia: 16 / 13 / 11-12 / 9-10) ----
+  const fs = (base: number, min: number) => Math.max(min, +(base * (0.82 + 0.18 * density)).toFixed(1));
   const FS = {
-    title: fs(18, 14),
-    subtitle: fs(14, 12),
-    body: fs(12, 10),
-    footer: fs(10, 9),
-    miniHeader: fs(11, 9),
+    title: fs(16, 13),
+    section: fs(13, 11),
+    body: fs(11.5, 9.5),
+    small: fs(10, 8.5),
+    footer: fs(9.5, 8),
   };
-  // Espaçamento entre linhas de texto corrido (1.3 * fonte)
-  const LH = (size: number) => Math.round(size * 1.3 * density);
-  const SECTION_HEADER_H = 30;
-  const SECTION_GAP = 16;
-  const SECTION_PAD_X = 10;
+  const sp = (n: number) => Math.max(2, Math.round(n * density));
+  const LH = (size: number) => +(size * 1.35 * density + size * 0.1).toFixed(1);
 
-  // Quando verdadeiro, o cabeçalho da tabela de itens é redesenhado a cada
-  // nova página (lista de serviços dinâmica, sem limite de quantidade).
+  const FOOTER_H = 58;
+  const BOTTOM = H - M - FOOTER_H;
+  let y = 0;
   let repeatItemsHeader = false;
 
-  /** Garante espaço; se não couber, abre nova página e redesenha mini-header. */
+  const setText = (c: RGB) => doc.setTextColor(c[0], c[1], c[2]);
+  const setFill = (c: RGB) => doc.setFillColor(c[0], c[1], c[2]);
+  const setDraw = (c: RGB) => doc.setDrawColor(c[0], c[1], c[2]);
+
+  /** Garante espaço; se não couber, abre nova página (com cabeçalho reduzido). */
   function ensure(space: number) {
-    if (y + space > BOTTOM_LIMIT) {
+    if (y + space > BOTTOM) {
       drawFooter();
       doc.addPage();
       aplicarMarcaDagua(doc, empresa);
-      y = M_TOP;
       drawMiniHeader();
       if (repeatItemsHeader) drawItemsHeader();
     }
   }
 
-
   function drawMiniHeader() {
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(0, 0, W, 18, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.miniHeader);
-    doc.text(`Pág. ${doc.getNumberOfPages()}`, W - M, 12, { align: "right" });
-    doc.setTextColor(20, 20, 20);
-    y = M_TOP;
+    setFill(brand); doc.rect(0, 0, W, 4, "F");
+    setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
+    doc.text(`${EMPRESA_NOME} · Orçamento Nº ${padNum(orc.numero)} · continuação`, M, 20);
+    setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, 26, W - M, 26);
+    y = 40;
+    setText(TEXT);
   }
 
   function drawFooter() {
-    const fy = H - 52;
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-    doc.text("GEP SERVIÇOS ESPECIALIZADOS LTDA", W / 2, fy, { align: "center" });
-    doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
-    doc.text("Responsável: Eduardo Pennicha", W / 2, fy + 12, { align: "center" });
-    doc.text("Todos os direitos reservados.", W / 2, fy + 24, { align: "center" });
-    doc.setTextColor(20, 20, 20);
+    const fy = H - M - FOOTER_H + 14;
+    setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, fy - 8, W - M, fy - 8);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer + 0.5); setText(brand);
+    doc.text(EMPRESA_NOME, W / 2, fy + 2, { align: "center" });
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer); setText(MUTED);
+    doc.text("Serviços Especializados", W / 2, fy + 12, { align: "center" });
+    const contato = [
+      (empresa.telefone || empresa.whatsapp) && `Telefone/WhatsApp: ${[empresa.telefone, empresa.whatsapp].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" / ")}`,
+      empresa.email && `E-mail: ${empresa.email}`,
+      empresa.endereco && `${empresa.endereco}`,
+    ].filter(Boolean).join("   ·   ");
+    let ly = fy + 23;
+    if (contato) {
+      const lines = doc.splitTextToSize(contato, CW) as string[];
+      lines.slice(0, 2).forEach((ln) => { doc.text(ln, W / 2, ly, { align: "center" }); ly += 10; });
+    }
+    if (empresa.cnpj) { doc.setFont("helvetica", "bold"); doc.text(`CNPJ: ${empresa.cnpj}`, W / 2, ly, { align: "center" }); }
+    const pages = doc.getNumberOfPages();
+    if (pages > 1) {
+      doc.setFont("helvetica", "normal");
+      doc.text(`Página ${pages}`, W - M, fy + 2, { align: "right" });
+    }
+    setText(TEXT);
   }
 
-  /**
-   * Desenha uma barra azul de seção com altura fixa e devolve o cursor já
-   * posicionado abaixo do cabeçalho, com folga suficiente para o conteúdo.
-   */
-  function drawSectionHeader(title: string, minContentSpace = LH(FS.body)) {
-    ensure(SECTION_HEADER_H + SECTION_GAP + minContentSpace);
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y, W - M * 2, SECTION_HEADER_H, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(FS.subtitle);
-    doc.text(title, M + SECTION_PAD_X, y + SECTION_HEADER_H / 2 + FS.subtitle * 0.35);
-    doc.setTextColor(20, 20, 20);
-    y += SECTION_HEADER_H + SECTION_GAP;
+  /** Título de seção (13pt, azul) com linha fina; evita título órfão no fim da página. */
+  function section(title: string, minContent = LH(FS.body) * 2) {
+    const h = FS.section + sp(10);
+    ensure(h + minContent);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.section); setText(brand);
+    doc.text(title, M, y + FS.section);
+    setDraw(brand); doc.setLineWidth(1.1); doc.line(M, y + FS.section + 4, M + 26, y + FS.section + 4);
+    setDraw(LINE); doc.setLineWidth(0.5); doc.line(M + 26, y + FS.section + 4, W - M, y + FS.section + 4);
+    y += h + sp(4);
+    setText(TEXT); doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   }
 
-  // ====== CABEÇALHO ======
-  const headerH = Math.max(78, Math.round(96 * (0.8 + 0.2 * density)));
-  // Marca d'água (desenhada antes do cabeçalho para ficar ao fundo)
+  /** "Rótulo: valor" com quebra automática; devolve altura consumida. */
+  function labelValue(label: string, value: string, x: number, w: number, size = FS.body) {
+    doc.setFontSize(size);
+    doc.setFont("helvetica", "bold"); setText(TEXT);
+    const lw = doc.getTextWidth(`${label}: `);
+    doc.text(`${label}:`, x, y);
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(value, Math.max(40, w - lw)) as string[];
+    lines.forEach((ln, i) => {
+      if (i > 0) { y += LH(size); ensure(0); }
+      doc.text(ln, x + lw, y);
+    });
+    y += LH(size);
+  }
+
+  function paragraph(text: string, size = FS.body, color: RGB = TEXT, indent = 0) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(size); setText(color);
+    const blocos = text.replace(/\r/g, "").split("\n");
+    for (const b of blocos) {
+      const lines = b.length ? (doc.splitTextToSize(b, CW - indent) as string[]) : [""];
+      for (const ln of lines) { ensure(LH(size)); doc.text(ln, M + indent, y); y += LH(size); }
+    }
+    setText(TEXT);
+  }
+
+  function bullets(items: string[], size = FS.body, color: RGB = TEXT) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(size); setText(color);
+    items.forEach((it) => {
+      const lines = doc.splitTextToSize(it, CW - 14) as string[];
+      lines.forEach((ln, i) => {
+        ensure(LH(size));
+        if (i === 0) doc.text("•", M + 3, y);
+        doc.text(ln, M + 14, y); y += LH(size);
+      });
+    });
+    setText(TEXT);
+  }
+
+  // =====================================================================
+  // 1) CABEÇALHO CORPORATIVO — logo à esquerda, nome à direita, linha fina
+  // =====================================================================
   aplicarMarcaDagua(doc, empresa);
-  doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.rect(0, 0, W, headerH, "F");
-  // faixa secundária
-  doc.setFillColor(sec[0], sec[1], sec[2]);
-  doc.rect(0, headerH, W, 3, "F");
-
+  const headTop = M - 6;
+  const logoH = Math.round(44 * (0.85 + 0.15 * density));
+  let headH = logoH;
   if (empresa.logoDataUrl) {
-    try {
-      const fmt = empresa.logoDataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
-      const ls = Math.min(60, headerH - 20);
-      doc.addImage(empresa.logoDataUrl, fmt, M, 14, ls, ls);
-    } catch {}
+    drawImageContain(doc, empresa.logoDataUrl, M, headTop, 130, logoH);
+  } else {
+    // Monograma discreto quando não há logo cadastrada
+    setFill(brand); doc.roundedRect(M, headTop, logoH, logoH, 6, 6, "F");
+    setText([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(logoH * 0.42);
+    doc.text("GEP", M + logoH / 2, headTop + logoH / 2 + logoH * 0.15, { align: "center" });
   }
-  const headX = empresa.logoDataUrl ? M + 72 : M;
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", headX, 32, { maxWidth: W - headX - M });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  let hy = 48;
-  const headInfo = [
-    empresa.cnpj && `CNPJ: ${empresa.cnpj}`,
-    [empresa.telefone && `Tel: ${empresa.telefone}`, empresa.whatsapp && `WhatsApp: ${empresa.whatsapp}`].filter(Boolean).join("  |  "),
-    empresa.email && `E-mail: ${empresa.email}`,
-    empresa.endereco,
-  ].filter(Boolean) as string[];
-  headInfo.forEach((l) => {
-    const lines = doc.splitTextToSize(l, W - headX - M);
-    lines.forEach((ln: string) => { doc.text(ln, headX, hy); hy += 11; });
-  });
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title); setText(brand);
+  doc.text(EMPRESA_NOME, W - M, headTop + logoH / 2 - 2, { align: "right" });
+  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.small); setText(MUTED);
+  doc.text(EMPRESA_SUB, W - M, headTop + logoH / 2 + FS.small + 2, { align: "right" });
+  headH = logoH + sp(10);
+  setDraw(LINE); doc.setLineWidth(0.7); doc.line(M, headTop + headH, W - M, headTop + headH);
+  y = headTop + headH + sp(16);
 
-  y = Math.max(headerH + 12, M_TOP);
-  doc.setTextColor(20, 20, 20);
+  // =====================================================================
+  // 2) IDENTIFICAÇÃO DO DOCUMENTO
+  // =====================================================================
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title); setText(TEXT);
+  doc.text(`ORÇAMENTO Nº ${padNum(orc.numero)}`, M, y + FS.title - 2);
+  const versao = orc.versao ?? 1;
+  if (versao > 1) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.small); setText(MUTED);
+    doc.text(`Versão ${String(versao).padStart(2, "0")}`, M, y + FS.title + FS.small + 2);
+  }
+  doc.setFontSize(FS.body); setText(TEXT);
+  doc.setFont("helvetica", "bold"); const dl = doc.getTextWidth("Validade: ");
+  const rx = W - M;
+  doc.setFont("helvetica", "normal");
+  const dataTxt = dateBR(emissao), valTxt = `${validadeDias} dias`;
+  const vw = Math.max(doc.getTextWidth(dataTxt), doc.getTextWidth(valTxt));
+  doc.setFont("helvetica", "bold");
+  doc.text("Data:", rx - vw - dl, y + FS.body - 1);
+  doc.text("Validade:", rx - vw - dl, y + FS.body * 2 + 3);
+  doc.setFont("helvetica", "normal");
+  doc.text(dataTxt, rx, y + FS.body - 1, { align: "right" });
+  doc.text(valTxt, rx, y + FS.body * 2 + 3, { align: "right" });
+  y += FS.body * 2 + sp(18);
 
-  // ====== TÍTULO + EMISSÃO + VALIDADE (bloco único) ======
-  doc.setFillColor(tint[0], tint[1], tint[2]);
-  doc.roundedRect(M, y, W - M * 2, 38, 5, 5, "F");
-  doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text(`Orçamento Nº ORC-${padNum(orc.numero)}`, M + 10, y + 16);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-  doc.setTextColor(60, 60, 60);
-  doc.text(`Emissão: ${dateBR(emissao)}`, M + 10, y + 30);
-  doc.text(
-    `Validade da proposta: ${orc.validadeDias ?? 7} dias — até ${dateBR(vencimento)}`,
-    W - M - 10, y + 30, { align: "right" },
-  );
-  doc.setTextColor(20, 20, 20);
-  y += 50;
+  // =====================================================================
+  // 3) DADOS DO CLIENTE — bloco compacto em duas colunas
+  // =====================================================================
+  section("DADOS DO CLIENTE");
+  {
+    const colW = (CW - 14) / 2;
+    const c = cliente;
+    const enderecoCompleto = c?.endereco || [
+      [c?.rua, c?.numero].filter(Boolean).join(", "), c?.bairro,
+      [c?.cidade, c?.estado].filter(Boolean).join("/"), c?.cep && `CEP ${c.cep}`,
+    ].filter(Boolean).join(" — ");
+    const boxTop = y - FS.body - sp(2);
+    y += sp(2);
+    const startY = y;
+    // Coluna esquerda
+    labelValue("Cliente", c?.nome ?? "—", M + 8, colW);
+    if (c?.documento) labelValue("CPF/CNPJ", c.documento, M + 8, colW);
+    const leftEnd = y;
+    // Coluna direita
+    y = startY;
+    const tel = [c?.telefone, c?.whatsapp].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" / ");
+    if (tel) labelValue("Telefone", tel, M + 8 + colW + 14, colW);
+    if (c?.email) labelValue("E-mail", c.email, M + 8 + colW + 14, colW);
+    y = Math.max(leftEnd, y);
+    if (enderecoCompleto) labelValue("Endereço", enderecoCompleto, M + 8, CW - 16);
+    // Fundo cinza claro discreto atrás do bloco (desenhado por trás via ordem: usamos borda lateral)
+    setDraw(brand); doc.setLineWidth(1.5); doc.line(M + 1, boxTop + FS.body + sp(2), M + 1, y - LH(FS.body) + 4);
+    y += sp(8);
+  }
 
-  // ====== CLIENTE ======
-  const cliLines = cliente
-    ? [
-        `Nome: ${cliente.nome}`,
-        cliente.telefone && `Telefone: ${cliente.telefone}`,
-        cliente.whatsapp && `WhatsApp: ${cliente.whatsapp}`,
-        cliente.email && `E-mail: ${cliente.email}`,
-        cliente.endereco && `Endereço: ${cliente.endereco}`,
-      ].filter(Boolean) as string[]
-    : ["Cliente não informado"];
-  drawSectionHeader("CLIENTE");
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-  cliLines.forEach((l) => {
-    const lines = doc.splitTextToSize(l, W - M * 2);
-    lines.forEach((ln: string) => { ensure(LH(FS.body)); doc.text(ln, M, y); y += LH(FS.body); });
-  });
-  y += sp(6);
+  // =====================================================================
+  // 4) SERVIÇO SOLICITADO — serviço principal + descrição (obrigatória)
+  // =====================================================================
+  const primeiro = orc.itens[0];
+  const nomeItem = (it: typeof primeiro) => {
+    const base = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
+    return it.categoria ? `${it.categoria} — ${base}` : base;
+  };
+  const escopoItens = (orc.escopo ?? []).filter((s) => s && s.trim());
+  const descricaoLivre = (orc.descricaoServicos ?? "").trim();
+  const itemEscopos = orc.itens.map((it) => it.escopo?.trim()).filter(Boolean) as string[];
+  section("SERVIÇO SOLICITADO");
+  {
+    const servicoTitulo = orc.itens.length === 1
+      ? nomeItem(primeiro)
+      : orc.itens.map(nomeItem).join("; ");
+    labelValue("Serviço", servicoTitulo, M, CW);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body); setText(TEXT);
+    ensure(LH(FS.body)); doc.text("Descrição:", M, y); y += LH(FS.body);
+    if (escopoItens.length) bullets(escopoItens);
+    else if (descricaoLivre) paragraph(descricaoLivre);
+    else if (itemEscopos.length) bullets(itemEscopos);
+    else paragraph("—", FS.body, MUTED);
+    if (escopoItens.length && descricaoLivre) { y += sp(2); paragraph(descricaoLivre, FS.small, MUTED); }
+    const naoIncluso = (orc.naoIncluso ?? []).filter((s) => s && s.trim());
+    if (naoIncluso.length) {
+      y += sp(3);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(MUTED);
+      ensure(LH(FS.small)); doc.text("Não incluso:", M, y); y += LH(FS.small);
+      bullets(naoIncluso, FS.small, MUTED);
+    }
+    const condicoes = (orc.condicoes ?? []).filter((s) => s && s.trim());
+    if (condicoes.length) {
+      y += sp(3);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(MUTED);
+      ensure(LH(FS.small)); doc.text("Condições do serviço:", M, y); y += LH(FS.small);
+      bullets(condicoes, FS.small, MUTED);
+    }
+    if (orc.diferencial && orc.diferencial.trim()) {
+      y += sp(3);
+      doc.setFont("helvetica", "italic"); doc.setFontSize(FS.small); setText(MUTED);
+      const dl2 = doc.splitTextToSize(orc.diferencial.trim(), CW) as string[];
+      dl2.forEach((ln) => { ensure(LH(FS.small)); doc.text(ln, M, y); y += LH(FS.small); });
+      doc.setFont("helvetica", "normal"); setText(TEXT);
+    }
+    y += sp(8);
+  }
 
-  // ====== SERVIÇO / ESCOPO / INVESTIMENTO (lista dinâmica, sem limite) ======
-  const HEADER_H = 24;
-  const PAD_X = 10;
-  const PAD_Y = 8;
-  const MIN_ROW_H = 32;
-  const INV_W = 100;                       // coluna INVESTIMENTO
-  const COL_SERV_W = Math.round((W - M * 2 - INV_W) * 0.42);
-  const COL_ESC_X = M + COL_SERV_W + PAD_X;
-  const COL_ESC_W = W - M * 2 - INV_W - COL_SERV_W - PAD_X * 2;
+  // =====================================================================
+  // 5) TABELA DE SERVIÇOS — quando houver mais de um item (ou quantidade > 1)
+  // =====================================================================
+  const usarTabela = orc.itens.length > 1 || orc.itens.some((i) => i.quantidade !== 1);
+  const PAD = sp(8);
+  const ROW_H = Math.max(18, LH(FS.body) + PAD * 2 - 6);
+  const cTot = 84, cUnit = 84, cQtd = 44;
+  const xTot = W - M, xUnit = xTot - cTot, xQtd = xUnit - cUnit, cServW = CW - cTot - cUnit - cQtd - PAD;
 
   function drawItemsHeader() {
-    doc.setFillColor(brand[0], brand[1], brand[2]);
-    doc.rect(M, y, W - M * 2, HEADER_H, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-    const headBaseline = y + HEADER_H / 2 + FS.body * 0.35;
-    doc.text("SERVIÇO", M + PAD_X, headBaseline);
-    doc.text("ESCOPO", COL_ESC_X, headBaseline);
-    doc.text("INVESTIMENTO", W - M - PAD_X, headBaseline, { align: "right" });
-    doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "normal");
-    y += HEADER_H;
+    const h = LH(FS.small) + PAD;
+    setFill(FILL); doc.rect(M, y, CW, h, "F");
+    setDraw(brand); doc.setLineWidth(1); doc.line(M, y + h, W - M, y + h);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
+    const by = y + h / 2 + FS.small * 0.35;
+    doc.text("SERVIÇO", M + PAD, by);
+    doc.text("QTD.", xQtd + cQtd - PAD, by, { align: "right" });
+    doc.text("VALOR UNIT.", xUnit + cUnit - PAD, by, { align: "right" });
+    doc.text("TOTAL", xTot - PAD, by, { align: "right" });
+    setText(TEXT); doc.setFont("helvetica", "normal");
+    y += h;
   }
 
-  ensure(HEADER_H + MIN_ROW_H);
-  drawItemsHeader();
-  repeatItemsHeader = true;
-
-  doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-  const lhItem = LH(FS.body);
-  orc.itens.forEach((it, idx) => {
-    const base = it.descricao || servicos.find((s) => s.id === it.servicoId)?.nome || "Serviço";
-    const nome = it.categoria ? `${it.categoria} — ${base}` : base;
-    const unidade = it.unidade && it.unidade !== "Serviço" ? it.unidade : "";
-    const qtdInfo = unidade
-      ? `${it.quantidade} ${unidade}`
-      : (it.quantidade > 1 ? `${it.quantidade} un.` : "");
-    const escopoTxt = [it.escopo, qtdInfo].filter(Boolean).join(" — ");
-
-    const servLines = doc.splitTextToSize(nome, COL_SERV_W) as string[];
-    const escLines = escopoTxt ? (doc.splitTextToSize(escopoTxt, COL_ESC_W) as string[]) : [];
-    const contentH = Math.max(servLines.length, escLines.length || 1) * lhItem;
-    const rowH = Math.max(MIN_ROW_H, contentH + PAD_Y * 2);
-    ensure(rowH);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    if (idx % 2 === 1) {
-      doc.setFillColor(248, 248, 250);
-      doc.rect(M, y, W - M * 2, rowH, "F");
-    }
-    const top = y + (rowH - contentH) / 2 + FS.body * 0.85;
-    servLines.forEach((ln, i) => doc.text(ln, M + PAD_X, top + i * lhItem));
-    doc.setTextColor(90, 90, 90); doc.setFontSize(FS.footer);
-    escLines.forEach((ln, i) => doc.text(ln, COL_ESC_X, top + i * lhItem));
-    doc.setTextColor(20, 20, 20); doc.setFontSize(FS.body);
-    doc.setFont("helvetica", "bold");
-    doc.text(brl(it.quantidade * it.valorUnit), W - M - PAD_X, y + rowH / 2 + FS.body * 0.35, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    y += rowH;
-  });
-  repeatItemsHeader = false;
-  y += sp(4);
-
-
-  // ====== INVESTIMENTO (destaque financeiro) ======
-  ensure(56);
-  doc.setDrawColor(sec[0], sec[1], sec[2]); doc.setLineWidth(1);
-  doc.line(M, y, W - M, y); y += sp(12);
-  const BOX_H = 42;
-  doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.roundedRect(M, y, W - M * 2, BOX_H, 5, 5, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer);
-  doc.text("INVESTIMENTO", M + 12, y + 16);
-  doc.setFont("helvetica", "normal");
-  doc.text(orc.itens.length > 1 ? "Valor total da proposta" : "Valor do serviço", M + 12, y + 31);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(Math.max(16, FS.title + 2));
-  doc.text(brl(totalOrcamento(orc)), W - M - 12, y + 28, { align: "right" });
-  doc.setTextColor(20, 20, 20);
-  y += BOX_H + 16;
-
-  // ====== ESCOPO DO SERVIÇO ======
-  const escopoItens = (orc.escopo ?? []).filter((s) => s && s.trim());
-  if (escopoItens.length) {
-    drawSectionHeader("ESCOPO DO SERVIÇO");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    const lhE = LH(FS.body);
-    escopoItens.forEach((item) => {
-      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
-      lines.forEach((ln, i) => {
-        ensure(lhE);
-        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
-        y += lhE;
-      });
-    });
-    y += sp(6);
-  }
-
-  // ====== NÃO INCLUSO ======
-  const naoIncluso = (orc.naoIncluso ?? []).filter((s) => s && s.trim());
-  if (naoIncluso.length) {
-    drawSectionHeader("NÃO INCLUSO");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    const lhN = LH(FS.body);
-    naoIncluso.forEach((item) => {
-      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
-      lines.forEach((ln, i) => {
-        ensure(lhN);
-        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
-        y += lhN;
-      });
-    });
-    y += sp(6);
-  }
-
-  // ====== DESCRIÇÃO DOS SERVIÇOS (modelo antigo / complemento) ======
-  if (!escopoItens.length && orc.descricaoServicos && orc.descricaoServicos.trim()) {
-    drawSectionHeader("DESCRIÇÃO DOS SERVIÇOS CONTRATADOS");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    const lhDesc = LH(FS.body);
-    const blocos = orc.descricaoServicos.replace(/\r/g, "").split("\n");
-    for (const bloco of blocos) {
-      const lines = bloco.length
-        ? doc.splitTextToSize(bloco, W - M * 2)
-        : [""];
-      for (const ln of lines as string[]) {
-        ensure(lhDesc);
-        doc.text(ln, M, y);
-        y += lhDesc;
+  if (usarTabela) {
+    section("TABELA DE SERVIÇOS", ROW_H * 2);
+    drawItemsHeader();
+    repeatItemsHeader = true;
+    doc.setFontSize(FS.body);
+    orc.itens.forEach((it) => {
+      const nome = nomeItem(it);
+      const unidade = it.unidade && it.unidade !== "Serviço" ? ` ${it.unidade}` : "";
+      const lines = doc.splitTextToSize(nome, cServW - PAD) as string[];
+      const sub = it.escopo?.trim() ? (doc.splitTextToSize(it.escopo.trim(), cServW - PAD) as string[]) : [];
+      const contentH = lines.length * LH(FS.body) + sub.length * LH(FS.small);
+      const rowH = Math.max(ROW_H, contentH + PAD * 2 - 4);
+      ensure(rowH);
+      let ty = y + PAD + FS.body * 0.8 - 2;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body); setText(TEXT);
+      lines.forEach((ln) => { doc.text(ln, M + PAD, ty); ty += LH(FS.body); });
+      if (sub.length) {
+        doc.setFontSize(FS.small); setText(MUTED);
+        sub.forEach((ln) => { doc.text(ln, M + PAD, ty - 2); ty += LH(FS.small); });
+        setText(TEXT); doc.setFontSize(FS.body);
       }
-    }
-    y += sp(6);
-  }
-
-  // ====== CONDIÇÕES DO SERVIÇO ======
-  const condicoes = (orc.condicoes ?? []).filter((s) => s && s.trim());
-  if (condicoes.length) {
-    drawSectionHeader("CONDIÇÕES DO SERVIÇO");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-    doc.setTextColor(90, 90, 90);
-    const lhC = Math.max(12, Math.round(FS.footer * 1.35 * density));
-    condicoes.forEach((item) => {
-      const lines = doc.splitTextToSize(item, W - M * 2 - 16) as string[];
-      lines.forEach((ln, i) => {
-        ensure(lhC);
-        doc.text(i === 0 ? `•  ${ln}` : `    ${ln}`, M, y);
-        y += lhC;
-      });
+      const my = y + rowH / 2 + FS.body * 0.35;
+      doc.text(`${it.quantidade}${unidade}`, xQtd + cQtd - PAD, my, { align: "right" });
+      doc.text(brl(it.valorUnit), xUnit + cUnit - PAD, my, { align: "right" });
+      doc.setFont("helvetica", "bold");
+      doc.text(brl(it.quantidade * it.valorUnit), xTot - PAD, my, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      y += rowH;
+      setDraw(LINE); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
     });
-    doc.setTextColor(20, 20, 20);
-    y += sp(6);
+    repeatItemsHeader = false;
+    y += sp(10);
   }
 
-  // ====== FORMAS DE PAGAMENTO ======
+  // =====================================================================
+  // 6) VALOR TOTAL — destaque, mantido junto às informações principais
+  // =====================================================================
   {
-    const lhP = LH(FS.body);
-    const formas = (orc.formasPagamento && orc.formasPagamento.length
-      ? orc.formasPagamento.map((f) => formaPagamentoLabel[f])
-      : ["PIX", "Dinheiro", "Cartão de Débito", "Cartão de Crédito"]);
-    // Mantém título, chamada e a lista completa na mesma página
-    drawSectionHeader("FORMAS DE PAGAMENTO", lhP * (formas.length + 1));
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    ensure(lhP);
-    doc.text("Para sua comodidade, disponibilizamos as seguintes formas de pagamento:", M, y);
-    y += lhP;
-    formas.forEach((f) => { ensure(lhP); doc.text(`•  ${f}`, M + 14, y); y += lhP; });
-    if (!orc.formasPagamento?.length || orc.formasPagamento.includes("credito")) {
-      y += 2;
-      const aviso = "Pagamentos no cartão de crédito poderão ter acréscimo referente às taxas da operadora. Consulte as condições de parcelamento no momento da contratação.";
-      doc.setFontSize(FS.footer); doc.setTextColor(110, 110, 110);
-      const av = doc.splitTextToSize(aviso, W - M * 2);
-      av.forEach((ln: string) => { ensure(14); doc.text(ln, M, y); y += 14; });
-      doc.setTextColor(20, 20, 20);
+    const subtotal = subtotalOrcamento(orc);
+    const desconto = Number(orc.desconto) || 0;
+    const total = totalOrcamento(orc);
+    const boxW = Math.min(CW, 250);
+    const linhas = desconto > 0 ? 2 : 0;
+    const boxH = sp(10) + linhas * LH(FS.body) + FS.title + sp(14) + FS.small;
+    ensure(boxH + sp(6));
+    const bx = W - M - boxW;
+    setFill(tint); doc.roundedRect(bx, y, boxW, boxH, 4, 4, "F");
+    setDraw(brand); doc.setLineWidth(1.2); doc.line(bx, y + 2, bx, y + boxH - 2);
+    let ty = y + sp(10) + FS.small;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
+    doc.text("VALOR TOTAL", bx + 12, ty);
+    ty += sp(4);
+    if (desconto > 0) {
+      doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body); setText(TEXT);
+      ty += LH(FS.body);
+      doc.text("Subtotal:", bx + 12, ty); doc.text(brl(subtotal), bx + boxW - 12, ty, { align: "right" });
+      ty += LH(FS.body);
+      doc.text("Desconto:", bx + 12, ty); doc.text(`- ${brl(desconto)}`, bx + boxW - 12, ty, { align: "right" });
+    }
+    ty += FS.title + sp(2);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body); setText(TEXT);
+    doc.text("TOTAL", bx + 12, ty);
+    doc.setFontSize(FS.title + 2); setText(brand);
+    doc.text(brl(total), bx + boxW - 12, ty, { align: "right" });
+    setText(TEXT);
+    y += boxH + sp(14);
+  }
+
+  // =====================================================================
+  // 7) CONDIÇÕES DE PAGAMENTO
+  // =====================================================================
+  {
+    const formas = (orc.formasPagamento ?? []).map((f) => formaPagamentoLabel[f]);
+    if (formas.length || orc.prazo) {
+      section("CONDIÇÕES DE PAGAMENTO", LH(FS.body));
+      if (formas.length) labelValue("Forma de pagamento", formas.join(" / "), M, CW);
+      if (orc.prazo) labelValue("Condição", orc.prazo, M, CW);
+      if (orc.formasPagamento?.includes("credito")) {
+        paragraph("Pagamentos no cartão de crédito podem ter acréscimo referente às taxas da operadora.", FS.small, MUTED);
+      }
+      y += sp(8);
     }
   }
 
-  // ====== DIFERENCIAL GEP ======
-  if (orc.diferencial && orc.diferencial.trim()) {
-    y += Math.max(8, sp(8));
-    drawSectionHeader("DIFERENCIAL GEP");
-    doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
-    const lhD = LH(FS.body);
-    const dl = doc.splitTextToSize(orc.diferencial.trim().slice(0, 400), W - M * 2) as string[];
-    dl.forEach((ln) => { ensure(lhD); doc.text(ln, M, y); y += lhD; });
+  // =====================================================================
+  // 8) AGENDAMENTO — somente quando houver data definida
+  // =====================================================================
+  if (orc.dataPrevista) {
+    section("AGENDAMENTO", LH(FS.body));
+    const [yy, mm, dd] = orc.dataPrevista.split("-");
+    const dataFmt = yy && mm && dd ? `${dd}/${mm}/${yy}` : orc.dataPrevista;
+    const startY = y;
+    labelValue("Data prevista", dataFmt, M, CW / 2);
+    if (orc.horaPrevista) { y = startY; labelValue("Horário", orc.horaPrevista, M + CW / 2, CW / 2); }
+    y += sp(8);
   }
 
-  // ====== PRAZO + OBSERVAÇÕES ======
-  if (orc.prazo || orc.observacoes) {
-    y += Math.max(8, sp(8));
-    if (orc.prazo) {
-      ensure(20);
-      doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-      doc.text("Prazo:", M, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(orc.prazo, M + 56, y);
-      y += sp(18);
+  // =====================================================================
+  // 9) REGISTRO FOTOGRÁFICO — ANTES | DEPOIS com proporção idêntica
+  // =====================================================================
+  const antes = (orc.fotosAntes ?? []).filter(Boolean);
+  const depois = (orc.fotosDepois ?? []).filter(Boolean);
+  if (antes.length || depois.length) {
+    const gap = 12;
+    const cellW = (CW - gap) / 2;
+    const cellH = Math.round(cellW * 0.62 * (0.7 + 0.3 * density));
+    const labelH = LH(FS.small);
+    section("REGISTRO FOTOGRÁFICO", labelH + cellH);
+    const rows = Math.max(antes.length, depois.length);
+    for (let r = 0; r < rows; r++) {
+      ensure(labelH + cellH + sp(8));
+      doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
+      if (antes[r]) doc.text("ANTES", M, y);
+      if (depois[r]) doc.text("DEPOIS", M + cellW + gap, y);
+      y += labelH - 4;
+      [antes[r], depois[r]].forEach((img, i) => {
+        if (!img) return;
+        const x = M + i * (cellW + gap);
+        setFill(FILL); setDraw(LINE); doc.setLineWidth(0.5);
+        doc.roundedRect(x, y, cellW, cellH, 3, 3, "FD");
+        drawImageContain(doc, img, x + 2, y + 2, cellW - 4, cellH - 4, "FAST");
+      });
+      y += cellH + sp(10);
     }
-    if (orc.observacoes) {
-      drawSectionHeader("OBSERVAÇÕES");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(FS.body);
-      const obs = doc.splitTextToSize(orc.observacoes, W - M * 2);
-      const lhO = LH(FS.body);
-      obs.forEach((ln: string) => { ensure(lhO); doc.text(ln, M, y); y += lhO; });
-    }
+    setText(TEXT);
   }
 
-  // ====== RODAPÉ ======
+  // =====================================================================
+  // 10) OBSERVAÇÕES — somente quando houver conteúdo
+  // =====================================================================
+  if (orc.observacoes && orc.observacoes.trim()) {
+    section("OBSERVAÇÕES", LH(FS.body));
+    paragraph(orc.observacoes.trim());
+    y += sp(8);
+  }
+
+  // =====================================================================
+  // 11) VALIDADE — discreta, no fim da proposta
+  // =====================================================================
+  ensure(LH(FS.small) * 2);
+  y += sp(4);
+  doc.setFont("helvetica", "italic"); doc.setFontSize(FS.small); setText(MUTED);
+  doc.text(
+    `Este orçamento é válido por ${validadeDias} dias a partir da data de emissão (até ${dateBR(vencimento)}).`,
+    M, y,
+  );
+  doc.setFont("helvetica", "normal"); setText(TEXT);
+
+  // =====================================================================
+  // 12) RODAPÉ
+  // =====================================================================
   drawFooter();
-
   return doc;
 }
 
