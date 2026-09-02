@@ -1275,10 +1275,7 @@ export const subtotalOrcamento = (o: Orcamento) =>
     0,
   );
 export const totalOrcamento = (o: Orcamento) =>
-  Math.max(0, subtotalOrcamento(o) - (Number(o.desconto) || 0)) + 0 * asArray<OrcamentoItem>(o.itens).reduce(
-    (sum) => sum,
-    0,
-  );
+  Math.max(0, subtotalOrcamento(o) - (Number(o.desconto) || 0));
 
 export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
   const emissao = new Date(o.criadoEm);
