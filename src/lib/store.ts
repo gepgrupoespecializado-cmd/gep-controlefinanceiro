@@ -10,6 +10,8 @@ export interface Cliente {
   telefone?: string;
   whatsapp?: string;
   email?: string;
+  /** CPF ou CNPJ do cliente (exibido no PDF quando informado). */
+  documento?: string;
   endereco?: string;
   cep?: string;
   rua?: string;
@@ -105,6 +107,16 @@ export interface Orcamento {
   condicoes?: string[];
   /** Mensagem curta de diferencial GEP. */
   diferencial?: string;
+  /** Desconto em R$ aplicado sobre o subtotal. */
+  desconto?: number;
+  /** Agendamento previsto (opcional). */
+  dataPrevista?: string; // YYYY-MM-DD
+  horaPrevista?: string; // HH:MM
+  /** Registro fotográfico (data URLs). */
+  fotosAntes?: string[];
+  fotosDepois?: string[];
+  /** Versão do documento — incrementa a cada alteração. */
+  versao?: number;
 }
 
 /** Opções de validade da proposta (dias). */
@@ -561,6 +573,7 @@ function normalizeCliente(c: Record<string, unknown>, now: string): Cliente {
     telefone: asOptionalString(c.telefone),
     whatsapp: asOptionalString(c.whatsapp),
     email: asOptionalString(c.email),
+    documento: asOptionalString(c.documento),
     endereco: asOptionalString(c.endereco),
     cep: asOptionalString(c.cep),
     rua: asOptionalString(c.rua),
@@ -628,6 +641,12 @@ function normalizeOrcamento(o: Record<string, unknown>, now: string): Orcamento 
     naoIncluso: asStringList(o.naoIncluso),
     condicoes: asStringList(o.condicoes),
     diferencial: asOptionalString(o.diferencial),
+    desconto: typeof o.desconto === "number" && Number.isFinite(o.desconto) ? o.desconto : undefined,
+    dataPrevista: asOptionalString(o.dataPrevista),
+    horaPrevista: asOptionalString(o.horaPrevista),
+    fotosAntes: asStringList(o.fotosAntes),
+    fotosDepois: asStringList(o.fotosDepois),
+    versao: asNumber(o.versao, 1),
   };
 }
 
@@ -993,7 +1012,11 @@ export const db = {
   updateOrcamento(id: string, patch: Partial<Orcamento>) {
     const atual = state.orcamentos.find((o) => o.id === id); if (!atual) return;
     const diffs = diffPatch(atual, patch);
-    const novo = { ...atual, ...patch, atualizadoEm: new Date().toISOString() };
+    const novo = {
+      ...atual, ...patch,
+      atualizadoEm: new Date().toISOString(),
+      versao: diffs.length ? (atual.versao ?? 1) + 1 : (atual.versao ?? 1),
+    };
     const nome = `ORC-${String(atual.numero).padStart(6, "0")}`;
     state = { ...state, orcamentos: state.orcamentos.map((o) => o.id === id ? novo : o) };
     diffs.forEach((d) => logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: nome, acao: "editado", ...d }));
@@ -1019,7 +1042,7 @@ export const db = {
     const o = state.orcamentos.find((x) => x.id === id);
     if (!o) return;
     const numero = state.proximoOrcamento;
-    const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString(), status: "rascunho", arquivado: false };
+    const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString(), status: "rascunho", arquivado: false, versao: 1 };
     state = {
       ...state,
       proximoOrcamento: numero + 1,
@@ -1246,11 +1269,13 @@ function sincronizarFinanceiroRelatorio(r: Relatorio) {
   }
 }
 
-export const totalOrcamento = (o: Orcamento) =>
+export const subtotalOrcamento = (o: Orcamento) =>
   asArray<OrcamentoItem>(o.itens).reduce(
     (sum, i) => sum + (Number(i.quantidade) || 0) * (Number(i.valorUnit) || 0),
     0,
   );
+export const totalOrcamento = (o: Orcamento) =>
+  Math.max(0, subtotalOrcamento(o) - (Number(o.desconto) || 0));
 
 export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
   const emissao = new Date(o.criadoEm);
