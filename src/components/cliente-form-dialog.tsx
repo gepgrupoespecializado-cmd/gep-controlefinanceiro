@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 type FormState = Omit<Cliente, "id" | "criadoEm">;
 const empty: FormState = {
-  nome: "", telefone: "", whatsapp: "", email: "",
+  nome: "", telefone: "", whatsapp: "", email: "", documento: "",
   endereco: "", cep: "", rua: "", numero: "", complemento: "", bairro: "", cidade: "", estado: "",
   observacoes: "", frequencia: "avulso",
 };
@@ -92,7 +92,10 @@ export function ClienteFormDialog({ open, onOpenChange, onCreated, initialNome, 
             <Field label="Telefone"><Input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} /></Field>
             <Field label="WhatsApp"><Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} /></Field>
           </div>
-          <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="E-mail"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
+            <Field label="CPF/CNPJ"><Input value={form.documento ?? ""} onChange={(e) => setForm({ ...form, documento: e.target.value })} /></Field>
+          </div>
           <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
             <p className="text-xs font-semibold">Endereço</p>
             <div className="grid grid-cols-[1fr_auto] gap-2">
