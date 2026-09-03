@@ -491,10 +491,18 @@ function renderOrcamentoPDF(
   if (antes.length || depois.length) {
     const gap = 12;
     const cellW = (CW - gap) / 2;
-    const cellH = Math.round(cellW * 0.58 * (0.5 + 0.5 * density));
     const labelH = LH(FS.small);
-    section("REGISTRO FOTOGRÁFICO", labelH + cellH);
     const rows = Math.max(antes.length, depois.length);
+    let cellH = Math.round(cellW * 0.58 * (0.5 + 0.5 * density));
+    // Distribuição inteligente: com uma única linha de fotos, reduz a altura
+    // (mínimo 80pt) para aproveitar o espaço restante da página em vez de
+    // abrir uma nova página quase vazia.
+    if (rows === 1) {
+      const secH = FS.section + 4 + sp(8) + FS.body;
+      const avail = BOTTOM - y - secH - labelH - sp(12);
+      if (avail >= 80 && avail < cellH) cellH = Math.floor(avail);
+    }
+    section("REGISTRO FOTOGRÁFICO", labelH + cellH);
     for (let r = 0; r < rows; r++) {
       ensure(labelH + cellH + sp(8));
       doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
