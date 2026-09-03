@@ -81,13 +81,17 @@ export function gerarOrcamentoPDF(
   // (espaçamentos, fotos e fontes dentro dos mínimos legíveis). Se ainda
   // assim não couber, devolve a versão mais compacta com paginação automática.
   const scales = [1, 0.92, 0.85, 0.78, 0.72, 0.66];
-  let last: jsPDF | null = null;
+  let best: jsPDF | null = null;
+  let bestPages = Infinity;
   for (const s of scales) {
     const d = renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, s);
-    last = d;
-    if (d.getNumberOfPages() === 1) return d;
+    const pages = d.getNumberOfPages();
+    if (pages === 1) return d;
+    // Quando a segunda página é inevitável, mantém a versão mais legível
+    // (maior densidade) entre as que atingem o menor número de páginas.
+    if (pages < bestPages) { best = d; bestPages = pages; }
   }
-  return last ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 0.66);
+  return best ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 1);
 }
 
 const EMPRESA_NOME = "GEP FACILITIES";
@@ -190,13 +194,13 @@ function renderOrcamentoPDF(
 
   /** Título de seção (13pt, azul) com linha fina; evita título órfão no fim da página. */
   function section(title: string, minContent = LH(FS.body) * 2) {
-    const h = FS.section + sp(10);
+    const h = FS.section + 4 + sp(8) + FS.body;
     ensure(h + minContent);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.section); setText(brand);
     doc.text(title, M, y + FS.section);
     setDraw(brand); doc.setLineWidth(1.1); doc.line(M, y + FS.section + 4, M + 26, y + FS.section + 4);
     setDraw(LINE); doc.setLineWidth(0.5); doc.line(M + 26, y + FS.section + 4, W - M, y + FS.section + 4);
-    y += h + sp(4);
+    y += h;
     setText(TEXT); doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   }
 
@@ -296,8 +300,7 @@ function renderOrcamentoPDF(
       [c?.rua, c?.numero].filter(Boolean).join(", "), c?.bairro,
       [c?.cidade, c?.estado].filter(Boolean).join("/"), c?.cep && `CEP ${c.cep}`,
     ].filter(Boolean).join(" — ");
-    const boxTop = y - FS.body - sp(2);
-    y += sp(2);
+    const barTop = y - FS.body;
     const startY = y;
     // Coluna esquerda
     labelValue("Cliente", c?.nome ?? "—", M + 8, colW);
@@ -311,7 +314,7 @@ function renderOrcamentoPDF(
     y = Math.max(leftEnd, y);
     if (enderecoCompleto) labelValue("Endereço", enderecoCompleto, M + 8, CW - 16);
     // Fundo cinza claro discreto atrás do bloco (desenhado por trás via ordem: usamos borda lateral)
-    setDraw(brand); doc.setLineWidth(1.5); doc.line(M + 1, boxTop + FS.body + sp(2), M + 1, y - LH(FS.body) + 4);
+    setDraw(brand); doc.setLineWidth(1.5); doc.line(M + 1, barTop, M + 1, y - LH(FS.body) + 3);
     y += sp(8);
   }
 
@@ -369,8 +372,9 @@ function renderOrcamentoPDF(
   const usarTabela = orc.itens.length > 1 || orc.itens.some((i) => i.quantidade !== 1);
   const PAD = sp(8);
   const ROW_H = Math.max(18, LH(FS.body) + PAD * 2 - 6);
-  const cTot = 84, cUnit = 84, cQtd = 44;
-  const xTot = W - M, xUnit = xTot - cTot, xQtd = xUnit - cUnit, cServW = CW - cTot - cUnit - cQtd - PAD;
+  const cTot = 84, cUnit = 84, cQtd = 60;
+  // Bordas direitas de cada coluna numérica
+  const rTot = W - M, rUnit = rTot - cTot, rQtd = rUnit - cUnit, cServW = CW - cTot - cUnit - cQtd - PAD;
 
   function drawItemsHeader() {
     const h = LH(FS.small) + PAD;
@@ -379,9 +383,9 @@ function renderOrcamentoPDF(
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
     const by = y + h / 2 + FS.small * 0.35;
     doc.text("SERVIÇO", M + PAD, by);
-    doc.text("QTD.", xQtd + cQtd - PAD, by, { align: "right" });
-    doc.text("VALOR UNIT.", xUnit + cUnit - PAD, by, { align: "right" });
-    doc.text("TOTAL", xTot - PAD, by, { align: "right" });
+    doc.text("QTD.", rQtd - PAD, by, { align: "right" });
+    doc.text("VALOR UNIT.", rUnit - PAD, by, { align: "right" });
+    doc.text("TOTAL", rTot - PAD, by, { align: "right" });
     setText(TEXT); doc.setFont("helvetica", "normal");
     y += h;
   }
@@ -408,10 +412,10 @@ function renderOrcamentoPDF(
         setText(TEXT); doc.setFontSize(FS.body);
       }
       const my = y + rowH / 2 + FS.body * 0.35;
-      doc.text(`${it.quantidade}${unidade}`, xQtd + cQtd - PAD, my, { align: "right" });
-      doc.text(brl(it.valorUnit), xUnit + cUnit - PAD, my, { align: "right" });
+      doc.text(`${it.quantidade}${unidade}`, rQtd - PAD, my, { align: "right" });
+      doc.text(brl(it.valorUnit), rUnit - PAD, my, { align: "right" });
       doc.setFont("helvetica", "bold");
-      doc.text(brl(it.quantidade * it.valorUnit), xTot - PAD, my, { align: "right" });
+      doc.text(brl(it.quantidade * it.valorUnit), rTot - PAD, my, { align: "right" });
       doc.setFont("helvetica", "normal");
       y += rowH;
       setDraw(LINE); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
@@ -491,10 +495,18 @@ function renderOrcamentoPDF(
   if (antes.length || depois.length) {
     const gap = 12;
     const cellW = (CW - gap) / 2;
-    const cellH = Math.round(cellW * 0.62 * (0.7 + 0.3 * density));
     const labelH = LH(FS.small);
-    section("REGISTRO FOTOGRÁFICO", labelH + cellH);
     const rows = Math.max(antes.length, depois.length);
+    let cellH = Math.round(cellW * 0.58 * (0.5 + 0.5 * density));
+    // Distribuição inteligente: com uma única linha de fotos, reduz a altura
+    // (mínimo 80pt) para aproveitar o espaço restante da página em vez de
+    // abrir uma nova página quase vazia.
+    if (rows === 1) {
+      const secH = FS.section + 4 + sp(8) + FS.body;
+      const avail = BOTTOM - y - secH - labelH - sp(12);
+      if (avail >= 80 && avail < cellH) cellH = Math.floor(avail);
+    }
+    section("REGISTRO FOTOGRÁFICO", labelH + cellH);
     for (let r = 0; r < rows; r++) {
       ensure(labelH + cellH + sp(8));
       doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);

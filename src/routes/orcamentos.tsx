@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen, UserPlus, User, X } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen, UserPlus, User, X, MessageCircle, FileOutput, ImagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,7 +24,7 @@ import {
   type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento,
 } from "@/lib/store";
 import { brl, dateBR, padNum } from "@/lib/format";
-import { gerarOrcamentoPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/pdf";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos")({
@@ -57,6 +57,29 @@ function OrcamentosPage() {
   const [naoIncluso, setNaoIncluso] = useState<string[]>([]);
   const [condicoes, setCondicoes] = useState<string[]>(CONDICOES_PADRAO);
   const [diferencial, setDiferencial] = useState(DIFERENCIAL_PADRAO);
+  const [desconto, setDesconto] = useState(0);
+  const [dataPrevista, setDataPrevista] = useState("");
+  const [horaPrevista, setHoraPrevista] = useState("");
+  const [fotosAntes, setFotosAntes] = useState<string[]>([]);
+  const [fotosDepois, setFotosDepois] = useState<string[]>([]);
+
+  function lerFotos(files: FileList | null, set: (f: (prev: string[]) => string[]) => void) {
+    if (!files) return;
+    Array.from(files).slice(0, 6).forEach((file) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const max = 1200;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+        set((prev) => [...prev, c.toDataURL("image/jpeg", 0.82)]);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+  }
 
   // Recebe rascunho vindo da Calculadora de Precificação
   useEffect(() => {
@@ -94,6 +117,7 @@ function OrcamentosPage() {
     setClienteBusca("");
     setItens([{ descricao: "", quantidade: 1, valorUnit: 0, unidade: "Serviço" }]);
     setEscopo([]); setNaoIncluso([]); setCondicoes(CONDICOES_PADRAO); setDiferencial(DIFERENCIAL_PADRAO);
+    setDesconto(0); setDataPrevista(""); setHoraPrevista(""); setFotosAntes([]); setFotosDepois([]);
   }
   function abrirNovo() { resetForm(); setOpen(true); }
   function abrirEdicao(o: Orcamento) {
@@ -105,6 +129,8 @@ function OrcamentosPage() {
     setNaoIncluso(o.naoIncluso ?? []);
     setCondicoes(o.condicoes ?? []);
     setDiferencial(o.diferencial ?? "");
+    setDesconto(o.desconto ?? 0); setDataPrevista(o.dataPrevista ?? ""); setHoraPrevista(o.horaPrevista ?? "");
+    setFotosAntes(o.fotosAntes ?? []); setFotosDepois(o.fotosDepois ?? []);
     setOpen(true);
   }
 
@@ -143,7 +169,7 @@ function OrcamentosPage() {
     if (!clienteId) faltando.push("Cliente");
     if (itens.length === 0 || itens.some((i) => !i.descricao.trim())) faltando.push("Serviço");
     if (itens.every((i) => i.quantidade * i.valorUnit <= 0)) faltando.push("Valor");
-    if (escopo.filter((s) => s.trim()).length === 0) faltando.push("Escopo do serviço");
+    if (escopo.filter((s) => s.trim()).length === 0 && !descricaoServicos.trim()) faltando.push("Descrição do serviço");
     if (formasPagamento.length === 0) faltando.push("Forma de pagamento");
     if (!validadeDias || validadeDias < 1) faltando.push("Validade");
     if (faltando.length) {
@@ -157,6 +183,10 @@ function OrcamentosPage() {
       naoIncluso: naoIncluso.filter((s) => s.trim()),
       condicoes: condicoes.filter((s) => s.trim()),
       diferencial: diferencial.trim(),
+      desconto: desconto > 0 ? desconto : undefined,
+      dataPrevista: dataPrevista || undefined,
+      horaPrevista: horaPrevista || undefined,
+      fotosAntes, fotosDepois,
     };
     if (editId) {
       db.updateOrcamento(editId, payload);
@@ -168,14 +198,15 @@ function OrcamentosPage() {
     setOpen(false); resetForm();
   }
 
-  const total = itens.reduce((s, i) => s + i.quantidade * i.valorUnit, 0);
+  const subtotal = itens.reduce((s, i) => s + i.quantidade * i.valorUnit, 0);
+  const total = Math.max(0, subtotal - (desconto || 0));
 
-  async function pdf(orcId: string, action: "view" | "download" | "share") {
+  async function pdf(orcId: string, action: "view" | "open" | "download" | "share" | "whatsapp") {
     const o = data.orcamentos.find((x) => x.id === orcId);
     if (!o) return;
     const faltas: string[] = [];
     if (!data.empresa.nome) faltas.push("Nome da empresa");
-    if (!o.escopo?.length && !o.descricaoServicos?.trim()) faltas.push("Escopo do serviço");
+    if (!o.escopo?.length && !o.descricaoServicos?.trim()) faltas.push("Descrição do serviço");
     if (!o.itens.length || o.itens.some((i) => !i.descricao.trim())) faltas.push("Serviço");
     if (!o.clienteId) faltas.push("Cliente");
     if (faltas.length) {
@@ -186,9 +217,11 @@ function OrcamentosPage() {
     }
     const cli = data.clientes.find((c) => c.id === o.clienteId);
     if (action === "view") { setPreviewId(orcId); return; }
+    // Sempre gera a partir dos dados mais recentes (nunca reaproveita versão antiga)
     const doc = gerarOrcamentoPDF(o, cli, data.servicos, data.empresa);
     const filename = `ORC-${padNum(o.numero)}.pdf`;
     if (action === "download") baixarPDF(doc, filename);
+    else if (action === "open") abrirPDF(doc);
     else {
       const { vencimento } = validadeOrcamento(o);
       const primeiroNome = (cli?.nome ?? "").split(" ")[0] || "";
@@ -210,7 +243,7 @@ function OrcamentosPage() {
         "GEP Serviços Especializados",
       ].join("\n");
       const tel = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
-      const res = await compartilharPDF({ doc, filename, titulo: `Orçamento ORC-${padNum(o.numero)}`, mensagem: txt, telefone: tel });
+      const res = await compartilharPDF({ doc, filename, titulo: `Orçamento ORC-${padNum(o.numero)}`, mensagem: txt, telefone: action === "whatsapp" ? tel : undefined });
       if (res === "shared") toast.success("Orçamento compartilhado");
       else if (res === "whatsapp") toast.info("PDF baixado — anexe na conversa do WhatsApp");
       else toast.info("PDF baixado");
@@ -347,7 +380,7 @@ function OrcamentosPage() {
 
               {/* ESCOPO DO SERVIÇO — obrigatório */}
               <div className="grid gap-2 rounded-lg border p-3">
-                <Label className="text-xs font-semibold">Escopo do serviço * (o que será executado)</Label>
+                <Label className="text-xs font-semibold">Descrição do serviço * (o que será executado)</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {ESCOPO_MODELOS.map((m) => (
                     <Button
@@ -407,7 +440,7 @@ function OrcamentosPage() {
               {/* Observações internas complementares (modelo antigo) */}
               <div className="grid gap-1.5">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs">Descrição complementar (opcional)</Label>
+                  <Label className="text-xs">Descrição em texto livre (alternativa à lista acima)</Label>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setModelosOpen(true)}>
                     <BookOpen className="h-3.5 w-3.5" />Usar modelo
                   </Button>
@@ -416,7 +449,7 @@ function OrcamentosPage() {
                   value={descricaoServicos}
                   onChange={(e) => setDescricaoServicos(e.target.value)}
                   rows={4}
-                  placeholder="Texto livre. Exibido no PDF apenas quando o escopo não estiver preenchido."
+                  placeholder="Texto livre. Obrigatório caso a lista acima esteja vazia."
                   className="font-mono text-sm"
                 />
               </div>
@@ -459,6 +492,34 @@ function OrcamentosPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div className="grid gap-1.5"><Label className="text-xs">Desconto (R$)</Label><Input type="number" step="0.01" min={0} value={desconto} onChange={(e) => setDesconto(Number(e.target.value) || 0)} /></div>
+                <div className="grid gap-1.5"><Label className="text-xs">Data prevista</Label><Input type="date" value={dataPrevista} onChange={(e) => setDataPrevista(e.target.value)} /></div>
+                <div className="grid gap-1.5"><Label className="text-xs">Horário</Label><Input type="time" value={horaPrevista} onChange={(e) => setHoraPrevista(e.target.value)} /></div>
+              </div>
+
+              <div className="grid gap-2 rounded-lg border p-3">
+                <Label className="text-xs font-semibold">Registro fotográfico (opcional)</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {([["ANTES", fotosAntes, setFotosAntes], ["DEPOIS", fotosDepois, setFotosDepois]] as const).map(([lbl, arr, set]) => (
+                    <div key={lbl} className="grid gap-2">
+                      <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed px-2 py-2 text-xs hover:bg-muted">
+                        <ImagePlus className="h-3.5 w-3.5" />{lbl}
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { lerFotos(e.target.files, set); e.target.value = ""; }} />
+                      </label>
+                      <div className="grid grid-cols-3 gap-1">
+                        {arr.map((f, i) => (
+                          <div key={i} className="relative aspect-[4/3] overflow-hidden rounded border bg-muted">
+                            <img src={f} alt={`${lbl} ${i + 1}`} className="h-full w-full object-cover" />
+                            <button type="button" onClick={() => set((p) => p.filter((_, j) => j !== i))} className="absolute right-0.5 top-0.5 rounded-full bg-background/90 p-0.5"><X className="h-3 w-3" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid gap-2">
                 <Label className="text-xs font-semibold">Formas de pagamento *</Label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -479,9 +540,12 @@ function OrcamentosPage() {
                 <p className="text-[11px] text-muted-foreground">Aparecerá no PDF com texto padrão de condições.</p>
               </div>
 
-              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs flex items-center justify-between">
-                <span>Valor total</span>
-                <span className="font-black text-primary text-base">{brl(total)}</span>
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-xs space-y-0.5">
+                {desconto > 0 && (<>
+                  <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{brl(subtotal)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>Desconto</span><span>- {brl(desconto)}</span></div>
+                </>)}
+                <div className="flex items-center justify-between"><span>Valor total</span><span className="font-black text-primary text-base">{brl(total)}</span></div>
               </div>
               <div className="grid gap-1.5"><Label className="text-xs">Observações</Label><Textarea value={obs} onChange={(e) => setObs(e.target.value)} /></div>
             </div>
@@ -565,7 +629,7 @@ function OrcamentosPage() {
                   <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold">ORC-{padNum(o.numero)}</p>
+                        <p className="font-bold">ORC-{padNum(o.numero)}{(o.versao ?? 1) > 1 && <span className="ml-1.5 text-[10px] font-semibold text-muted-foreground">v{String(o.versao).padStart(2, "0")}</span>}</p>
                         <Select value={o.status} onValueChange={(v) => { db.updateOrcamento(o.id, { status: v as OrcamentoStatus }); toast.success("Status atualizado"); }}>
                           <SelectTrigger className="h-6 text-xs w-[110px]"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -588,10 +652,12 @@ function OrcamentosPage() {
                     <p className="text-right text-xl font-black text-primary tabular-nums whitespace-nowrap">{brl(totalOrcamento(o))}</p>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "view")}><Eye className="h-3.5 w-3.5" />Visualizar PDF</Button>
-                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "download")}><Download className="h-3.5 w-3.5" />Baixar</Button>
-                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "share")}><Share2 className="h-3.5 w-3.5" />WhatsApp</Button>
+                    <Button size="sm" onClick={() => pdf(o.id, "open")}><FileOutput className="h-3.5 w-3.5" />Gerar PDF</Button>
+                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "view")}><Eye className="h-3.5 w-3.5" />Visualizar</Button>
                     <Button size="sm" variant="outline" onClick={() => abrirEdicao(o)}><Pencil className="h-3.5 w-3.5" />Editar</Button>
+                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "share")}><Share2 className="h-3.5 w-3.5" />Compartilhar</Button>
+                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "whatsapp")}><MessageCircle className="h-3.5 w-3.5" />WhatsApp</Button>
+                    <Button size="sm" variant="outline" onClick={() => pdf(o.id, "download")}><Download className="h-3.5 w-3.5" />Baixar PDF</Button>
                     <Button size="sm" variant="outline" onClick={() => { db.duplicarOrcamento(o.id); toast.success("Duplicado"); }}><Copy className="h-3.5 w-3.5" />Duplicar</Button>
                     <ConfirmDelete
                       trigger={<Button size="sm" variant="ghost"><Trash2 className="h-3.5 w-3.5 text-destructive" />Excluir</Button>}
