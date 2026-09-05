@@ -77,21 +77,11 @@ export function gerarOrcamentoPDF(
   empresa: Empresa,
   overrides: PdfOverrides = {},
 ) {
-  // Tenta caber em UMA página A4 reduzindo progressivamente a densidade
-  // (espaçamentos, fotos e fontes dentro dos mínimos legíveis). Se ainda
-  // assim não couber, devolve a versão mais compacta com paginação automática.
-  const scales = [1, 0.92, 0.85, 0.78, 0.72, 0.66];
-  let best: jsPDF | null = null;
-  let bestPages = Infinity;
-  for (const s of scales) {
-    const d = renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, s);
-    const pages = d.getNumberOfPages();
-    if (pages === 1) return d;
-    // Quando a segunda página é inevitável, mantém a versão mais legível
-    // (maior densidade) entre as que atingem o menor número de páginas.
-    if (pages < bestPages) { best = d; bestPages = pages; }
-  }
-  return best ?? renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 1);
+  // REGRA: "Priorizar legibilidade em vez de compactação."
+  // As fontes são fixas (nunca reduzidas para caber em uma página). Quando o
+  // conteúdo ultrapassa o espaço disponível, a paginação automática cria
+  // páginas adicionais mantendo o padrão visual.
+  return renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 1);
 }
 
 const EMPRESA_NOME = "GEP FACILITIES";
