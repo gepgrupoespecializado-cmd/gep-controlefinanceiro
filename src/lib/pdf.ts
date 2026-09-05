@@ -115,19 +115,21 @@ function renderOrcamentoPDF(
   const { emissao, vencimento } = validadeOrcamento(orc);
   const validadeDias = orc.validadeDias ?? 7;
 
-  // ---- Tipografia (hierarquia: 16 / 13 / 11-12 / 9-10) ----
-  const fs = (base: number, min: number) => Math.max(min, +(base * (0.82 + 0.18 * density)).toFixed(1));
+  // ---- Tipografia fixa, pensada para leitura no celular ----
+  // Nunca reduzida para caber em uma página (legibilidade > compactação).
   const FS = {
-    title: fs(16, 13),
-    section: fs(13, 11),
-    body: fs(11.5, 9.5),
-    small: fs(10, 8.5),
-    footer: fs(9.5, 8),
+    empresa: 16,   // nome da empresa
+    title: 18,     // título principal
+    section: 14,   // subtítulos de seção
+    body: 13,      // cliente, descrição, condições, valores
+    small: 12,     // observações / notas
+    total: 16,     // valor total
+    footer: 11,    // rodapé
   };
   const sp = (n: number) => Math.max(2, Math.round(n * density));
-  const LH = (size: number) => +(size * 1.35 * density + size * 0.1).toFixed(1);
+  const LH = (size: number) => +(size * 1.45).toFixed(1);
 
-  const FOOTER_H = 58;
+  const FOOTER_H = 70;
   const BOTTOM = H - M - FOOTER_H;
   let y = 0;
   let repeatItemsHeader = false;
