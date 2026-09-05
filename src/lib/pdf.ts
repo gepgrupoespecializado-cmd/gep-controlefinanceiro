@@ -329,13 +329,15 @@ function renderOrcamentoPDF(
       ? nomeItem(primeiro)
       : orc.itens.map(nomeItem).join("; ");
     labelValue("Serviço", servicoTitulo, M, CW);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body); setText(TEXT);
-    ensure(LH(FS.body)); doc.text("Descrição:", M, y); y += LH(FS.body);
+    y += sp(10);
+  }
+  section("DESCRIÇÃO DO SERVIÇO");
+  {
     if (escopoItens.length) bullets(escopoItens);
     else if (descricaoLivre) paragraph(descricaoLivre);
     else if (itemEscopos.length) bullets(itemEscopos);
     else paragraph("—", FS.body, MUTED);
-    if (escopoItens.length && descricaoLivre) { y += sp(2); paragraph(descricaoLivre, FS.small, MUTED); }
+    if (escopoItens.length && descricaoLivre) { y += sp(4); paragraph(descricaoLivre, FS.body, TEXT); }
     const naoIncluso = (orc.naoIncluso ?? []).filter((s) => s && s.trim());
     if (naoIncluso.length) {
       y += sp(3);
