@@ -421,53 +421,48 @@ function renderOrcamentoPDF(
   }
 
   // =====================================================================
-  // 6) VALOR TOTAL — destaque, mantido junto às informações principais
+  // 6) VALOR E CONDIÇÕES DE PAGAMENTO — total em destaque (16pt) + condições
   // =====================================================================
   {
     const subtotal = subtotalOrcamento(orc);
     const desconto = Number(orc.desconto) || 0;
     const total = totalOrcamento(orc);
-    const boxW = Math.min(CW, 250);
+    const formas = (orc.formasPagamento ?? []).map((f) => formaPagamentoLabel[f]);
+    const boxW = Math.min(CW, 300);
     const linhas = desconto > 0 ? 2 : 0;
-    const boxH = sp(10) + linhas * LH(FS.body) + FS.title + sp(14) + FS.small;
+    const boxH = sp(12) + FS.small + sp(6) + linhas * LH(FS.body) + FS.total + sp(14);
+    section("VALOR E CONDIÇÕES DE PAGAMENTO", boxH + sp(6));
     ensure(boxH + sp(6));
     const bx = W - M - boxW;
     setFill(tint); doc.roundedRect(bx, y, boxW, boxH, 4, 4, "F");
-    setDraw(brand); doc.setLineWidth(1.2); doc.line(bx, y + 2, bx, y + boxH - 2);
-    let ty = y + sp(10) + FS.small;
+    setDraw(brand); doc.setLineWidth(1.5); doc.line(bx, y + 2, bx, y + boxH - 2);
+    let ty = y + sp(12) + FS.small;
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.small); setText(brand);
-    doc.text("VALOR TOTAL", bx + 12, ty);
-    ty += sp(4);
+    doc.text("VALOR DO SERVIÇO", bx + 14, ty);
+    ty += sp(6);
     if (desconto > 0) {
       doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body); setText(TEXT);
       ty += LH(FS.body);
-      doc.text("Subtotal:", bx + 12, ty); doc.text(brl(subtotal), bx + boxW - 12, ty, { align: "right" });
+      doc.text("Subtotal:", bx + 14, ty); doc.text(brl(subtotal), bx + boxW - 14, ty, { align: "right" });
       ty += LH(FS.body);
-      doc.text("Desconto:", bx + 12, ty); doc.text(`- ${brl(desconto)}`, bx + boxW - 12, ty, { align: "right" });
+      doc.text("Desconto:", bx + 14, ty); doc.text(`- ${brl(desconto)}`, bx + boxW - 14, ty, { align: "right" });
     }
-    ty += FS.title + sp(2);
+    ty += FS.total;
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body); setText(TEXT);
-    doc.text("TOTAL", bx + 12, ty);
-    doc.setFontSize(FS.title + 2); setText(brand);
-    doc.text(brl(total), bx + boxW - 12, ty, { align: "right" });
+    doc.text("TOTAL", bx + 14, ty);
+    doc.setFontSize(FS.total); setText(brand);
+    doc.text(brl(total), bx + boxW - 14, ty, { align: "right" });
     setText(TEXT);
     y += boxH + sp(14);
-  }
 
-  // =====================================================================
-  // 7) CONDIÇÕES DE PAGAMENTO
-  // =====================================================================
-  {
-    const formas = (orc.formasPagamento ?? []).map((f) => formaPagamentoLabel[f]);
     if (formas.length || orc.prazo) {
-      section("CONDIÇÕES DE PAGAMENTO", LH(FS.body));
       if (formas.length) labelValue("Forma de pagamento", formas.join(" / "), M, CW);
       if (orc.prazo) labelValue("Condição", orc.prazo, M, CW);
       if (orc.formasPagamento?.includes("credito")) {
         paragraph("Pagamentos no cartão de crédito podem ter acréscimo referente às taxas da operadora.", FS.small, MUTED);
       }
-      y += sp(8);
     }
+    y += sp(10);
   }
 
   // =====================================================================
