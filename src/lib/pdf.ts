@@ -240,23 +240,23 @@ function renderOrcamentoPDF(
   // =====================================================================
   aplicarMarcaDagua(doc, empresa);
   const headTop = M - 6;
-  const logoH = Math.round(44 * (0.85 + 0.15 * density));
+  const logoH = 50;
   let headH = logoH;
   if (empresa.logoDataUrl) {
-    drawImageContain(doc, empresa.logoDataUrl, M, headTop, 130, logoH);
+    drawImageContain(doc, empresa.logoDataUrl, M, headTop, 140, logoH);
   } else {
     // Monograma discreto quando não há logo cadastrada
     setFill(brand); doc.roundedRect(M, headTop, logoH, logoH, 6, 6, "F");
     setText([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(logoH * 0.42);
     doc.text("GEP", M + logoH / 2, headTop + logoH / 2 + logoH * 0.15, { align: "center" });
   }
-  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title); setText(brand);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(FS.empresa); setText(brand);
   doc.text(EMPRESA_NOME, W - M, headTop + logoH / 2 - 2, { align: "right" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.small); setText(MUTED);
-  doc.text(EMPRESA_SUB, W - M, headTop + logoH / 2 + FS.small + 2, { align: "right" });
-  headH = logoH + sp(10);
+  doc.text(EMPRESA_SUB, W - M, headTop + logoH / 2 + FS.small + 3, { align: "right" });
+  headH = logoH + sp(12);
   setDraw(LINE); doc.setLineWidth(0.7); doc.line(M, headTop + headH, W - M, headTop + headH);
-  y = headTop + headH + sp(16);
+  y = headTop + headH + sp(18);
 
   // =====================================================================
   // 2) IDENTIFICAÇÃO DO DOCUMENTO
@@ -266,7 +266,7 @@ function renderOrcamentoPDF(
   const versao = orc.versao ?? 1;
   if (versao > 1) {
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.small); setText(MUTED);
-    doc.text(`Versão ${String(versao).padStart(2, "0")}`, M, y + FS.title + FS.small + 2);
+    doc.text(`Versão ${String(versao).padStart(2, "0")}`, M, y + FS.title + FS.small + 4);
   }
   doc.setFontSize(FS.body); setText(TEXT);
   doc.setFont("helvetica", "bold"); const dl = doc.getTextWidth("Validade: ");
@@ -274,13 +274,14 @@ function renderOrcamentoPDF(
   doc.setFont("helvetica", "normal");
   const dataTxt = dateBR(emissao), valTxt = `${validadeDias} dias`;
   const vw = Math.max(doc.getTextWidth(dataTxt), doc.getTextWidth(valTxt));
+  const l1 = y + FS.body - 1, l2 = l1 + LH(FS.body);
   doc.setFont("helvetica", "bold");
-  doc.text("Data:", rx - vw - dl, y + FS.body - 1);
-  doc.text("Validade:", rx - vw - dl, y + FS.body * 2 + 3);
+  doc.text("Data:", rx - vw - dl, l1);
+  doc.text("Validade:", rx - vw - dl, l2);
   doc.setFont("helvetica", "normal");
-  doc.text(dataTxt, rx, y + FS.body - 1, { align: "right" });
-  doc.text(valTxt, rx, y + FS.body * 2 + 3, { align: "right" });
-  y += FS.body * 2 + sp(18);
+  doc.text(dataTxt, rx, l1, { align: "right" });
+  doc.text(valTxt, rx, l2, { align: "right" });
+  y += Math.max(FS.title + FS.small + 6, l2 - y) + sp(22);
 
   // =====================================================================
   // 3) DADOS DO CLIENTE — bloco compacto em duas colunas
