@@ -309,7 +309,7 @@ function renderOrcamentoPDF(
     if (enderecoCompleto) labelValue("Endereço", enderecoCompleto, M + 8, CW - 16);
     // Fundo cinza claro discreto atrás do bloco (desenhado por trás via ordem: usamos borda lateral)
     setDraw(brand); doc.setLineWidth(1.5); doc.line(M + 1, barTop, M + 1, y - LH(FS.body) + 3);
-    y += sp(8);
+    y += sp(12);
   }
 
   // =====================================================================
@@ -359,7 +359,7 @@ function renderOrcamentoPDF(
       dl2.forEach((ln) => { ensure(LH(FS.small)); doc.text(ln, M, y); y += LH(FS.small); });
       doc.setFont("helvetica", "normal"); setText(TEXT);
     }
-    y += sp(8);
+    y += sp(12);
   }
 
   // =====================================================================
@@ -475,7 +475,7 @@ function renderOrcamentoPDF(
     const startY = y;
     labelValue("Data prevista", dataFmt, M, CW / 2);
     if (orc.horaPrevista) { y = startY; labelValue("Horário", orc.horaPrevista, M + CW / 2, CW / 2); }
-    y += sp(8);
+    y += sp(12);
   }
 
   // =====================================================================
@@ -520,9 +520,9 @@ function renderOrcamentoPDF(
   // 10) OBSERVAÇÕES — somente quando houver conteúdo
   // =====================================================================
   if (orc.observacoes && orc.observacoes.trim()) {
-    section("OBSERVAÇÕES", LH(FS.body));
-    paragraph(orc.observacoes.trim());
-    y += sp(8);
+    section("OBSERVAÇÕES", LH(FS.small));
+    paragraph(orc.observacoes.trim(), FS.small);
+    y += sp(12);
   }
 
   // =====================================================================
