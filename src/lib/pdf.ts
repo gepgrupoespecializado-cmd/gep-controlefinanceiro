@@ -159,21 +159,22 @@ function renderOrcamentoPDF(
   }
 
   function drawFooter() {
-    const fy = H - M - FOOTER_H + 14;
-    setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, fy - 8, W - M, fy - 8);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer + 0.5); setText(brand);
+    const fy = H - M - FOOTER_H + 16;
+    const step = FS.footer + 3;
+    setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, fy - 10, W - M, fy - 10);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer + 1); setText(brand);
     doc.text(EMPRESA_NOME, W / 2, fy + 2, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer); setText(MUTED);
-    doc.text("Serviços Especializados", W / 2, fy + 12, { align: "center" });
+    doc.text("Serviços Especializados", W / 2, fy + 2 + step, { align: "center" });
     const contato = [
       (empresa.telefone || empresa.whatsapp) && `Telefone/WhatsApp: ${[empresa.telefone, empresa.whatsapp].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" / ")}`,
       empresa.email && `E-mail: ${empresa.email}`,
       empresa.endereco && `${empresa.endereco}`,
     ].filter(Boolean).join("   ·   ");
-    let ly = fy + 23;
+    let ly = fy + 2 + step * 2;
     if (contato) {
       const lines = doc.splitTextToSize(contato, CW) as string[];
-      lines.slice(0, 2).forEach((ln) => { doc.text(ln, W / 2, ly, { align: "center" }); ly += 10; });
+      lines.slice(0, 2).forEach((ln) => { doc.text(ln, W / 2, ly, { align: "center" }); ly += step; });
     }
     if (empresa.cnpj) { doc.setFont("helvetica", "bold"); doc.text(`CNPJ: ${empresa.cnpj}`, W / 2, ly, { align: "center" }); }
     const pages = doc.getNumberOfPages();
@@ -184,14 +185,14 @@ function renderOrcamentoPDF(
     setText(TEXT);
   }
 
-  /** Título de seção (13pt, azul) com linha fina; evita título órfão no fim da página. */
+  /** Título de seção (14pt, negrito, cor da marca) com linha fina; evita título órfão. */
   function section(title: string, minContent = LH(FS.body) * 2) {
-    const h = FS.section + 4 + sp(8) + FS.body;
+    const h = FS.section + 6 + sp(12) + FS.body;
     ensure(h + minContent);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.section); setText(brand);
     doc.text(title, M, y + FS.section);
-    setDraw(brand); doc.setLineWidth(1.1); doc.line(M, y + FS.section + 4, M + 26, y + FS.section + 4);
-    setDraw(LINE); doc.setLineWidth(0.5); doc.line(M + 26, y + FS.section + 4, W - M, y + FS.section + 4);
+    setDraw(brand); doc.setLineWidth(1.3); doc.line(M, y + FS.section + 6, M + 30, y + FS.section + 6);
+    setDraw(LINE); doc.setLineWidth(0.5); doc.line(M + 30, y + FS.section + 6, W - M, y + FS.section + 6);
     y += h;
     setText(TEXT); doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   }
