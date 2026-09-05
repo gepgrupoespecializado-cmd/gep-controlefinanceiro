@@ -366,9 +366,9 @@ function renderOrcamentoPDF(
   // 5) TABELA DE SERVIÇOS — quando houver mais de um item (ou quantidade > 1)
   // =====================================================================
   const usarTabela = orc.itens.length > 1 || orc.itens.some((i) => i.quantidade !== 1);
-  const PAD = sp(8);
-  const ROW_H = Math.max(18, LH(FS.body) + PAD * 2 - 6);
-  const cTot = 84, cUnit = 84, cQtd = 60;
+  const PAD = sp(9);
+  const ROW_H = Math.max(26, LH(FS.body) + PAD * 2);
+  const cTot = 96, cUnit = 96, cQtd = 56;
   // Bordas direitas de cada coluna numérica
   const rTot = W - M, rUnit = rTot - cTot, rQtd = rUnit - cUnit, cServW = CW - cTot - cUnit - cQtd - PAD;
 
