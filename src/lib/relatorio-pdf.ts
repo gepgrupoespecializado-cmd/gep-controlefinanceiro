@@ -130,7 +130,7 @@ export function gerarRelatorioPDF(
 
   // Dados do cliente
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("CLIENTE", M, y); y += 17;
+  doc.text("CLIENTE", M, y); y += 20;
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const cliInfo = [
     `Nome: ${cliente?.nome ?? "—"}`,
@@ -147,7 +147,7 @@ export function gerarRelatorioPDF(
 
   // Dados do serviço
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("DADOS DO SERVIÇO", M, y); y += 17;
+  doc.text("DADOS DO SERVIÇO", M, y); y += 20;
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const servInfo = [
     `Serviço: ${r.servicoExecutado}`,
@@ -191,7 +191,7 @@ export function gerarRelatorioPDF(
     if (g.arr.length === 0) continue;
     if (y > BOTTOM - 160) { doc.addPage(); y = M_TOP; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text(g.titulo, M, y); y += 16;
+    doc.text(g.titulo, M, y); y += 20;
     const cellW = (W - M * 2 - 12) / 2;
     const cellH = cellW * 0.72;
     let col = 0;
@@ -252,7 +252,7 @@ export function gerarRelatorioPDF(
     const lines = doc.splitTextToSize(l, W - M * 2);
     lines.forEach((ln: string) => {
       doc.text(ln, W / 2, ly, { align: "center" });
-      ly += 11;
+      ly += 14;
     });
   });
   void pageBreakIfNeeded;
