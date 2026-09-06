@@ -430,7 +430,8 @@ function renderOrcamentoPDF(
     const formas = (orc.formasPagamento ?? []).map((f) => formaPagamentoLabel[f]);
     const boxW = Math.min(CW, 300);
     const linhas = desconto > 0 ? 2 : 0;
-    const boxH = sp(12) + FS.small + sp(6) + linhas * LH(FS.body) + FS.total + sp(14);
+    const gapTotal = linhas ? sp(10) : 0;
+    const boxH = sp(12) + FS.small + sp(6) + linhas * LH(FS.body) + gapTotal + FS.total + sp(14);
     section("VALOR E CONDIÇÕES DE PAGAMENTO", boxH + sp(6));
     ensure(boxH + sp(6));
     const bx = W - M - boxW;
@@ -447,7 +448,7 @@ function renderOrcamentoPDF(
       ty += LH(FS.body);
       doc.text("Desconto:", bx + 14, ty); doc.text(`- ${brl(desconto)}`, bx + boxW - 14, ty, { align: "right" });
     }
-    ty += FS.total;
+    ty += gapTotal + FS.total;
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body); setText(TEXT);
     doc.text("TOTAL", bx + 14, ty);
     doc.setFontSize(FS.total); setText(brand);
