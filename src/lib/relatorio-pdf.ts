@@ -68,7 +68,7 @@ export function gerarRelatorioPDF(
   }
 
   // Cabeçalho
-  const headerH = 96;
+  const headerH = 110;
   aplicarMarcaDagua(doc, empresa);
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(0, 0, W, headerH, "F");
@@ -86,8 +86,8 @@ export function gerarRelatorioPDF(
     empresa.email || "",
     empresa.endereco || "",
   ].filter(Boolean);
-  let hy = 54;
-  head.forEach((l) => { doc.text(l, headX, hy); hy += 13; });
+  let hy = 56;
+  head.forEach((l) => { doc.text(l, headX, hy); hy += 17; });
 
   // Título
   let y = Math.max(headerH + 18, M_TOP);
@@ -115,18 +115,18 @@ export function gerarRelatorioPDF(
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
   doc.text("RELATÓRIO DE PRESTAÇÃO DE SERVIÇO", W / 2, y, { align: "center" });
   doc.setFontSize(FS.footer); doc.setFont("helvetica", "normal");
-  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 16, { align: "center" });
-  y += 32;
+  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 18, { align: "center" });
+  y += 38;
 
   // Status
   doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.roundedRect(M, y, W - M * 2, 24, 4, 4, "F");
+  doc.roundedRect(M, y, W - M * 2, 28, 4, 4, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-  doc.text(`Status: ${relatorioStatusLabel[r.status]}`, M + 10, y + 16);
-  doc.text(`Data: ${dateBR(r.dataExecucao)}`, W - M - 10, y + 16, { align: "right" });
+  doc.text(`Status: ${relatorioStatusLabel[r.status]}`, M + 10, y + 19);
+  doc.text(`Data: ${dateBR(r.dataExecucao)}`, W - M - 10, y + 19, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += 34;
+  y += 28 + 30;
 
   // Dados do cliente
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
