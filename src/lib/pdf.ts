@@ -129,7 +129,7 @@ function renderOrcamentoPDF(
   const sp = (n: number) => Math.max(2, Math.round(n * density));
   const LH = (size: number) => +(size * 1.45).toFixed(1);
 
-  const FOOTER_H = 70;
+  const FOOTER_H = 64;
   const BOTTOM = H - M - FOOTER_H;
   let y = 0;
   let repeatItemsHeader = false;
@@ -159,7 +159,7 @@ function renderOrcamentoPDF(
   }
 
   function drawFooter() {
-    const fy = H - M - FOOTER_H + 16;
+    const fy = H - M - FOOTER_H + 14;
     const step = FS.footer + 3;
     setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, fy - 10, W - M, fy - 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer + 1); setText(brand);
@@ -187,7 +187,7 @@ function renderOrcamentoPDF(
 
   /** Título de seção (14pt, negrito, cor da marca) com linha fina; evita título órfão. */
   function section(title: string, minContent = LH(FS.body) * 2) {
-    const h = FS.section + 6 + sp(12) + FS.body;
+    const h = FS.section + 6 + sp(10) + FS.body;
     ensure(h + minContent);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.section); setText(brand);
     doc.text(title, M, y + FS.section);
@@ -256,7 +256,7 @@ function renderOrcamentoPDF(
   doc.text(EMPRESA_SUB, W - M, headTop + logoH / 2 + FS.small + 3, { align: "right" });
   headH = logoH + sp(12);
   setDraw(LINE); doc.setLineWidth(0.7); doc.line(M, headTop + headH, W - M, headTop + headH);
-  y = headTop + headH + sp(18);
+  y = headTop + headH + sp(14);
 
   // =====================================================================
   // 2) IDENTIFICAÇÃO DO DOCUMENTO
@@ -281,7 +281,7 @@ function renderOrcamentoPDF(
   doc.setFont("helvetica", "normal");
   doc.text(dataTxt, rx, l1, { align: "right" });
   doc.text(valTxt, rx, l2, { align: "right" });
-  y += Math.max(FS.title + FS.small + 6, l2 - y) + sp(22);
+  y += Math.max(FS.title + FS.small + 6, l2 - y) + sp(16);
 
   // =====================================================================
   // 3) DADOS DO CLIENTE — bloco compacto em duas colunas
@@ -309,7 +309,7 @@ function renderOrcamentoPDF(
     if (enderecoCompleto) labelValue("Endereço", enderecoCompleto, M + 8, CW - 16);
     // Fundo cinza claro discreto atrás do bloco (desenhado por trás via ordem: usamos borda lateral)
     setDraw(brand); doc.setLineWidth(1.5); doc.line(M + 1, barTop, M + 1, y - LH(FS.body) + 3);
-    y += sp(12);
+    y += sp(10);
   }
 
   // =====================================================================
@@ -359,7 +359,7 @@ function renderOrcamentoPDF(
       dl2.forEach((ln) => { ensure(LH(FS.small)); doc.text(ln, M, y); y += LH(FS.small); });
       doc.setFont("helvetica", "normal"); setText(TEXT);
     }
-    y += sp(12);
+    y += sp(10);
   }
 
   // =====================================================================
@@ -475,7 +475,7 @@ function renderOrcamentoPDF(
     const startY = y;
     labelValue("Data prevista", dataFmt, M, CW / 2);
     if (orc.horaPrevista) { y = startY; labelValue("Horário", orc.horaPrevista, M + CW / 2, CW / 2); }
-    y += sp(12);
+    y += sp(10);
   }
 
   // =====================================================================
@@ -522,7 +522,7 @@ function renderOrcamentoPDF(
   if (orc.observacoes && orc.observacoes.trim()) {
     section("OBSERVAÇÕES", LH(FS.small));
     paragraph(orc.observacoes.trim(), FS.small);
-    y += sp(12);
+    y += sp(10);
   }
 
   // =====================================================================
