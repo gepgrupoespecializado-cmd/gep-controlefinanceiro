@@ -528,8 +528,7 @@ function renderOrcamentoPDF(
   // =====================================================================
   // 11) VALIDADE — discreta, no fim da proposta
   // =====================================================================
-  ensure(LH(FS.small) * 2);
-  y += sp(4);
+  ensure(LH(FS.small));
   doc.setFont("helvetica", "italic"); doc.setFontSize(FS.small); setText(MUTED);
   doc.text(
     `Este orçamento é válido por ${validadeDias} dias a partir da data de emissão (até ${dateBR(vencimento)}).`,
