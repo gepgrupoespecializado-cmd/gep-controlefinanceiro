@@ -58,7 +58,7 @@ export function gerarRelatorioPDF(
   const modoMensal = empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual";
   const brand = hexToRgb(modoMensal ? preset.principal : (empresa.corPdf ?? preset.principal));
   const FS = { title: 18, subtitle: 14, body: 13, footer: 11 };
-  const LH = (s: number) => Math.round(s * 1.3);
+  const LH = (s: number) => Math.round(s * 1.45);
   const BOTTOM = H - M - 30;
   const SECTION_HEADER_H = 30;
   const SECTION_GAP = 16;
@@ -68,7 +68,7 @@ export function gerarRelatorioPDF(
   }
 
   // Cabeçalho
-  const headerH = 96;
+  const headerH = 110;
   aplicarMarcaDagua(doc, empresa);
   doc.setFillColor(brand[0], brand[1], brand[2]);
   doc.rect(0, 0, W, headerH, "F");
@@ -86,8 +86,8 @@ export function gerarRelatorioPDF(
     empresa.email || "",
     empresa.endereco || "",
   ].filter(Boolean);
-  let hy = 54;
-  head.forEach((l) => { doc.text(l, headX, hy); hy += 13; });
+  let hy = 56;
+  head.forEach((l) => { doc.text(l, headX, hy); hy += 17; });
 
   // Título
   let y = Math.max(headerH + 18, M_TOP);
@@ -115,22 +115,22 @@ export function gerarRelatorioPDF(
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
   doc.text("RELATÓRIO DE PRESTAÇÃO DE SERVIÇO", W / 2, y, { align: "center" });
   doc.setFontSize(FS.footer); doc.setFont("helvetica", "normal");
-  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 16, { align: "center" });
-  y += 32;
+  doc.text(`RPS-${padNum(r.numero)}${r.orcamentoId ? "  ·  Vinculado ao orçamento" : ""}`, W / 2, y + 18, { align: "center" });
+  y += 38;
 
   // Status
   doc.setFillColor(brand[0], brand[1], brand[2]);
-  doc.roundedRect(M, y, W - M * 2, 24, 4, 4, "F");
+  doc.roundedRect(M, y, W - M * 2, 28, 4, 4, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.body);
-  doc.text(`Status: ${relatorioStatusLabel[r.status]}`, M + 10, y + 16);
-  doc.text(`Data: ${dateBR(r.dataExecucao)}`, W - M - 10, y + 16, { align: "right" });
+  doc.text(`Status: ${relatorioStatusLabel[r.status]}`, M + 10, y + 19);
+  doc.text(`Data: ${dateBR(r.dataExecucao)}`, W - M - 10, y + 19, { align: "right" });
   doc.setTextColor(20, 20, 20);
-  y += 34;
+  y += 28 + 30;
 
   // Dados do cliente
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("CLIENTE", M, y); y += 17;
+  doc.text("CLIENTE", M, y); y += 20;
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const cliInfo = [
     `Nome: ${cliente?.nome ?? "—"}`,
@@ -147,7 +147,7 @@ export function gerarRelatorioPDF(
 
   // Dados do serviço
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-  doc.text("DADOS DO SERVIÇO", M, y); y += 17;
+  doc.text("DADOS DO SERVIÇO", M, y); y += 20;
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const servInfo = [
     `Serviço: ${r.servicoExecutado}`,
@@ -191,7 +191,7 @@ export function gerarRelatorioPDF(
     if (g.arr.length === 0) continue;
     if (y > BOTTOM - 160) { doc.addPage(); y = M_TOP; }
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text(g.titulo, M, y); y += 16;
+    doc.text(g.titulo, M, y); y += 20;
     const cellW = (W - M * 2 - 12) / 2;
     const cellH = cellW * 0.72;
     let col = 0;
@@ -252,7 +252,7 @@ export function gerarRelatorioPDF(
     const lines = doc.splitTextToSize(l, W - M * 2);
     lines.forEach((ln: string) => {
       doc.text(ln, W / 2, ly, { align: "center" });
-      ly += 11;
+      ly += 14;
     });
   });
   void pageBreakIfNeeded;
