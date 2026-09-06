@@ -58,7 +58,7 @@ export function gerarRelatorioPDF(
   const modoMensal = empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual";
   const brand = hexToRgb(modoMensal ? preset.principal : (empresa.corPdf ?? preset.principal));
   const FS = { title: 18, subtitle: 14, body: 13, footer: 11 };
-  const LH = (s: number) => Math.round(s * 1.3);
+  const LH = (s: number) => Math.round(s * 1.45);
   const BOTTOM = H - M - 30;
   const SECTION_HEADER_H = 30;
   const SECTION_GAP = 16;
