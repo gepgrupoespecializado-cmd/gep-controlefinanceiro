@@ -1,0 +1,2 @@
+COMMENT ON FUNCTION public.current_org_id() IS 'SECURITY DEFINER helper usado exclusivamente em policies RLS para resolver a organização do usuário autenticado. EXECUTE para authenticated é intencional e necessário.';
+COMMENT ON FUNCTION public.has_role(uuid, public.app_role) IS 'SECURITY DEFINER helper usado exclusivamente em policies RLS para verificar papéis do usuário. EXECUTE para authenticated é intencional e necessário.';

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/store";
 
 export const Route = createFileRoute("/bem-vindo")({
   head: () => ({
@@ -82,6 +83,13 @@ function OnboardingPage() {
       );
       if (profileError) throw profileError;
 
+      db.updateEmpresa({
+        nome: form.nome.trim(),
+        cnpj: form.cnpj.trim(),
+        telefone: form.telefone.trim(),
+        email: form.email.trim() || (user.email ?? ""),
+        endereco: `${form.cidade.trim()}${form.cidade.trim() && form.estado.trim() ? ", " : ""}${form.estado.trim()}`,
+      });
       toast.success("Empresa criada. Bom trabalho!");
       window.location.assign("/");
     } catch {

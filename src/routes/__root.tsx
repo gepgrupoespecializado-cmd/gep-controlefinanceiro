@@ -92,7 +92,7 @@ function SafeHomeFallback({ onRetry }: { onRetry: () => void }) {
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
   beforeLoad: async ({ location }) => {
-    if (typeof window === "undefined") return;
+if (typeof window === "undefined") return;
 
     const user = await getSessionUser();
     const publica = isPublicRoute(location.pathname);
