@@ -33,6 +33,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Dashboard — Controle de Prestação de Serviços GEP" },
       { name: "description", content: "Visão geral do seu negócio em tempo real." },
+      { property: "og:title", content: "Dashboard — Controle de Prestação de Serviços GEP" },
+      { property: "og:description", content: "Visão geral do seu negócio em tempo real." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,
