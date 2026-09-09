@@ -1,57 +1,87 @@
-# Atualização Master — Controle de Prestação de Serviços GEP
+# Etapa 01: preparar a base de dados para o modo multiempresa
 
-Entrega única, profissional, pronta para comercialização. 4 blocos integrados.
+Objetivo desta etapa: reorganizar internamente como o sistema guarda e calcula os dados, sem mudar nenhuma tela, nenhum cálculo e sem sair do armazenamento local. Ao final, trocar o armazenamento local por um banco online (Etapa 02) vira uma troca de peça, não uma reescrita.
 
-## 1. PDF Profissional (correção definitiva)
+## Situação atual (verificada)
 
-**Arquivos:** `src/lib/pdf.ts`, `src/lib/relatorio-pdf.ts`, `src/components/pdf-preview-dialog.tsx`, `src/components/relatorio-dialog.tsx`
+Hoje tudo vive em um único arquivo (`src/lib/store.ts`, 1.333 linhas): tipos, dados iniciais, leitura/gravação no navegador, histórico de alterações, numeração de orçamentos e relatórios e as regras financeiras automáticas. As telas leem o estado inteiro com `useDB()` e chamam funções que gravam direto (`db.addCliente`, `relatorios.add`, etc.), todas síncronas. O login (`src/lib/auth.ts`) é apenas um marcador local, sem usuário real. Não existe banco, nem identificação de empresa nos registros.
 
-- **Página única inteligente:** medir altura do conteúdo antes de desenhar; aplicar escala automática de espaçamentos (line-height, paddings) para caber em 1 página A4 sempre que possível. Quando ultrapassar, paginar limpo com mini-header.
-- **Tipografia padronizada:** Título 16 · Subtítulo 13 · Conteúdo 12 · Rodapé 10 (substitui os 18-22 atuais que causam quebras).
-- **Compatibilidade total:** A4, Android, Web, WhatsApp e WhatsApp Business (Blob com `type:"application/pdf"`, nome de arquivo curto sem caracteres especiais).
-- **Fotos opcionais** com grid 2 colunas e rótulos automáticos **ANTES | DEPOIS**, alta qualidade (compressão FAST + tamanho proporcional).
-- **Assinaturas opcionais:** remover validação obrigatória em `relatorio-dialog.tsx`.
-- **Compartilhamento automático (📤 Enviar Orçamento):**
-  - Tenta `navigator.share({ files: [pdfFile], title, text })` → abre seletor nativo (WhatsApp anexa o PDF direto, sem download).
-  - Fallback: salva PDF via `doc.save()` e abre `https://wa.me/<telefone>?text=<msg>` com cliente pré-selecionado e mensagem pronta.
+Regras de negócio hoje coladas na gravação:
+- receita automática quando um orçamento vira "aprovado";
+- receita automática quando um agendamento vira "concluído";
+- criação do próximo agendamento por recorrência ao fechar o relatório;
+- relatório que conclui o agendamento e sincroniza o lançamento financeiro existente;
+- numeração sequencial de orçamentos e relatórios em contador global;
+- histórico/auditoria gerado dentro de cada gravação, com usuário fixo "Operador".
 
-## 2. Agenda Inteligente PT-BR
+## O que a Etapa 01 faz
 
-**Arquivo:** `src/routes/agenda.tsx`
+1. **Separar tipos e regras do armazenamento.** Os tipos e as tabelas de rótulos saem para arquivos próprios; as regras (receita automática, aprovação, conclusão com recorrência, numeração, sincronização financeira, auditoria) passam a ser funções puras que recebem os dados e devolvem o resultado, sem saber onde é gravado.
+2. **Criar um contrato de repositório por entidade** (Cliente, Serviço, Orçamento, Agendamento, Lançamento, Relatório, Modelo, Empresa) com operações padrão: listar, buscar por id, criar, atualizar, arquivar, remover. A implementação atual continua sendo o armazenamento local.
+3. **Criar uma camada de serviços** que orquestra regra + repositório. As telas passam a conversar com os serviços; o comportamento visível fica idêntico.
+4. **Preparar o espaço da conta/empresa** apenas como conceito: um identificador de contexto ("qual empresa está ativa") que hoje devolve sempre um valor fixo local. Nada muda para o usuário; na Etapa 02 esse ponto vira a conta real.
+5. **Preparar o caminho assíncrono** nas assinaturas das operações de escrita, para que a troca por banco remoto não exija mexer nas telas de novo.
 
-- Locale **pt-BR** em todos os meses, dias e datas (`toLocaleDateString("pt-BR")`, `Intl.DateTimeFormat`).
-- **Cores por tipo de cliente:** 🟢 Semanal · 🔵 Quinzenal · 🟠 Mensal · 🟣 Trimestral · ⚫ Avulso (legenda visível).
-- **Status com cor:** 🟡 Agendado · 🔵 Confirmado · 🟢 Concluído · 🔴 Cancelado · ⚠️ Aguardando.
-- **Card mostra:** Cliente · Serviço · Data · Horário · Valor · Status.
-- **4 visualizações em tabs:** Diária / Semanal / Mensal / Lista.
-- **Busca inteligente** por: cliente, bairro, cidade, serviço, data, status.
-- **Alertas no topo:** Hoje · Amanhã · Recorrentes · Retornos programados · Atrasados.
-- **Retorno automático:** ao marcar serviço como Concluído, dialog sugere retorno (semanal/quinzenal/mensal/trimestral) com confirmação em 1 clique → cria novo agendamento.
+Nada de banco remoto, regras de segurança de banco, planos, pagamentos, Kiwify, painel administrativo ou remoção do armazenamento local nesta etapa.
 
-## 3. Precificação Inteligente
+## Estrutura proposta
 
-**Arquivos:** `src/routes/precificacao.tsx` (rework), `src/routes/index.tsx` (card destacado), `src/routes/empresa.tsx` (config custos), `src/lib/store.ts` (campos novos em `Empresa`).
+```text
+src/
+  types/            modelos (cliente, servico, orcamento, agenda, financeiro,
+                    relatorio, modelo, empresa) e enums/rótulos
+  domain/           regras puras: totais, validade, status de pagamento,
+                    receita de orçamento, receita de agendamento,
+                    recorrência, numeração, sincronização financeira, auditoria
+  data/
+    repositories/   contratos (interfaces) por entidade
+    local/          implementação atual sobre o armazenamento do navegador
+    context.ts      identificador da empresa ativa (fixo nesta etapa)
+  services/         orçamento, agenda, financeiro, relatório, cadastro, empresa
+  lib/store.ts      mantido como fachada compatível, apontando para os serviços
+```
 
-- **Card destacado** 🧮 na home, entre as funções principais.
-- Layout em blocos: Mão de Obra · Tempo · Deslocamento (km/combustível/pedágio/estacionamento) · **Produtos & Materiais (lista ilimitada com ➕/➖)** · Custos Operacionais (água/energia/internet/telefone/marketing/admin/contábil/outros) · Impostos (Simples/banco/cartão/outras) · Lucro (presets 20/30/40/50%).
-- **⚙️ Configuração de Custos da Empresa** em `empresa.tsx`: valor hora padrão, % lucro, taxa cartão, custo operacional mensal, km padrão, valor mínimo de atendimento. Auto-preenche cálculos.
-- Resultado: Mão de Obra · Produtos · Operacional · Impostos · Lucro · **Valor Final Sugerido**.
-- 📄 **Gerar Orçamento:** já transfere via `sessionStorage` para `/orcamentos` (mantido + descrição e valor preenchidos).
+O ponto central: `src/lib/store.ts` continua existindo e exportando exatamente o que exporta hoje. As telas não precisam ser reescritas nesta etapa.
 
-## 4. Identidade Visual GEP
+## Detalhes técnicos
 
-- Renomear sistema em toda a UI, PDFs e meta tags para **CONTROLE DE PRESTAÇÃO DE SERVIÇOS GEP**.
-- Logo da empresa (`empresa.logoDataUrl`) exibida em: Home, Sidebar, Orçamentos, Relatórios, PDFs.
-- `public/manifest.webmanifest`: nome e short_name atualizados.
-- `__root.tsx`: meta title atualizado.
-- Administrador pode trocar logo via `/empresa` (já existente).
+- **Contrato genérico:** `Repository<T>` com `list(): Promise<T[]>`, `getById(id)`, `create(input)`, `update(id, patch)`, `archive(id, flag)`, `remove(id)`. Casos específicos: `OrcamentoRepository` e `RelatorioRepository` expõem `nextNumber()`; `EmpresaRepository` é singleton (`get()` / `save(patch)`); `HistoricoRepository` expõe `append(entry)` e `clear()`.
+- **Implementação local:** um único adaptador que mantém o estado em memória, normaliza na leitura (a normalização atual é reaproveitada integralmente) e persiste com a mesma chave `gep_db_v3`. Formato do dado gravado inalterado, para não invalidar dados de quem já usa.
+- **Regras puras:** funções sem efeito colateral, por exemplo `criarReceitaDeOrcamento(orcamento, cliente): Lancamento | null`, `proximoAgendamentoPorRecorrencia(agendamento, base): Agendamento | null`, `sincronizarFinanceiroRelatorio(relatorio, agendamento, lancamentoExistente): { criar?: Lancamento; atualizar?: Partial<Lancamento> }`, `diffPatch`, `montarEntradaHistorico`. Isso permite testar as regras sem tocar em armazenamento.
+- **Serviços:** `orcamentoService.aprovar()`, `agendaService.concluir()`, `relatorioService.registrar()`, `financeiroService.registrar/marcarRecebido()`. Cada um chama a regra, grava pelo repositório e registra a auditoria.
+- **Numeração:** hoje é um contador global no mesmo objeto. Fica isolada atrás de `nextNumber()` no repositório, porque na Etapa 02 ela precisa ser por empresa e resolvida no banco.
+- **Auditoria:** passa a receber o autor como parâmetro (`usuario`), com padrão "Operador" enquanto não há login real.
+- **Contexto de empresa:** `getEmpresaAtivaId()` devolve um valor local fixo; todos os repositórios já recebem esse identificador na assinatura, mesmo sem usá-lo ainda.
+- **Assíncrono:** os serviços retornam `Promise`. A fachada `store.ts` mantém as funções atuais com a mesma assinatura síncrona onde as telas dependem disso, disparando a promessa internamente, para evitar mudança de comportamento.
 
-## Notas técnicas
+## Arquivos
 
-- Sem novas dependências (jspdf + Web Share + Intl pt-BR).
-- Schema `Empresa` ganha: `custosPadrao?: { valorHora; percentualLucro; taxaCartao; custoOperacionalMensal; kmPadrao; valorMinimo }`.
-- Schema `Cliente.tipo` já existe — reutilizado para as cores da agenda.
-- Mantém arquitetura offline-first (IndexedDB/Dexie) intacta.
-- Corrige também o erro React #419 (hydration/Suspense no preview).
+Criar: `src/types/*`, `src/domain/*`, `src/data/repositories/*`, `src/data/local/*`, `src/data/context.ts`, `src/services/*`.
 
-Aprove para implementar tudo de uma vez.
+Modificar: apenas `src/lib/store.ts` (vira fachada) e, se necessário, ajustes de importação de tipos em telas que importam tipos de `store`.
+
+Não tocar nesta etapa: `pdf.ts`, `relatorio-pdf.ts`, `auth.ts`, `__root.tsx`, `login.tsx`, `config.server.ts` e todas as telas (clientes, serviços, orçamentos, agenda, financeiro, empresa, histórico, modelos).
+
+## Riscos e como evitá-los
+
+| Risco | Prevenção |
+| --- | --- |
+| Perda de dados de quem já usa o app | Manter a mesma chave e o mesmo formato gravado; nenhuma migração de dados nesta etapa |
+| Receita automática duplicada | A verificação "já existe lançamento com esta origem" continua sendo condição da regra, agora testável |
+| Numeração de orçamento repetida ou pulada | Numeração passa por um único ponto (`nextNumber`), nunca calculada nas telas |
+| Tela deixar de atualizar após salvar | A fachada continua notificando os assinantes exatamente como hoje |
+| Import circular entre serviços e fachada | Regras puras não importam serviços; a dependência é sempre em uma direção |
+| Quebra silenciosa de PDF | Os geradores de PDF continuam recebendo os mesmos objetos; nenhuma alteração de campo |
+
+Verificação ao final: build e checagem de tipos sem erro, e conferência manual dos fluxos aprovar orçamento, concluir agendamento com relatório e recorrência, e lançamento financeiro.
+
+## Menor conjunto suficiente para habilitar a Etapa 02
+
+1. Tipos extraídos para `src/types`.
+2. Regras financeiras, de recorrência, numeração e auditoria extraídas como funções puras em `src/domain`.
+3. Contratos de repositório definidos para as oito entidades.
+4. Um adaptador local implementando esses contratos com o formato de dados atual.
+5. `store.ts` reduzido a fachada compatível sobre os serviços.
+6. Identificador de empresa ativa presente nas assinaturas, ainda fixo.
+
+Com isso, a Etapa 02 troca somente o adaptador local por um adaptador de banco, sem tocar em telas nem em regras.
