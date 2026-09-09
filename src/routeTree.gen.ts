@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosDeUsoRouteImport } from './routes/termos-de-uso'
 import { Route as ServicosRouteImport } from './routes/servicos'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrestacaoDeServicosRouteImport } from './routes/prestacao-de-servicos'
 import { Route as PrecificacaoRouteImport } from './routes/precificacao'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
@@ -24,7 +23,6 @@ import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as EmpresaRouteImport } from './routes/empresa'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
-import { Route as BemVindoRouteImport } from './routes/bem-vindo'
 import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,11 +34,6 @@ const TermosDeUsoRoute = TermosDeUsoRouteImport.update({
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
   path: '/servicos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrestacaoDeServicosRoute = PrestacaoDeServicosRouteImport.update({
@@ -103,11 +96,6 @@ const ClientesRoute = ClientesRouteImport.update({
   path: '/clientes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BemVindoRoute = BemVindoRouteImport.update({
-  id: '/bem-vindo',
-  path: '/bem-vindo',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AgendaRoute = AgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
@@ -122,7 +110,6 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
-  '/bem-vindo': typeof BemVindoRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
@@ -135,14 +122,12 @@ export interface FileRoutesByFullPath {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
-  '/bem-vindo': typeof BemVindoRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
@@ -155,7 +140,6 @@ export interface FileRoutesByTo {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
@@ -163,7 +147,6 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agenda': typeof AgendaRoute
-  '/bem-vindo': typeof BemVindoRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
@@ -176,7 +159,6 @@ export interface FileRoutesById {
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
   '/precificacao': typeof PrecificacaoRoute
   '/prestacao-de-servicos': typeof PrestacaoDeServicosRoute
-  '/reset-password': typeof ResetPasswordRoute
   '/servicos': typeof ServicosRoute
   '/termos-de-uso': typeof TermosDeUsoRoute
 }
@@ -185,7 +167,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agenda'
-    | '/bem-vindo'
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
@@ -198,14 +179,12 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/precificacao'
     | '/prestacao-de-servicos'
-    | '/reset-password'
     | '/servicos'
     | '/termos-de-uso'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agenda'
-    | '/bem-vindo'
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
@@ -218,14 +197,12 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/precificacao'
     | '/prestacao-de-servicos'
-    | '/reset-password'
     | '/servicos'
     | '/termos-de-uso'
   id:
     | '__root__'
     | '/'
     | '/agenda'
-    | '/bem-vindo'
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
@@ -238,7 +215,6 @@ export interface FileRouteTypes {
     | '/politica-de-privacidade'
     | '/precificacao'
     | '/prestacao-de-servicos'
-    | '/reset-password'
     | '/servicos'
     | '/termos-de-uso'
   fileRoutesById: FileRoutesById
@@ -246,7 +222,6 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgendaRoute: typeof AgendaRoute
-  BemVindoRoute: typeof BemVindoRoute
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   EmpresaRoute: typeof EmpresaRoute
@@ -259,7 +234,6 @@ export interface RootRouteChildren {
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
   PrecificacaoRoute: typeof PrecificacaoRoute
   PrestacaoDeServicosRoute: typeof PrestacaoDeServicosRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
   ServicosRoute: typeof ServicosRoute
   TermosDeUsoRoute: typeof TermosDeUsoRoute
 }
@@ -278,13 +252,6 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/prestacao-de-servicos': {
@@ -371,13 +338,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/bem-vindo': {
-      id: '/bem-vindo'
-      path: '/bem-vindo'
-      fullPath: '/bem-vindo'
-      preLoaderRoute: typeof BemVindoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/agenda': {
       id: '/agenda'
       path: '/agenda'
@@ -398,7 +358,6 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRoute,
-  BemVindoRoute: BemVindoRoute,
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   EmpresaRoute: EmpresaRoute,
@@ -411,7 +370,6 @@ const rootRouteChildren: RootRouteChildren = {
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
   PrecificacaoRoute: PrecificacaoRoute,
   PrestacaoDeServicosRoute: PrestacaoDeServicosRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
   ServicosRoute: ServicosRoute,
   TermosDeUsoRoute: TermosDeUsoRoute,
 }
