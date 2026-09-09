@@ -1,64 +1,35 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { uid } from "./format";
 
-/* ---------- Types ---------- */
-export type ClienteFreq = "semanal" | "quinzenal" | "mensal" | "trimestral" | "avulso";
+/* ---------- Types (definições em src/types/models.ts) ---------- */
+import type {
+  Agendamento, AgendaStatus, Cliente, ClienteFreq, DB, Empresa, FormaPagamento,
+  HistoricoEntidade, HistoricoEntry, Lancamento, LancamentoTipo, ModeloDescricao,
+  Orcamento, OrcamentoItem, OrcamentoStatus, PdfTema, Recorrencia,
+  Relatorio, RelatorioStatus, Servico, SituacaoPagamento,
+} from "../types/models";
+import {
+  formaPagamentoLabel, recorrenciaDias, recorrenciaLabel, relatorioStatusLabel,
+} from "../types/models";
+import {
+  diffPatch,
+  novaReceitaDeAgendamento,
+  novaReceitaDeOrcamento,
+  planejarSincronizacaoFinanceira,
+  proximoAgendamentoPorRecorrencia,
+} from "../domain/rules";
 
-export interface Cliente {
-  id: string;
-  nome: string;
-  telefone?: string;
-  whatsapp?: string;
-  email?: string;
-  /** CPF ou CNPJ do cliente (exibido no PDF quando informado). */
-  documento?: string;
-  endereco?: string;
-  cep?: string;
-  rua?: string;
-  numero?: string;
-  complemento?: string;
-  bairro?: string;
-  cidade?: string;
-  estado?: string;
-  observacoes?: string;
-  frequencia: ClienteFreq;
-  criadoEm: string;
-  arquivado?: boolean;
-  atualizadoEm?: string;
-}
+export type {
+  Agendamento, AgendaStatus, Cliente, ClienteFreq, DB, Empresa, FormaPagamento,
+  HistoricoEntidade, HistoricoEntry, Lancamento, LancamentoTipo, ModeloDescricao,
+  Orcamento, OrcamentoItem, OrcamentoStatus, PagamentoStatus, PdfTema, Recorrencia,
+  Relatorio, RelatorioStatus, Servico, SituacaoPagamento,
+} from "../types/models";
+export { formaPagamentoLabel, recorrenciaDias, recorrenciaLabel, relatorioStatusLabel };
+export {
+  statusPagamento, subtotalOrcamento, totalOrcamento, validadeOrcamento,
+} from "../domain/rules";
 
-export interface Servico {
-  id: string;
-  nome: string;
-  descricao?: string;
-  valor: number;
-  tempoEstimado?: string;
-  arquivado?: boolean;
-  atualizadoEm?: string;
-}
-
-export type OrcamentoStatus = "rascunho" | "enviado" | "aprovado" | "recusado";
-
-export type FormaPagamento =
-  | "pix"
-  | "dinheiro"
-  | "debito"
-  | "credito"
-  | "transferencia"
-  | "boleto"
-  | "outro";
-
-export const formaPagamentoLabel: Record<FormaPagamento, string> = {
-  pix: "PIX",
-  dinheiro: "Dinheiro",
-  debito: "Cartão de Débito",
-  credito: "Cartão de Crédito",
-  transferencia: "Transferência Bancária",
-  boleto: "Boleto",
-  outro: "Outro",
-};
-
-export type SituacaoPagamento = "pago" | "parcial" | "pendente";
 
 export const situacaoPagamentoLabel: Record<SituacaoPagamento, string> = {
   pago: "Pago",
@@ -72,52 +43,6 @@ export const UNIDADES_ORCAMENTO = [
 ] as const;
 export type UnidadeOrcamento = (typeof UNIDADES_ORCAMENTO)[number];
 
-export interface OrcamentoItem {
-  servicoId?: string;
-  descricao: string;
-  quantidade: number;
-  valorUnit: number;
-  /** Categoria comercial (ex.: "Limpeza Especializada de Vidros"). */
-  categoria?: string;
-  /** Unidade de medida do item (Serviço, m², Janela...). */
-  unidade?: string;
-  /** Escopo resumido do item, exibido na coluna ESCOPO do PDF. */
-  escopo?: string;
-}
-
-export interface Orcamento {
-  id: string;
-  numero: number;
-  clienteId: string;
-  itens: OrcamentoItem[];
-  prazo?: string;
-  observacoes?: string;
-  descricaoServicos: string;
-  validadeDias: number;
-  formasPagamento: FormaPagamento[];
-  status: OrcamentoStatus;
-  criadoEm: string;
-  arquivado?: boolean;
-  atualizadoEm?: string;
-  /** Proposta comercial (novo modelo) — itens do escopo do serviço. */
-  escopo?: string[];
-  /** Itens que não fazem parte da proposta. */
-  naoIncluso?: string[];
-  /** Condições de execução do serviço. */
-  condicoes?: string[];
-  /** Mensagem curta de diferencial GEP. */
-  diferencial?: string;
-  /** Desconto em R$ aplicado sobre o subtotal. */
-  desconto?: number;
-  /** Agendamento previsto (opcional). */
-  dataPrevista?: string; // YYYY-MM-DD
-  horaPrevista?: string; // HH:MM
-  /** Registro fotográfico (data URLs). */
-  fotosAntes?: string[];
-  fotosDepois?: string[];
-  /** Versão do documento — incrementa a cada alteração. */
-  versao?: number;
-}
 
 /** Opções de validade da proposta (dias). */
 export const VALIDADE_OPCOES = [3, 5, 7, 10, 15, 30] as const;
@@ -173,156 +98,8 @@ export const ESCOPO_MODELOS: { nome: string; itens: string[] }[] = [
   },
 ];
 
-export type AgendaStatus = "agendado" | "em_andamento" | "concluido" | "cancelado";
 
-export type Recorrencia =
-  | "nenhuma"
-  | "semanal"
-  | "quinzenal"
-  | "mensal"
-  | "trimestral"
-  | "personalizada";
 
-export const recorrenciaDias: Record<Recorrencia, number> = {
-  nenhuma: 0,
-  semanal: 7,
-  quinzenal: 14,
-  mensal: 30,
-  trimestral: 90,
-  personalizada: 0,
-};
-
-export const recorrenciaLabel: Record<Recorrencia, string> = {
-  nenhuma: "Sem recorrência",
-  semanal: "Retorno semanal",
-  quinzenal: "Retorno quinzenal",
-  mensal: "Retorno mensal",
-  trimestral: "Retorno trimestral",
-  personalizada: "Retorno personalizado",
-};
-
-export interface Agendamento {
-  id: string;
-  clienteId: string;
-  servicoId?: string;
-  titulo: string;
-  data: string; // ISO datetime
-  observacoes?: string;
-  status: AgendaStatus;
-  valor?: number;
-  horaInicio?: string;
-  horaFim?: string;
-  responsavel?: string;
-  endereco?: string;
-  orcamentoId?: string;
-  recorrencia?: Recorrencia;
-  intervaloDias?: number;
-  relatorioId?: string;
-  arquivado?: boolean;
-  atualizadoEm?: string;
-}
-
-export type RelatorioStatus = "sucesso" | "observacoes" | "retorno";
-
-export const relatorioStatusLabel: Record<RelatorioStatus, string> = {
-  sucesso: "Concluído com Sucesso",
-  observacoes: "Concluído com Observações",
-  retorno: "Retorno Programado",
-};
-
-export interface Relatorio {
-  id: string;
-  numero: number;
-  agendamentoId: string;
-  clienteId: string;
-  orcamentoId?: string;
-  servicoExecutado: string;
-  descricao: string;
-  observacoes?: string;
-  status: RelatorioStatus;
-  dataExecucao: string;
-  horaInicio?: string;
-  horaFim?: string;
-  responsavel?: string;
-  valor?: number;
-  fotosAntes: string[];
-  fotosDurante: string[];
-  fotosDepois: string[];
-  assinaturaTecnico?: string;
-  assinaturaCliente?: string;
-  criadoEm: string;
-  arquivado?: boolean;
-  // ===== Encerramento financeiro =====
-  valorOrcamento?: number;
-  valorRecebido?: number;
-  formasPagamentoRecebimento?: FormaPagamento[];
-  parcelas?: number;
-  taxaCartao?: number;
-  observacoesFinanceiras?: string;
-  dataPagamento?: string;
-  situacaoPagamento?: SituacaoPagamento;
-  recebidoPor?: string;
-}
-
-export type LancamentoTipo = "entrada" | "saida";
-export type PagamentoStatus = "recebido" | "pendente" | "vencido";
-export interface Lancamento {
-  id: string;
-  tipo: LancamentoTipo;
-  descricao: string;
-  valor: number;
-  data: string;
-  categoria?: string;
-  pago?: boolean;
-  vencimento?: string;
-  origemTipo?: "orcamento" | "agendamento" | "manual";
-  origemId?: string;
-  arquivado?: boolean;
-  atualizadoEm?: string;
-}
-
-export interface Empresa {
-  nome: string;
-  cnpj?: string;
-  telefone?: string;
-  whatsapp?: string;
-  email?: string;
-  endereco?: string;
-  redesSociais?: string;
-  logoDataUrl?: string;
-  temaPdf?: PdfTema;
-  corPdf?: string; // hex, ex: "#0b1b3d"
-  corSecundariaPdf?: string; // hex — títulos/bordas/destaques
-  /** Modo do modelo mensal do PDF (12 cores anuais). */
-  pdfMesModo?: "auto" | "manual" | "off";
-  /** Mês selecionado manualmente (1-12) quando pdfMesModo = "manual". */
-  pdfMesManual?: number;
-  /** Configuração de Custos da Empresa — usada na Calculadora de Precificação. */
-  custosPadrao?: {
-    valorHora?: number;
-    margemLucro?: number; // %
-    taxaCartao?: number; // %
-    custoOperacionalMensal?: number;
-    valorKm?: number;
-    valorMinimoAtendimento?: number;
-    imposto?: number; // %
-  };
-}
-
-export type PdfTema =
-  | "azul_corporativo"
-  | "azul_escuro"
-  | "verde_empresarial"
-  | "cinza_executivo"
-  | "preto_premium"
-  // legados (mantidos para compatibilidade)
-  | "classico"
-  | "moderno"
-  | "executivo"
-  | "simples"
-  // 12 cores anuais (campanhas nacionais + corporativas)
-  | "mes_01" | "mes_02" | "mes_03" | "mes_04" | "mes_05" | "mes_06"
-  | "mes_07" | "mes_08" | "mes_09" | "mes_10" | "mes_11" | "mes_12";
 
 export const pdfTemaPreset: Record<PdfTema, { principal: string; secundaria: string }> = {
   azul_corporativo: { principal: "#1d4ed8", secundaria: "#60a5fa" },
@@ -386,43 +163,6 @@ export function resolvePdfTemaAtivo(empresa: Empresa, override?: PdfTema): PdfTe
   return empresa.temaPdf ?? "azul_escuro";
 }
 
-export interface ModeloDescricao {
-  id: string;
-  nome: string;
-  conteudo: string;
-  favorito?: boolean;
-  criadoEm: string;
-}
-
-export type HistoricoEntidade =
-  | "cliente" | "servico" | "orcamento" | "agendamento" | "lancamento" | "empresa";
-
-export interface HistoricoEntry {
-  id: string;
-  entidade: HistoricoEntidade;
-  entidadeId: string;
-  entidadeNome: string;
-  acao: "criado" | "editado" | "arquivado" | "restaurado" | "excluido" | "status";
-  campo?: string;
-  antes?: string;
-  depois?: string;
-  data: string;
-  usuario: string;
-}
-
-export interface DB {
-  clientes: Cliente[];
-  servicos: Servico[];
-  orcamentos: Orcamento[];
-  proximoOrcamento: number;
-  agendamentos: Agendamento[];
-  lancamentos: Lancamento[];
-  empresa: Empresa;
-  historico: HistoricoEntry[];
-  modelos: ModeloDescricao[];
-  relatorios: Relatorio[];
-  proximoRelatorio: number;
-}
 
 const KEY = "gep_db_v3";
 const USUARIO_PADRAO = "Operador";
@@ -854,22 +594,6 @@ function logHist(e: Omit<HistoricoEntry, "id" | "data" | "usuario">) {
   state = { ...state, historico: [entry, ...state.historico].slice(0, 1000) };
 }
 
-function diffPatch<T extends Record<string, any>>(
-  before: T, patch: Partial<T>,
-): { campo: string; antes: string; depois: string }[] {
-  const out: { campo: string; antes: string; depois: string }[] = [];
-  for (const k of Object.keys(patch)) {
-    const a = before[k]; const b = (patch as any)[k];
-    if (JSON.stringify(a) !== JSON.stringify(b)) {
-      out.push({
-        campo: k,
-        antes: a == null ? "—" : typeof a === "object" ? JSON.stringify(a) : String(a),
-        depois: b == null ? "—" : typeof b === "object" ? JSON.stringify(b) : String(b),
-      });
-    }
-  }
-  return out;
-}
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
@@ -896,17 +620,9 @@ function nomeClienteLocal(id: string) {
 }
 
 function criarReceitaDeOrcamento(o: Orcamento) {
-  const valor = totalOrcamento(o);
-  if (valor <= 0) return;
-  const venc = new Date(); venc.setDate(venc.getDate() + 15);
-  const l: Lancamento = {
-    id: uid(), tipo: "entrada",
-    descricao: `Orçamento ORC-${String(o.numero).padStart(6, "0")} — ${nomeClienteLocal(o.clienteId)}`,
-    valor, data: new Date().toISOString(),
-    categoria: "Orçamento aprovado",
-    pago: false, vencimento: venc.toISOString(),
-    origemTipo: "orcamento", origemId: o.id,
-  };
+  const base = novaReceitaDeOrcamento(o, nomeClienteLocal(o.clienteId));
+  if (!base) return;
+  const l: Lancamento = { ...base, id: uid() };
   state = { ...state, lancamentos: [l, ...state.lancamentos] };
   logHist({
     entidade: "lancamento", entidadeId: l.id, entidadeNome: l.descricao,
@@ -915,15 +631,9 @@ function criarReceitaDeOrcamento(o: Orcamento) {
 }
 
 function criarReceitaDeAgendamento(a: Agendamento) {
-  const valor = a.valor ?? 0;
-  if (valor <= 0) return;
-  const l: Lancamento = {
-    id: uid(), tipo: "entrada",
-    descricao: `Serviço concluído — ${a.titulo} (${nomeClienteLocal(a.clienteId)})`,
-    valor, data: new Date().toISOString(),
-    categoria: "Serviço",
-    pago: true, origemTipo: "agendamento", origemId: a.id,
-  };
+  const base = novaReceitaDeAgendamento(a, nomeClienteLocal(a.clienteId));
+  if (!base) return;
+  const l: Lancamento = { ...base, id: uid() };
   state = { ...state, lancamentos: [l, ...state.lancamentos] };
   logHist({
     entidade: "lancamento", entidadeId: l.id, entidadeNome: l.descricao,
@@ -1154,33 +864,13 @@ export const db = {
 
 /* ---------- Relatórios ---------- */
 function gerarProximoAgendamentoDe(a: Agendamento, base: Date) {
-  const rec = a.recorrencia ?? "nenhuma";
-  if (rec === "nenhuma") return;
-  const dias = rec === "personalizada" ? (a.intervaloDias ?? 0) : recorrenciaDias[rec];
-  if (!dias || dias <= 0) return;
-  const next = new Date(base);
-  next.setDate(next.getDate() + dias);
-  const novo: Agendamento = {
-    id: uid(),
-    clienteId: a.clienteId,
-    servicoId: a.servicoId,
-    titulo: a.titulo,
-    data: next.toISOString(),
-    observacoes: a.observacoes,
-    status: "agendado",
-    valor: a.valor,
-    horaInicio: a.horaInicio,
-    horaFim: a.horaFim,
-    responsavel: a.responsavel,
-    endereco: a.endereco,
-    orcamentoId: a.orcamentoId,
-    recorrencia: a.recorrencia,
-    intervaloDias: a.intervaloDias,
-  };
+  const proximo = proximoAgendamentoPorRecorrencia(a, base);
+  if (!proximo) return;
+  const novo: Agendamento = { ...proximo, id: uid() };
   state = { ...state, agendamentos: [novo, ...state.agendamentos] };
   logHist({
     entidade: "agendamento", entidadeId: novo.id, entidadeNome: novo.titulo,
-    acao: "criado", campo: "recorrência", depois: recorrenciaLabel[rec],
+    acao: "criado", campo: "recorrência", depois: recorrenciaLabel[a.recorrencia ?? "nenhuma"],
   });
 }
 
@@ -1227,67 +917,41 @@ export const relatorios = {
 };
 
 function sincronizarFinanceiroRelatorio(r: Relatorio) {
-  if (r.valorRecebido == null && r.situacaoPagamento == null) return;
   const ag = state.agendamentos.find((a) => a.id === r.agendamentoId);
-  if (!ag) return;
-  const valor = r.valorRecebido ?? r.valorOrcamento ?? ag.valor ?? 0;
-  const pago = (r.situacaoPagamento ?? "pago") === "pago";
-  const cliNome = nomeClienteLocal(ag.clienteId);
-  const desc = `Serviço concluído — ${ag.titulo} (${cliNome})`;
-  const categoria = r.formasPagamentoRecebimento && r.formasPagamentoRecebimento.length
-    ? r.formasPagamentoRecebimento.map((f) => formaPagamentoLabel[f]).join(", ")
-    : "Serviço";
-  const existente = state.lancamentos.find(
-    (l) => l.origemTipo === "agendamento" && l.origemId === ag.id,
+  const existente = ag
+    ? state.lancamentos.find((l) => l.origemTipo === "agendamento" && l.origemId === ag.id)
+    : undefined;
+  const plano = planejarSincronizacaoFinanceira(
+    r, ag, ag ? nomeClienteLocal(ag.clienteId) : "Cliente", existente,
   );
-  if (existente) {
+
+  if (plano.tipo === "atualizar") {
     state = {
       ...state,
       lancamentos: state.lancamentos.map((l) =>
-        l.id === existente.id
-          ? { ...l, valor, pago, categoria, descricao: desc, data: r.dataPagamento ?? l.data, atualizadoEm: new Date().toISOString() }
-          : l,
+        l.id === plano.lancamentoId ? { ...l, ...plano.patch } : l,
       ),
     };
     logHist({
-      entidade: "lancamento", entidadeId: existente.id, entidadeNome: desc,
-      acao: "editado", campo: "encerramento", depois: `${pago ? "Recebido" : "Pendente"} · ${categoria}`,
+      entidade: "lancamento", entidadeId: plano.lancamentoId, entidadeNome: plano.descricao,
+      acao: "editado", campo: "encerramento", depois: plano.resumo,
     });
-  } else if (valor > 0) {
-    const l: Lancamento = {
-      id: uid(), tipo: "entrada",
-      descricao: desc, valor,
-      data: r.dataPagamento ?? new Date().toISOString(),
-      categoria, pago,
-      origemTipo: "agendamento", origemId: ag.id,
-    };
+    return;
+  }
+
+  if (plano.tipo === "criar") {
+    const l: Lancamento = { ...plano.lancamento, id: uid() };
     state = { ...state, lancamentos: [l, ...state.lancamentos] };
     logHist({
       entidade: "lancamento", entidadeId: l.id, entidadeNome: l.descricao,
-      acao: "criado", campo: "encerramento", depois: `${pago ? "Recebido" : "Pendente"} · ${categoria}`,
+      acao: "criado", campo: "encerramento", depois: plano.resumo,
     });
   }
 }
 
-export const subtotalOrcamento = (o: Orcamento) =>
-  asArray<OrcamentoItem>(o.itens).reduce(
-    (sum, i) => sum + (Number(i.quantidade) || 0) * (Number(i.valorUnit) || 0),
-    0,
-  );
-export const totalOrcamento = (o: Orcamento) =>
-  Math.max(0, subtotalOrcamento(o) - (Number(o.desconto) || 0));
-
-export function validadeOrcamento(o: Orcamento): { emissao: Date; vencimento: Date } {
-  const emissao = new Date(o.criadoEm);
-  const vencimento = new Date(emissao);
-  vencimento.setDate(vencimento.getDate() + (o.validadeDias ?? 7));
-  return { emissao, vencimento };
-}
-
-export function statusPagamento(l: Lancamento): PagamentoStatus {
-  if (l.pago) return "recebido";
-  if (l.vencimento && new Date(l.vencimento) < new Date()) return "vencido";
-  return "pendente";
+/** Leitura direta do estado atual — usada pelo adaptador local (src/data/local). */
+export function getDBSnapshot(): DB {
+  return state;
 }
 
 export const freqLabel: Record<ClienteFreq, string> = {
