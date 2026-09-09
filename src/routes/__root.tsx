@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
   redirect,
@@ -16,7 +17,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { OnlineStatus } from "@/components/online-status";
 import { installGlobalErrorHandlers, logAppError } from "@/lib/safe-error";
-import { isLocalAuthenticated, isPublicRoute } from "@/lib/auth";
+import { getSessionUser, isPublicRoute } from "@/lib/auth";
+import { initOrgSync, loadOrgContext } from "@/data/cloud-sync";
+import { supabase } from "@/integrations/supabase/client";
 import { registerServiceWorker } from "@/lib/pwa";
 import { InstallPrompt } from "@/components/install-prompt";
 import { SplashScreen } from "@/components/splash-screen";
@@ -88,16 +91,28 @@ function SafeHomeFallback({ onRetry }: { onRetry: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
-  beforeLoad: ({ location }) => {
+  beforeLoad: async ({ location }) => {
     if (typeof window === "undefined") return;
 
-    const authenticated = isLocalAuthenticated();
-    if (location.pathname === "/login" && authenticated) {
+    const user = await getSessionUser();
+    const publica = isPublicRoute(location.pathname);
+
+    if (!user) {
+      if (!publica) throw redirect({ to: "/login" });
+      return;
+    }
+    if (location.pathname === "/login") {
       throw redirect({ to: "/" });
     }
-    if (!authenticated && !isPublicRoute(location.pathname)) {
-      throw redirect({ to: "/login" });
+    if (publica) return;
+
+    const { orgId } = await loadOrgContext();
+    if (!orgId) {
+      if (location.pathname !== "/bem-vindo") throw redirect({ to: "/bem-vindo" });
+      return;
     }
+    if (location.pathname === "/bem-vindo") throw redirect({ to: "/" });
+    await initOrgSync(orgId);
   },
   head: () => ({
     meta: [
@@ -162,10 +177,32 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  const router = useRouter();
+
   useEffect(() => {
     installGlobalErrorHandlers();
     registerServiceWorker();
   }, []);
+
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      void router.invalidate();
+    });
+    return () => data.subscription.unsubscribe();
+  }, [router]);
+
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const semLayout = pathname === "/login" || pathname === "/reset-password" || pathname === "/bem-vindo";
+
+  if (semLayout) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

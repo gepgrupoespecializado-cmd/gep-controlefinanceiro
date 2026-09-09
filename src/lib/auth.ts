@@ -1,64 +1,53 @@
-const AUTH_KEY = "gep_auth_session";
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+import { supabase } from "@/integrations/supabase/client";
 
-let memoryAuthenticated = false;
-
-type LocalSession = {
-  token: string;
-  createdAt: number;
-  expiresAt: number;
-};
-
-function now() {
-  return Date.now();
-}
-
-function newSession(): LocalSession {
-  const createdAt = now();
-  const token =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Math.random().toString(36).slice(2)}${createdAt.toString(36)}`;
-
-  return {
-    token,
-    createdAt,
-    expiresAt: createdAt + SESSION_TTL_MS,
-  };
-}
-
-export function isLocalAuthenticated(): boolean {
-  if (memoryAuthenticated) return true;
-  if (typeof window === "undefined") return false;
-
-  try {
-    const raw = window.localStorage.getItem(AUTH_KEY);
-    if (!raw) return false;
-    const session = JSON.parse(raw) as Partial<LocalSession>;
-    const valid = typeof session.token === "string" && Number(session.expiresAt) > now();
-    if (!valid) {
-      window.localStorage.removeItem(AUTH_KEY);
-      return false;
-    }
-    memoryAuthenticated = true;
-    return true;
-  } catch {
-    return memoryAuthenticated;
-  }
-}
-
-export function startLocalSession(): boolean {
-  memoryAuthenticated = true;
-  if (typeof window === "undefined") return true;
-
-  try {
-    window.localStorage.setItem(AUTH_KEY, JSON.stringify(newSession()));
-  } catch {
-    // Modo privado/armazenamento bloqueado: mantém sessão apenas em memória.
-  }
-  return true;
-}
+const PUBLICAS = new Set([
+  "/login",
+  "/reset-password",
+  "/termos-de-uso",
+  "/politica-de-privacidade",
+]);
 
 export function isPublicRoute(pathname: string): boolean {
-  return pathname === "/login" || pathname === "/termos-de-uso" || pathname === "/politica-de-privacidade";
+  return PUBLICAS.has(pathname);
+}
+
+export async function getSessionUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user ?? null;
+}
+
+export async function signInWithPassword(email: string, senha: string) {
+  return supabase.auth.signInWithPassword({ email: email.trim(), password: senha });
+}
+
+export async function signUpWithPassword(email: string, senha: string, nome: string) {
+  return supabase.auth.signUp({
+    email: email.trim(),
+    password: senha,
+    options: {
+      emailRedirectTo: `${window.location.origin}/login`,
+      data: { name: nome },
+    },
+  });
+}
+
+export async function enviarRecuperacao(email: string) {
+  return supabase.auth.resetPasswordForEmail(email.trim(), {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+}
+
+export function mensagemAmigavel(msg: string | undefined): string {
+  const m = (msg ?? "").toLowerCase();
+  if (m.includes("invalid login")) return "E-mail ou senha incorretos.";
+  if (m.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar.";
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "Este e-mail já possui conta. Faça login.";
+  if (m.includes("weak") || m.includes("pwned"))
+    return "Esta senha é muito comum e insegura. Escolha outra senha.";
+  if (m.includes("should be at least") || m.includes("password"))
+    return "A senha precisa ter no mínimo 6 caracteres.";
+  if (m.includes("rate limit")) return "Muitas tentativas. Aguarde alguns minutos.";
+  if (!m) return "Não foi possível concluir. Tente novamente.";
+  return "Não foi possível concluir. Tente novamente.";
 }
