@@ -5,7 +5,7 @@ import { uid } from "./format";
 import type {
   Agendamento, AgendaStatus, Cliente, ClienteFreq, DB, Empresa, FormaPagamento,
   HistoricoEntidade, HistoricoEntry, Lancamento, LancamentoTipo, ModeloDescricao,
-  Orcamento, OrcamentoItem, OrcamentoStatus, PdfTema, Recorrencia,
+  Orcamento, OrcamentoItem, OrcamentoStatus, PagamentoStatus, PdfTema, Recorrencia,
   Relatorio, RelatorioStatus, Servico, SituacaoPagamento,
 } from "../types/models";
 import {
