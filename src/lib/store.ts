@@ -585,6 +585,7 @@ function persist() {
     }
   }
   listeners.forEach((l) => l());
+  notifyPersistListener(state);
 }
 
 function logHist(e: Omit<HistoricoEntry, "id" | "data" | "usuario">) {
@@ -952,6 +953,48 @@ function sincronizarFinanceiroRelatorio(r: Relatorio) {
 /** Leitura direta do estado atual — usada pelo adaptador local (src/data/local). */
 export function getDBSnapshot(): DB {
   return state;
+}
+
+/* ---------- Ponte de sincronização (Etapa 02) ---------- */
+
+type PersistListener = (db: DB) => void;
+let persistListener: PersistListener | null = null;
+
+/** Garante a leitura dos dados já salvos neste dispositivo. */
+export function ensureHydrated() {
+  hydrateFromStorageOnce();
+}
+
+/** Registra um observador chamado após cada gravação local (usado pela nuvem). */
+export function setPersistListener(fn: PersistListener | null) {
+  persistListener = fn;
+}
+
+function notifyPersistListener(db: DB) {
+  try {
+    persistListener?.(db);
+  } catch (error) {
+    console.warn("Falha ao sincronizar dados com a nuvem.", error);
+  }
+}
+
+/** Substitui o estado local (vindo da nuvem) sem disparar nova sincronização. */
+export function replaceDB(next: Partial<DB> | null | undefined) {
+  hydratedFromStorage = true;
+  state = normalizeDB(next);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch {
+      // armazenamento indisponível
+    }
+  }
+  listeners.forEach((l) => l());
+}
+
+/** Zera o estado local (troca de conta). */
+export function resetDB() {
+  replaceDB(null);
 }
 
 export const freqLabel: Record<ClienteFreq, string> = {

@@ -10,6 +10,7 @@ import {
   Calculator,
   Scale,
   ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,6 +25,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useDB } from "@/lib/store";
+import { supabase } from "@/integrations/supabase/client";
+import { stopOrgSync } from "@/data/cloud-sync";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -46,6 +49,12 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const data = useDB();
+
+  async function sair() {
+    await stopOrgSync();
+    await supabase.auth.signOut();
+    window.location.assign("/login");
+  }
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false);
@@ -112,6 +121,18 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={sair} className="flex items-center gap-2">
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Sair</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
