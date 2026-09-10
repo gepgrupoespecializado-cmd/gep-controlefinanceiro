@@ -97,19 +97,25 @@ export async function loadOrgContext(): Promise<OrgContext> {
 async function push(orgId: string, db: DB) {
   const { data } = await supabase.auth.getUser();
   const userId = data.user?.id ?? null;
-  const { error } = await supabase.from("app_data").upsert(
-    {
-      organization_id: orgId,
-      payload: db as unknown as Json,
-      updated_by: userId,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "organization_id" },
-  );
-  if (error) console.warn("Não foi possível salvar na nuvem.", error.message);
-  // Etapa 03 — Fase A: espelho nas tabelas próprias. O bloco acima continua
-  // sendo a fonte de leitura, então uma falha aqui não afeta o aplicativo.
+  let blocoOk = false;
+  // Fase C: o bloco JSON fica congelado como último backup e não recebe mais
+  // gravações. Nas fases A e B ele continua sendo atualizado normalmente.
+  if (faseAtual !== "C") {
+    const { error } = await supabase.from("app_data").upsert(
+      {
+        organization_id: orgId,
+        payload: db as unknown as Json,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "organization_id" },
+    );
+    if (error) console.warn("Não foi possível salvar na nuvem.", error.message);
+    blocoOk = !error;
+  }
+  // Espelho nas tabelas próprias.
   await sincronizarRelacional(orgId, db, userId);
+  if (blocoOk && faseAtual === "B") dualWriteValidado = true;
 }
 
 function scheduleSave(db: DB) {
