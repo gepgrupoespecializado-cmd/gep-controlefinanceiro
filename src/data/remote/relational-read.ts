@@ -358,7 +358,12 @@ export async function lerRelacional(org: string): Promise<SnapshotRelacional> {
     relatorios,
     proximoRelatorio: contadores.relatorio,
     modelos: modelosRows.map(montarModelo),
-    historico: historicoRows.map(montarHistorico),
+    // O aplicativo mantém no máximo os 1000 registros mais recentes; a tabela
+    // guarda o histórico completo e nunca é apagada.
+    historico: historicoRows
+      .map(montarHistorico)
+      .sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0))
+      .slice(0, 1000),
   };
   if (cfg?.empresa) db.empresa = cfg.empresa as unknown as Empresa;
 
@@ -405,7 +410,8 @@ export function compararSnapshots(rel: Partial<DB>, payload: Partial<DB>): Diver
   cmp("lancamentos", n(rel.lancamentos), n(payload.lancamentos));
   cmp("relatorios", n(rel.relatorios), n(payload.relatorios));
   cmp("modelos", n(rel.modelos), n(payload.modelos));
-  cmp("historico", n(rel.historico), n(payload.historico));
+  // O histórico não entra na conferência: a tabela é acumulativa e pode conter
+  // mais registros do que o aplicativo mantém em memória.
 
   const itens = (d: Partial<DB>) =>
     (d.orcamentos ?? []).reduce((t, o) => t + (o.itens?.length ?? 0), 0);
