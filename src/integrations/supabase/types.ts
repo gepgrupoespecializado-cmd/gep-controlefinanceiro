@@ -43,6 +43,70 @@ export type Database = {
           },
         ]
       }
+      organization_counters: {
+        Row: {
+          organization_id: string
+          proximo: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          organization_id: string
+          proximo?: number
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          organization_id?: string
+          proximo?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_counters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["org_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["org_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           cidade: string | null
@@ -159,6 +223,10 @@ export type Database = {
     }
     Functions: {
       current_org_id: { Args: never; Returns: string }
+      has_org_role: {
+        Args: { _org: string; _role: Database["public"]["Enums"]["org_role"] }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -166,9 +234,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_org_manager: { Args: { _org: string }; Returns: boolean }
+      is_org_member: { Args: { _org: string }; Returns: boolean }
+      next_number: { Args: { _tipo: string }; Returns: number }
+      seed_counter: {
+        Args: { _proximo: number; _tipo: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "user"
+      org_role: "owner" | "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -297,6 +373,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "user"],
+      org_role: ["owner", "admin", "member"],
     },
   },
 } as const
