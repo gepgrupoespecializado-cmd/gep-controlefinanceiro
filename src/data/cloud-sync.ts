@@ -236,6 +236,8 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
     setPersistListener(scheduleSave);
     bindFlushHandlers();
     if (typeof window !== "undefined") localStorage.setItem(ORG_MARK_KEY, orgId);
+    // Cópia inicial/atualização das tabelas próprias (idempotente).
+    void backfillRelacional(orgId);
     return { status: "pronto" };
   }
 
@@ -261,11 +263,24 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   return { status: "pronto" };
 }
 
+/**
+ * Cópia inicial do bloco JSON para as tabelas próprias.
+ * Pode ser executada quantas vezes for necessário: nada é duplicado.
+ */
+export async function backfillRelacional(orgId: string) {
+  const { data } = await supabase.auth.getUser();
+  resetRelacional();
+  await sincronizarRelacional(orgId, getDBSnapshot(), data.user?.id ?? null);
+  return contarRelacional(orgId);
+}
+
 export async function stopOrgSync() {
   await flush();
   setPersistListener(null);
   setNumeroProvider(null);
   pararNumeracao();
+  resetRelacional();
+  setUsuarioAtual(null);
   currentOrg = null;
   pending = null;
 }
