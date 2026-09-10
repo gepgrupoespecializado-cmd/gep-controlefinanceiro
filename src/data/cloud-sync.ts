@@ -22,6 +22,13 @@ import {
   type Divergencia,
 } from "@/data/remote/relational-read";
 import {
+  avaliarFaseC,
+  normalizarFase,
+  promoverParaC,
+  reverterParaB,
+  type Fase,
+} from "@/data/remote/phase";
+import {
   ensureHydrated,
   getDBSnapshot,
   replaceDB,
@@ -38,6 +45,8 @@ const MIGRADO_KEY = "gep_db_migrado";
 const ORG_MARK_KEY = "gep_db_org";
 
 let currentOrg: string | null = null;
+let faseAtual: Fase = "A";
+let dualWriteValidado = false;
 let pending: DB | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let flushBound = false;
