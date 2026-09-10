@@ -12,12 +12,18 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { iniciarNumeracao, pararNumeracao, proximoNumero } from "@/data/numbering";
 import {
+  contarRelacional,
+  resetRelacional,
+  sincronizarRelacional,
+} from "@/data/remote/relational-sync";
+import {
   ensureHydrated,
   getDBSnapshot,
   replaceDB,
   resetDB,
   setNumeroProvider,
   setPersistListener,
+  setUsuarioAtual,
   type DB,
 } from "@/lib/store";
 
@@ -69,27 +75,36 @@ export async function loadOrgContext(): Promise<OrgContext> {
       .maybeSingle(),
   ]);
 
+  const nome = profile?.nome ?? (user.user_metadata?.["name"] as string | undefined) ?? null;
+  const email = profile?.email ?? user.email ?? null;
+  // A auditoria passa a registrar quem está usando a conta.
+  setUsuarioAtual(nome ?? email);
+
   return {
     orgId: membro?.organization_id ?? profile?.organization_id ?? null,
     userId: user.id,
-    nome: profile?.nome ?? (user.user_metadata?.["name"] as string | undefined) ?? null,
-    email: profile?.email ?? user.email ?? null,
+    nome,
+    email,
     role: (membro?.role as OrgContext["role"]) ?? null,
   };
 }
 
 async function push(orgId: string, db: DB) {
   const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id ?? null;
   const { error } = await supabase.from("app_data").upsert(
     {
       organization_id: orgId,
       payload: db as unknown as Json,
-      updated_by: data.user?.id ?? null,
+      updated_by: userId,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "organization_id" },
   );
   if (error) console.warn("Não foi possível salvar na nuvem.", error.message);
+  // Etapa 03 — Fase A: espelho nas tabelas próprias. O bloco acima continua
+  // sendo a fonte de leitura, então uma falha aqui não afeta o aplicativo.
+  await sincronizarRelacional(orgId, db, userId);
 }
 
 function scheduleSave(db: DB) {
@@ -231,6 +246,8 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
     setPersistListener(scheduleSave);
     bindFlushHandlers();
     if (typeof window !== "undefined") localStorage.setItem(ORG_MARK_KEY, orgId);
+    // Cópia inicial/atualização das tabelas próprias (idempotente).
+    void backfillRelacional(orgId);
     return { status: "pronto" };
   }
 
@@ -256,11 +273,24 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   return { status: "pronto" };
 }
 
+/**
+ * Cópia inicial do bloco JSON para as tabelas próprias.
+ * Pode ser executada quantas vezes for necessário: nada é duplicado.
+ */
+export async function backfillRelacional(orgId: string) {
+  const { data } = await supabase.auth.getUser();
+  resetRelacional();
+  await sincronizarRelacional(orgId, getDBSnapshot(), data.user?.id ?? null);
+  return contarRelacional(orgId);
+}
+
 export async function stopOrgSync() {
   await flush();
   setPersistListener(null);
   setNumeroProvider(null);
   pararNumeracao();
+  resetRelacional();
+  setUsuarioAtual(null);
   currentOrg = null;
   pending = null;
 }

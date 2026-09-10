@@ -43,6 +43,397 @@ export type Database = {
           },
         ]
       }
+      appointments: {
+        Row: {
+          arquivado: boolean
+          created_at: string
+          customer_id: string | null
+          customer_legacy_id: string | null
+          data: string | null
+          data_texto: string | null
+          endereco: string | null
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          intervalo_dias: number | null
+          legacy_id: string | null
+          observacoes: string | null
+          organization_id: string
+          quote_id: string | null
+          quote_legacy_id: string | null
+          recorrencia: string | null
+          report_id: string | null
+          report_legacy_id: string | null
+          responsavel: string | null
+          service_id: string | null
+          service_legacy_id: string | null
+          status: string
+          titulo: string
+          updated_at: string
+          valor: number | null
+        }
+        Insert: {
+          arquivado?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data?: string | null
+          data_texto?: string | null
+          endereco?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          intervalo_dias?: number | null
+          legacy_id?: string | null
+          observacoes?: string | null
+          organization_id: string
+          quote_id?: string | null
+          quote_legacy_id?: string | null
+          recorrencia?: string | null
+          report_id?: string | null
+          report_legacy_id?: string | null
+          responsavel?: string | null
+          service_id?: string | null
+          service_legacy_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Update: {
+          arquivado?: boolean
+          created_at?: string
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data?: string | null
+          data_texto?: string | null
+          endereco?: string | null
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          intervalo_dias?: number | null
+          legacy_id?: string | null
+          observacoes?: string | null
+          organization_id?: string
+          quote_id?: string | null
+          quote_legacy_id?: string | null
+          recorrencia?: string | null
+          report_id?: string | null
+          report_legacy_id?: string | null
+          responsavel?: string | null
+          service_id?: string | null
+          service_legacy_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_report_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "service_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          acao: string
+          antes: string | null
+          campo: string | null
+          created_at: string
+          data: string | null
+          depois: string | null
+          entidade: string
+          entidade_id: string | null
+          entidade_nome: string | null
+          id: string
+          legacy_id: string | null
+          organization_id: string
+          user_id: string | null
+          usuario: string | null
+        }
+        Insert: {
+          acao: string
+          antes?: string | null
+          campo?: string | null
+          created_at?: string
+          data?: string | null
+          depois?: string | null
+          entidade: string
+          entidade_id?: string | null
+          entidade_nome?: string | null
+          id?: string
+          legacy_id?: string | null
+          organization_id: string
+          user_id?: string | null
+          usuario?: string | null
+        }
+        Update: {
+          acao?: string
+          antes?: string | null
+          campo?: string | null
+          created_at?: string
+          data?: string | null
+          depois?: string | null
+          entidade?: string
+          entidade_id?: string | null
+          entidade_nome?: string | null
+          id?: string
+          legacy_id?: string | null
+          organization_id?: string
+          user_id?: string | null
+          usuario?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          arquivado: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
+          complemento: string | null
+          created_at: string
+          criado_em: string | null
+          documento: string | null
+          email: string | null
+          endereco: string | null
+          estado: string | null
+          frequencia: string
+          id: string
+          legacy_id: string | null
+          nome: string
+          numero: string | null
+          observacoes: string | null
+          organization_id: string
+          rua: string | null
+          telefone: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          arquivado?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          created_at?: string
+          criado_em?: string | null
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          frequencia?: string
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          numero?: string | null
+          observacoes?: string | null
+          organization_id: string
+          rua?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          arquivado?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
+          complemento?: string | null
+          created_at?: string
+          criado_em?: string | null
+          documento?: string | null
+          email?: string | null
+          endereco?: string | null
+          estado?: string | null
+          frequencia?: string
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          numero?: string | null
+          observacoes?: string | null
+          organization_id?: string
+          rua?: string | null
+          telefone?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      description_templates: {
+        Row: {
+          conteudo: string
+          created_at: string
+          criado_em: string | null
+          favorito: boolean
+          id: string
+          legacy_id: string | null
+          nome: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          conteudo?: string
+          created_at?: string
+          criado_em?: string | null
+          favorito?: boolean
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          criado_em?: string | null
+          favorito?: boolean
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "description_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_transactions: {
+        Row: {
+          arquivado: boolean
+          categoria: string | null
+          created_at: string
+          data: string | null
+          descricao: string
+          id: string
+          legacy_id: string | null
+          organization_id: string
+          origem_legacy_id: string | null
+          origem_tipo: string | null
+          origin_appointment_id: string | null
+          origin_quote_id: string | null
+          pago: boolean | null
+          tipo: string
+          updated_at: string
+          valor: number
+          vencimento: string | null
+        }
+        Insert: {
+          arquivado?: boolean
+          categoria?: string | null
+          created_at?: string
+          data?: string | null
+          descricao?: string
+          id?: string
+          legacy_id?: string | null
+          organization_id: string
+          origem_legacy_id?: string | null
+          origem_tipo?: string | null
+          origin_appointment_id?: string | null
+          origin_quote_id?: string | null
+          pago?: boolean | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string | null
+        }
+        Update: {
+          arquivado?: boolean
+          categoria?: string | null
+          created_at?: string
+          data?: string | null
+          descricao?: string
+          id?: string
+          legacy_id?: string | null
+          organization_id?: string
+          origem_legacy_id?: string | null
+          origem_tipo?: string | null
+          origin_appointment_id?: string | null
+          origin_quote_id?: string | null
+          pago?: boolean | null
+          tipo?: string
+          updated_at?: string
+          valor?: number
+          vencimento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_origin_appointment_id_fkey"
+            columns: ["origin_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_origin_quote_id_fkey"
+            columns: ["origin_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_counters: {
         Row: {
           organization_id: string
@@ -102,6 +493,38 @@ export type Database = {
             foreignKeyName: "organization_members_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_settings: {
+        Row: {
+          created_at: string
+          data_version: string
+          empresa: Json
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_version?: string
+          empresa?: Json
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_version?: string
+          empresa?: Json
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -189,6 +612,413 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_items: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          descricao: string
+          escopo: string | null
+          id: string
+          organization_id: string
+          posicao: number
+          quantidade: number
+          quote_id: string
+          service_id: string | null
+          service_legacy_id: string | null
+          unidade: string | null
+          updated_at: string
+          valor_unit: number
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string
+          escopo?: string | null
+          id?: string
+          organization_id: string
+          posicao?: number
+          quantidade?: number
+          quote_id: string
+          service_id?: string | null
+          service_legacy_id?: string | null
+          unidade?: string | null
+          updated_at?: string
+          valor_unit?: number
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          descricao?: string
+          escopo?: string | null
+          id?: string
+          organization_id?: string
+          posicao?: number
+          quantidade?: number
+          quote_id?: string
+          service_id?: string | null
+          service_legacy_id?: string | null
+          unidade?: string | null
+          updated_at?: string
+          valor_unit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          arquivado: boolean
+          condicoes: Json
+          created_at: string
+          criado_em: string | null
+          customer_id: string | null
+          customer_legacy_id: string | null
+          data_prevista: string | null
+          desconto: number | null
+          descricao_servicos: string
+          diferencial: string | null
+          escopo: Json
+          formas_pagamento: Json
+          fotos_antes: Json
+          fotos_depois: Json
+          hora_prevista: string | null
+          id: string
+          legacy_id: string | null
+          nao_incluso: Json
+          numero: number
+          observacoes: string | null
+          organization_id: string
+          prazo: string | null
+          status: string
+          updated_at: string
+          validade_dias: number
+          versao: number | null
+        }
+        Insert: {
+          arquivado?: boolean
+          condicoes?: Json
+          created_at?: string
+          criado_em?: string | null
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data_prevista?: string | null
+          desconto?: number | null
+          descricao_servicos?: string
+          diferencial?: string | null
+          escopo?: Json
+          formas_pagamento?: Json
+          fotos_antes?: Json
+          fotos_depois?: Json
+          hora_prevista?: string | null
+          id?: string
+          legacy_id?: string | null
+          nao_incluso?: Json
+          numero?: number
+          observacoes?: string | null
+          organization_id: string
+          prazo?: string | null
+          status?: string
+          updated_at?: string
+          validade_dias?: number
+          versao?: number | null
+        }
+        Update: {
+          arquivado?: boolean
+          condicoes?: Json
+          created_at?: string
+          criado_em?: string | null
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data_prevista?: string | null
+          desconto?: number | null
+          descricao_servicos?: string
+          diferencial?: string | null
+          escopo?: Json
+          formas_pagamento?: Json
+          fotos_antes?: Json
+          fotos_depois?: Json
+          hora_prevista?: string | null
+          id?: string
+          legacy_id?: string | null
+          nao_incluso?: Json
+          numero?: number
+          observacoes?: string | null
+          organization_id?: string
+          prazo?: string | null
+          status?: string
+          updated_at?: string
+          validade_dias?: number
+          versao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_photos: {
+        Row: {
+          conteudo: string
+          created_at: string
+          id: string
+          organization_id: string
+          posicao: number
+          report_id: string
+          tipo: string
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          posicao?: number
+          report_id: string
+          tipo: string
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          posicao?: number
+          report_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_photos_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_photos_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "service_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_reports: {
+        Row: {
+          appointment_id: string | null
+          appointment_legacy_id: string | null
+          arquivado: boolean
+          assinatura_cliente: string | null
+          assinatura_tecnico: string | null
+          created_at: string
+          criado_em: string | null
+          customer_id: string | null
+          customer_legacy_id: string | null
+          data_execucao: string | null
+          data_pagamento: string | null
+          descricao: string
+          formas_pagamento_recebimento: Json
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          legacy_id: string | null
+          numero: number
+          observacoes: string | null
+          observacoes_financeiras: string | null
+          organization_id: string
+          parcelas: number | null
+          quote_id: string | null
+          quote_legacy_id: string | null
+          recebido_por: string | null
+          responsavel: string | null
+          servico_executado: string
+          situacao_pagamento: string | null
+          status: string
+          taxa_cartao: number | null
+          updated_at: string
+          valor: number | null
+          valor_orcamento: number | null
+          valor_recebido: number | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          appointment_legacy_id?: string | null
+          arquivado?: boolean
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
+          created_at?: string
+          criado_em?: string | null
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data_execucao?: string | null
+          data_pagamento?: string | null
+          descricao?: string
+          formas_pagamento_recebimento?: Json
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          legacy_id?: string | null
+          numero?: number
+          observacoes?: string | null
+          observacoes_financeiras?: string | null
+          organization_id: string
+          parcelas?: number | null
+          quote_id?: string | null
+          quote_legacy_id?: string | null
+          recebido_por?: string | null
+          responsavel?: string | null
+          servico_executado?: string
+          situacao_pagamento?: string | null
+          status?: string
+          taxa_cartao?: number | null
+          updated_at?: string
+          valor?: number | null
+          valor_orcamento?: number | null
+          valor_recebido?: number | null
+        }
+        Update: {
+          appointment_id?: string | null
+          appointment_legacy_id?: string | null
+          arquivado?: boolean
+          assinatura_cliente?: string | null
+          assinatura_tecnico?: string | null
+          created_at?: string
+          criado_em?: string | null
+          customer_id?: string | null
+          customer_legacy_id?: string | null
+          data_execucao?: string | null
+          data_pagamento?: string | null
+          descricao?: string
+          formas_pagamento_recebimento?: Json
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          legacy_id?: string | null
+          numero?: number
+          observacoes?: string | null
+          observacoes_financeiras?: string | null
+          organization_id?: string
+          parcelas?: number | null
+          quote_id?: string | null
+          quote_legacy_id?: string | null
+          recebido_por?: string | null
+          responsavel?: string | null
+          servico_executado?: string
+          situacao_pagamento?: string | null
+          status?: string
+          taxa_cartao?: number | null
+          updated_at?: string
+          valor?: number | null
+          valor_orcamento?: number | null
+          valor_recebido?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_reports_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reports_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reports_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          arquivado: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          legacy_id: string | null
+          nome: string
+          organization_id: string
+          tempo_estimado: string | null
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          arquivado?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          organization_id: string
+          tempo_estimado?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          arquivado?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          legacy_id?: string | null
+          nome?: string
+          organization_id?: string
+          tempo_estimado?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
