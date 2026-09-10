@@ -80,16 +80,20 @@ export async function loadOrgContext(): Promise<OrgContext> {
 
 async function push(orgId: string, db: DB) {
   const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id ?? null;
   const { error } = await supabase.from("app_data").upsert(
     {
       organization_id: orgId,
       payload: db as unknown as Json,
-      updated_by: data.user?.id ?? null,
+      updated_by: userId,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "organization_id" },
   );
   if (error) console.warn("Não foi possível salvar na nuvem.", error.message);
+  // Etapa 03 — Fase A: espelho nas tabelas próprias. O bloco acima continua
+  // sendo a fonte de leitura, então uma falha aqui não afeta o aplicativo.
+  await sincronizarRelacional(orgId, db, userId);
 }
 
 function scheduleSave(db: DB) {
