@@ -1,87 +1,105 @@
-# Etapa 01: preparar a base de dados para o modo multiempresa
+# Etapa 02: infraestrutura SaaS multiempresa
 
-Objetivo desta etapa: reorganizar internamente como o sistema guarda e calcula os dados, sem mudar nenhuma tela, nenhum cálculo e sem sair do armazenamento local. Ao final, trocar o armazenamento local por um banco online (Etapa 02) vira uma troca de peça, não uma reescrita.
+## O que já está pronto (verificado no projeto)
 
-## Situação atual (verificada)
+Parte da Etapa 02 já foi implementada em turnos anteriores e está no ar:
 
-Hoje tudo vive em um único arquivo (`src/lib/store.ts`, 1.333 linhas): tipos, dados iniciais, leitura/gravação no navegador, histórico de alterações, numeração de orçamentos e relatórios e as regras financeiras automáticas. As telas leem o estado inteiro com `useDB()` e chamam funções que gravam direto (`db.addCliente`, `relatorios.add`, etc.), todas síncronas. O login (`src/lib/auth.ts`) é apenas um marcador local, sem usuário real. Não existe banco, nem identificação de empresa nos registros.
+- login e cadastro reais por e-mail e senha, recuperação de senha, logout e entrada com Google (`src/lib/auth.ts`, `src/routes/login.tsx`, `src/routes/reset-password.tsx`);
+- tabelas `organizations`, `profiles`, `user_roles` e `app_data` no banco em nuvem, todas com regras de acesso ativas e isolamento pela função `current_org_id()`;
+- criação automática da empresa no primeiro acesso (`src/routes/bem-vindo.tsx`) e bloqueio das telas até existir empresa (`src/routes/__root.tsx`);
+- sincronização dos dados da empresa com a nuvem (`src/data/cloud-sync.ts`), gravando o conteúdo completo do aplicativo em `app_data.payload`, uma linha por empresa;
+- telas, PDFs, cálculos e PWA intactos.
 
-Regras de negócio hoje coladas na gravação:
-- receita automática quando um orçamento vira "aprovado";
-- receita automática quando um agendamento vira "concluído";
-- criação do próximo agendamento por recorrência ao fechar o relatório;
-- relatório que conclui o agendamento e sincroniza o lançamento financeiro existente;
-- numeração sequencial de orçamentos e relatórios em contador global;
-- histórico/auditoria gerado dentro de cada gravação, com usuário fixo "Operador".
+Portanto esta etapa é o complemento do que falta, não um recomeço.
 
-## O que a Etapa 01 faz
+## O que falta e será feito
 
-1. **Separar tipos e regras do armazenamento.** Os tipos e as tabelas de rótulos saem para arquivos próprios; as regras (receita automática, aprovação, conclusão com recorrência, numeração, sincronização financeira, auditoria) passam a ser funções puras que recebem os dados e devolvem o resultado, sem saber onde é gravado.
-2. **Criar um contrato de repositório por entidade** (Cliente, Serviço, Orçamento, Agendamento, Lançamento, Relatório, Modelo, Empresa) com operações padrão: listar, buscar por id, criar, atualizar, arquivar, remover. A implementação atual continua sendo o armazenamento local.
-3. **Criar uma camada de serviços** que orquestra regra + repositório. As telas passam a conversar com os serviços; o comportamento visível fica idêntico.
-4. **Preparar o espaço da conta/empresa** apenas como conceito: um identificador de contexto ("qual empresa está ativa") que hoje devolve sempre um valor fixo local. Nada muda para o usuário; na Etapa 02 esse ponto vira a conta real.
-5. **Preparar o caminho assíncrono** nas assinaturas das operações de escrita, para que a troca por banco remoto não exija mexer nas telas de novo.
+1. **Equipe da empresa (`organization_members`)** com papéis dono, administrador e membro, preparada para convidar mais usuários depois.
+2. **Numeração de orçamento e relatório por empresa**, resolvida no banco e à prova de dois usuários salvando ao mesmo tempo.
+3. **Migração segura dos dados locais** (`gep_db_v3`) para a nuvem, com confirmação explícita e sem apagar nada do aparelho.
+4. **Espaço de arquivos na nuvem** para logo, fotos e assinaturas, criado e com permissões corretas; os arquivos continuam sendo gravados como hoje até a Etapa 03, exceto se algum quebrar por tamanho.
+5. **Testes de isolamento entre duas empresas**, provando que uma nunca enxerga a outra.
 
-Nada de banco remoto, regras de segurança de banco, planos, pagamentos, Kiwify, painel administrativo ou remoção do armazenamento local nesta etapa.
+## Decisão importante: como os dados operacionais ficam guardados
 
-## Estrutura proposta
+Hoje clientes, serviços, orçamentos, agenda, financeiro, relatórios e modelos ficam num único registro por empresa (formato JSON), já com `organization_id` e já isolado por empresa. A alternativa seria criar uma tabela para cada entidade.
 
-```text
-src/
-  types/            modelos (cliente, servico, orcamento, agenda, financeiro,
-                    relatorio, modelo, empresa) e enums/rótulos
-  domain/           regras puras: totais, validade, status de pagamento,
-                    receita de orçamento, receita de agendamento,
-                    recorrência, numeração, sincronização financeira, auditoria
-  data/
-    repositories/   contratos (interfaces) por entidade
-    local/          implementação atual sobre o armazenamento do navegador
-    context.ts      identificador da empresa ativa (fixo nesta etapa)
-  services/         orçamento, agenda, financeiro, relatório, cadastro, empresa
-  lib/store.ts      mantido como fachada compatível, apontando para os serviços
-```
+Recomendação: **manter o registro único por empresa nesta etapa**. Motivos: o aplicativo inteiro lê o estado completo de forma imediata; quebrar em tabelas obriga a reescrever todas as telas, todos os cálculos automáticos e a auditoria, com alto risco de regressão e custo muito maior. O isolamento entre empresas, que é o requisito de segurança, já está garantido do mesmo jeito nas duas opções.
 
-O ponto central: `src/lib/store.ts` continua existindo e exportando exatamente o que exporta hoje. As telas não precisam ser reescritas nesta etapa.
+O que muda com essa escolha: a numeração sai do JSON e vai para uma tabela própria (item 2), porque essa é a única parte que realmente sofre com dois usuários simultâneos. A quebra em tabelas por entidade fica planejada como Etapa 03, quando houver mais de um usuário por empresa usando ao mesmo tempo.
 
 ## Detalhes técnicos
 
-- **Contrato genérico:** `Repository<T>` com `list(): Promise<T[]>`, `getById(id)`, `create(input)`, `update(id, patch)`, `archive(id, flag)`, `remove(id)`. Casos específicos: `OrcamentoRepository` e `RelatorioRepository` expõem `nextNumber()`; `EmpresaRepository` é singleton (`get()` / `save(patch)`); `HistoricoRepository` expõe `append(entry)` e `clear()`.
-- **Implementação local:** um único adaptador que mantém o estado em memória, normaliza na leitura (a normalização atual é reaproveitada integralmente) e persiste com a mesma chave `gep_db_v3`. Formato do dado gravado inalterado, para não invalidar dados de quem já usa.
-- **Regras puras:** funções sem efeito colateral, por exemplo `criarReceitaDeOrcamento(orcamento, cliente): Lancamento | null`, `proximoAgendamentoPorRecorrencia(agendamento, base): Agendamento | null`, `sincronizarFinanceiroRelatorio(relatorio, agendamento, lancamentoExistente): { criar?: Lancamento; atualizar?: Partial<Lancamento> }`, `diffPatch`, `montarEntradaHistorico`. Isso permite testar as regras sem tocar em armazenamento.
-- **Serviços:** `orcamentoService.aprovar()`, `agendaService.concluir()`, `relatorioService.registrar()`, `financeiroService.registrar/marcarRecebido()`. Cada um chama a regra, grava pelo repositório e registra a auditoria.
-- **Numeração:** hoje é um contador global no mesmo objeto. Fica isolada atrás de `nextNumber()` no repositório, porque na Etapa 02 ela precisa ser por empresa e resolvida no banco.
-- **Auditoria:** passa a receber o autor como parâmetro (`usuario`), com padrão "Operador" enquanto não há login real.
-- **Contexto de empresa:** `getEmpresaAtivaId()` devolve um valor local fixo; todos os repositórios já recebem esse identificador na assinatura, mesmo sem usá-lo ainda.
-- **Assíncrono:** os serviços retornam `Promise`. A fachada `store.ts` mantém as funções atuais com a mesma assinatura síncrona onde as telas dependem disso, disparando a promessa internamente, para evitar mudança de comportamento.
+### Banco
 
-## Arquivos
+`organization_members`
+- `organization_id`, `user_id`, `role` (enum `org_role`: owner, admin, member), datas de criação/atualização, chave única por par empresa+usuário;
+- grants para `authenticated` e `service_role`; RLS ligada;
+- função `is_org_member(_org uuid)` e `has_org_role(_org uuid, _role org_role)` em `security definer` para evitar recursão nas policies;
+- leitura: membros da própria empresa; escrita: apenas owner/admin da empresa.
 
-Criar: `src/types/*`, `src/domain/*`, `src/data/repositories/*`, `src/data/local/*`, `src/data/context.ts`, `src/services/*`.
+`organization_counters`
+- `organization_id`, `tipo` (orcamento | relatorio), `proximo integer`, chave primária composta;
+- função `next_number(_tipo text) returns integer` em `security definer`, que faz `insert ... on conflict do update set proximo = proximo + 1 returning`, resolvendo o número atomicamente para a empresa do chamador;
+- grants + RLS iguais aos demais.
 
-Modificar: apenas `src/lib/store.ts` (vira fachada) e, se necessário, ajustes de importação de tipos em telas que importam tipos de `store`.
+`current_org_id()` passa a resolver pela participação em `organization_members`, com o `profiles.organization_id` como reserva, para não quebrar contas já criadas.
 
-Não tocar nesta etapa: `pdf.ts`, `relatorio-pdf.ts`, `auth.ts`, `__root.tsx`, `login.tsx`, `config.server.ts` e todas as telas (clientes, serviços, orçamentos, agenda, financeiro, empresa, histórico, modelos).
+Retrocompatibilidade: uma migração popula `organization_members` com o dono de cada empresa existente e `organization_counters` com os contadores atuais lidos do JSON.
 
-## Riscos e como evitá-los
+### Aplicação
+
+- `src/data/context.ts`: passa a expor a empresa ativa real e o papel do usuário.
+- `src/data/cloud-sync.ts`: ganha a consulta do papel e um modo de migração; deixa de considerar os dados locais como envio automático.
+- Novo `src/data/numbering.ts`: chama `next_number` e devolve o número; `src/lib/store.ts` usa esse número ao criar orçamento e relatório, mantendo o contador local apenas como reserva quando offline.
+- Novo `src/routes/migrar-dados.tsx`: tela de confirmação da migração (mostra quantos clientes, orçamentos, agendamentos e lançamentos serão enviados, botões Importar e Começar do zero).
+- `src/routes/bem-vindo.tsx`: cria empresa, perfil e registro de dono em `organization_members`; se houver dados locais, encaminha para a tela de migração.
+- `src/routes/__root.tsx`: inclui a tela de migração entre as rotas permitidas.
+- Nova `src/routes/equipe.tsx` (lista de membros e papéis, somente leitura nesta etapa) e item na barra lateral.
+- Armazenamento: criar os espaços `logos`, `fotos` e `assinaturas`, privados, com regras que permitem ler e gravar apenas dentro da pasta da própria empresa.
+
+### Migração dos dados locais
+
+Regra: o conteúdo do aparelho **nunca é apagado** nesta etapa.
+
+1. Ao entrar com empresa já definida, o sistema compara o que existe na nuvem com o que existe no aparelho.
+2. Nuvem vazia e aparelho com dados: abre a tela de migração pedindo confirmação.
+3. Confirmado: envia o conteúdo, grava a marca `gep_db_migrado` com data e identificador da empresa, e mantém uma cópia local em `gep_db_v3_backup`.
+4. Recusado: começa vazio na nuvem, mantendo o conteúdo local intocado.
+5. Nuvem com dados: a nuvem sempre vence; nada do aparelho é enviado automaticamente.
+6. Aparelho já marcado para outra empresa: começa limpo, sem misturar contas.
+
+## Ordem de implementação
+
+1. Migração de banco: `org_role`, `organization_members`, `organization_counters`, funções, grants, RLS, backfill dos dados existentes.
+2. Ajuste de `current_org_id()` e verificação com o analisador de segurança.
+3. Numeração via banco no store, com reserva local.
+4. Tela e lógica de migração confirmada dos dados locais.
+5. Onboarding gravando o dono em `organization_members`.
+6. Tela de equipe e item na barra lateral.
+7. Espaços de arquivos e suas regras de acesso.
+8. Testes de isolamento A/B, verificação de tipos e build.
+
+## Testes obrigatórios
+
+- Conta A cria cliente, orçamento e lançamento; conta B (outra empresa) entra e não vê nada disso, nem por leitura direta do banco.
+- Conta B tenta gravar usando o identificador da empresa A: a gravação é recusada.
+- Dois pedidos simultâneos de número de orçamento na mesma empresa devolvem números diferentes.
+- Empresas diferentes começam a numeração de forma independente.
+- Migração: importar, recusar, entrar de novo (não repete), trocar de conta no mesmo aparelho.
+- Orçamento e relatório em PDF continuam idênticos; instalação do aplicativo continua funcionando.
+
+## Riscos
 
 | Risco | Prevenção |
 | --- | --- |
-| Perda de dados de quem já usa o app | Manter a mesma chave e o mesmo formato gravado; nenhuma migração de dados nesta etapa |
-| Receita automática duplicada | A verificação "já existe lançamento com esta origem" continua sendo condição da regra, agora testável |
-| Numeração de orçamento repetida ou pulada | Numeração passa por um único ponto (`nextNumber`), nunca calculada nas telas |
-| Tela deixar de atualizar após salvar | A fachada continua notificando os assinantes exatamente como hoje |
-| Import circular entre serviços e fachada | Regras puras não importam serviços; a dependência é sempre em uma direção |
-| Quebra silenciosa de PDF | Os geradores de PDF continuam recebendo os mesmos objetos; nenhuma alteração de campo |
+| Contas já criadas ficarem sem empresa após mudar `current_org_id()` | Backfill na mesma migração e reserva pelo perfil |
+| Número de orçamento duplicado no modo offline | Reserva local marcada como provisória e reconciliada ao voltar a conexão |
+| Perda de dados do aparelho | Nada é apagado; cópia de segurança local e marca de migração |
+| Regras de acesso em recursão | Verificações sempre por função `security definer` |
+| Fotos grandes estourando o registro JSON | Medir o tamanho do registro no teste; se passar do limite seguro, antecipar o envio das imagens para o espaço de arquivos |
+| Aviso do analisador sobre funções `security definer` | Continua sendo intencional, necessário para as regras de acesso |
 
-Verificação ao final: build e checagem de tipos sem erro, e conferência manual dos fluxos aprovar orçamento, concluir agendamento com relatório e recorrência, e lançamento financeiro.
+## Fora desta etapa
 
-## Menor conjunto suficiente para habilitar a Etapa 02
-
-1. Tipos extraídos para `src/types`.
-2. Regras financeiras, de recorrência, numeração e auditoria extraídas como funções puras em `src/domain`.
-3. Contratos de repositório definidos para as oito entidades.
-4. Um adaptador local implementando esses contratos com o formato de dados atual.
-5. `store.ts` reduzido a fachada compatível sobre os serviços.
-6. Identificador de empresa ativa presente nas assinaturas, ainda fixo.
-
-Com isso, a Etapa 02 troca somente o adaptador local por um adaptador de banco, sem tocar em telas nem em regras.
+Kiwify, pagamentos, planos, teste gratuito, painel comercial, personalização de marca avançada e sincronização offline elaborada. A quebra dos dados operacionais em tabelas por entidade fica para a Etapa 03.
