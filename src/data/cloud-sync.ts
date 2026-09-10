@@ -11,6 +11,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { iniciarNumeracao, pararNumeracao, proximoNumero } from "@/data/numbering";
+import { resetRelacional, sincronizarRelacional } from "@/data/remote/relational-sync";
 import {
   ensureHydrated,
   getDBSnapshot,
