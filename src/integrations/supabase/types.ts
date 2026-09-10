@@ -1067,6 +1067,10 @@ export type Database = {
       is_org_manager: { Args: { _org: string }; Returns: boolean }
       is_org_member: { Args: { _org: string }; Returns: boolean }
       next_number: { Args: { _tipo: string }; Returns: number }
+      profile_self_allowed: {
+        Args: { _org: string; _role: string }
+        Returns: boolean
+      }
       seed_counter: {
         Args: { _proximo: number; _tipo: string }
         Returns: undefined

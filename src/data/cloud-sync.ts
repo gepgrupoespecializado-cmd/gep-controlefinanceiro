@@ -17,6 +17,11 @@ import {
   sincronizarRelacional,
 } from "@/data/remote/relational-sync";
 import {
+  compararSnapshots,
+  lerRelacional,
+  type Divergencia,
+} from "@/data/remote/relational-read";
+import {
   ensureHydrated,
   getDBSnapshot,
   replaceDB,
@@ -215,6 +220,90 @@ async function ligarSync(orgId: string, db: DB) {
   bindFlushHandlers();
 }
 
+/* ---------- Origem da leitura (Etapa 03 — Fase B) ---------- */
+
+/** Como o estado desta empresa foi carregado na sessão atual. */
+export type OrigemLeitura = "relacional" | "bloco_json";
+
+let origemLeitura: OrigemLeitura = "bloco_json";
+
+export function getOrigemLeitura(): OrigemLeitura {
+  return origemLeitura;
+}
+
+async function lerVersaoDados(orgId: string): Promise<"A" | "B"> {
+  const { data, error } = await supabase
+    .from("organization_settings")
+    .select("data_version")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (error) return "A";
+  return data?.data_version === "B" ? "B" : "A";
+}
+
+/**
+ * Conferência antes de virar a chave: só marca a empresa como Fase B quando o
+ * estado reconstruído das tabelas bate com o bloco JSON.
+ */
+async function avaliarPromocao(orgId: string, payload: Partial<DB>) {
+  try {
+    const { db } = await lerRelacional(orgId);
+    const divergencias = compararSnapshots(db, payload);
+    if (divergencias.length) {
+      console.warn("Leitura relacional ainda divergente; mantendo o bloco JSON.", divergencias);
+      return { promovido: false, divergencias };
+    }
+    const { error } = await supabase
+      .from("organization_settings")
+      .update({ data_version: "B" })
+      .eq("organization_id", orgId);
+    if (error) {
+      console.warn("Não foi possível registrar a nova forma de leitura.", error.message);
+      return { promovido: false, divergencias };
+    }
+    return { promovido: true, divergencias };
+  } catch (erro) {
+    console.warn("Conferência da leitura relacional falhou; mantendo o bloco JSON.", erro);
+    return { promovido: false, divergencias: [] as Divergencia[] };
+  }
+}
+
+/**
+ * Tenta montar o estado a partir das tabelas próprias.
+ * Devolve null quando a leitura falha ou fica visivelmente incompleta perto do
+ * bloco JSON — nesse caso quem chama usa o bloco JSON como alternativa.
+ */
+async function carregarRelacional(
+  orgId: string,
+  payload: Partial<DB> | null,
+): Promise<Partial<DB> | null> {
+  try {
+    const { db } = await lerRelacional(orgId);
+    if (payload && Object.keys(payload).length > 0) {
+      const divergencias = compararSnapshots(db, payload);
+      if (divergencias.length) {
+        console.warn(
+          "Dados das tabelas diferem do bloco de segurança; usando o bloco de segurança.",
+          divergencias,
+        );
+        return null;
+      }
+    }
+    return db;
+  } catch (erro) {
+    console.warn("Falha ao carregar os dados das tabelas; usando o bloco de segurança.", erro);
+    return null;
+  }
+}
+
+function ativarSync(orgId: string) {
+  currentOrg = orgId;
+  setNumeroProvider(proximoNumero);
+  setPersistListener(scheduleSave);
+  bindFlushHandlers();
+  if (typeof window !== "undefined") localStorage.setItem(ORG_MARK_KEY, orgId);
+}
+
 /* ---------- Entrada principal ---------- */
 
 export type SyncResult = { status: "pronto" } | { status: "migracao_pendente" };
@@ -224,30 +313,51 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   if (currentOrg === orgId) return { status: "pronto" };
   ensureHydrated();
 
-  const { data, error } = await supabase
-    .from("app_data")
-    .select("payload")
-    .eq("organization_id", orgId)
-    .maybeSingle();
+  const [{ data, error }, versao] = await Promise.all([
+    supabase.from("app_data").select("payload").eq("organization_id", orgId).maybeSingle(),
+    lerVersaoDados(orgId),
+  ]);
 
   if (error) console.warn("Não foi possível carregar os dados da nuvem.", error.message);
 
   const payload = (data?.payload ?? null) as Partial<DB> | null;
+  const temPayload = !!payload && Object.keys(payload).length > 0;
 
-  // A nuvem sempre vence quando já existe conteúdo da empresa.
-  if (payload && Object.keys(payload).length > 0) {
-    replaceDB(payload);
-    currentOrg = orgId;
+  // Fase B: o estado vem das tabelas próprias, com o bloco JSON como reserva.
+  let relacional: Partial<DB> | null = null;
+  if (versao === "B") {
+    relacional = await carregarRelacional(orgId, payload);
+    origemLeitura = relacional ? "relacional" : "bloco_json";
+  } else {
+    origemLeitura = "bloco_json";
+  }
+
+  if (relacional) {
+    replaceDB(relacional);
+    ativarSync(orgId);
     await iniciarNumeracao({
       orcamento: getDBSnapshot().proximoOrcamento ?? 1,
       relatorio: getDBSnapshot().proximoRelatorio ?? 1,
     });
-    setNumeroProvider(proximoNumero);
-    setPersistListener(scheduleSave);
-    bindFlushHandlers();
-    if (typeof window !== "undefined") localStorage.setItem(ORG_MARK_KEY, orgId);
-    // Cópia inicial/atualização das tabelas próprias (idempotente).
-    void backfillRelacional(orgId);
+    // Mantém o bloco JSON espelhado (Fase B ainda escreve nos dois lugares).
+    void flushImediato(orgId);
+    return { status: "pronto" };
+  }
+
+  // A nuvem sempre vence quando já existe conteúdo da empresa.
+  if (temPayload) {
+    replaceDB(payload);
+    ativarSync(orgId);
+    await iniciarNumeracao({
+      orcamento: getDBSnapshot().proximoOrcamento ?? 1,
+      relatorio: getDBSnapshot().proximoRelatorio ?? 1,
+    });
+    // Cópia inicial/atualização das tabelas próprias (idempotente) e, quando
+    // tudo confere, passagem para a leitura relacional na próxima entrada.
+    void (async () => {
+      await backfillRelacional(orgId);
+      if (versao === "A") await avaliarPromocao(orgId, getDBSnapshot());
+    })();
     return { status: "pronto" };
   }
 
@@ -273,6 +383,10 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   return { status: "pronto" };
 }
 
+async function flushImediato(orgId: string) {
+  await push(orgId, getDBSnapshot());
+}
+
 /**
  * Cópia inicial do bloco JSON para as tabelas próprias.
  * Pode ser executada quantas vezes for necessário: nada é duplicado.
@@ -282,6 +396,20 @@ export async function backfillRelacional(orgId: string) {
   resetRelacional();
   await sincronizarRelacional(orgId, getDBSnapshot(), data.user?.id ?? null);
   return contarRelacional(orgId);
+}
+
+/** Conferência manual: compara tabelas e bloco JSON sem alterar nada. */
+export async function conferirRelacional(orgId: string) {
+  const { data } = await supabase
+    .from("app_data")
+    .select("payload")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  const { db, contagens } = await lerRelacional(orgId);
+  return {
+    contagens,
+    divergencias: compararSnapshots(db, (data?.payload ?? {}) as Partial<DB>),
+  };
 }
 
 export async function stopOrgSync() {
