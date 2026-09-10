@@ -167,6 +167,13 @@ export function resolvePdfTemaAtivo(empresa: Empresa, override?: PdfTema): PdfTe
 const KEY = "gep_db_v3";
 const USUARIO_PADRAO = "Operador";
 
+/** Nome exibido na auditoria. Sem conta ativa, mantém o texto legado. */
+let usuarioAtual: string = USUARIO_PADRAO;
+
+export function setUsuarioAtual(nome: string | null | undefined) {
+  usuarioAtual = nome && nome.trim() ? nome.trim() : USUARIO_PADRAO;
+}
+
 // IMPORTANT: seed data is evaluated at module scope. In Cloudflare Workers
 // the global scope forbids crypto.randomUUID() / Math.random() / new Date(),
 // so we must use deterministic, static values here.
@@ -590,7 +597,7 @@ function persist() {
 
 function logHist(e: Omit<HistoricoEntry, "id" | "data" | "usuario">) {
   const entry: HistoricoEntry = {
-    ...e, id: uid(), data: new Date().toISOString(), usuario: USUARIO_PADRAO,
+    ...e, id: uid(), data: new Date().toISOString(), usuario: usuarioAtual,
   };
   state = { ...state, historico: [entry, ...state.historico].slice(0, 1000) };
 }
