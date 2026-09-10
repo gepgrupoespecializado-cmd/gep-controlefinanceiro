@@ -1,105 +1,101 @@
-# Etapa 02: infraestrutura SaaS multiempresa
+# Etapa 03 — Normalização dos dados em tabelas por entidade
 
-## O que já está pronto (verificado no projeto)
+Hoje toda a operação (clientes, serviços, orçamentos, agenda, financeiro, relatórios, modelos, empresa, histórico) vive dentro de um único campo `payload` na tabela `app_data`, um bloco JSON por empresa. Funciona, mas impede consulta, relatório, concorrência entre usuários e crescimento.
 
-Parte da Etapa 02 já foi implementada em turnos anteriores e está no ar:
+A Etapa 03 cria uma tabela para cada entidade, copia os dados existentes para elas e passa a gravar linha a linha, mantendo o bloco JSON atual intacto como rede de segurança.
 
-- login e cadastro reais por e-mail e senha, recuperação de senha, logout e entrada com Google (`src/lib/auth.ts`, `src/routes/login.tsx`, `src/routes/reset-password.tsx`);
-- tabelas `organizations`, `profiles`, `user_roles` e `app_data` no banco em nuvem, todas com regras de acesso ativas e isolamento pela função `current_org_id()`;
-- criação automática da empresa no primeiro acesso (`src/routes/bem-vindo.tsx`) e bloqueio das telas até existir empresa (`src/routes/__root.tsx`);
-- sincronização dos dados da empresa com a nuvem (`src/data/cloud-sync.ts`), gravando o conteúdo completo do aplicativo em `app_data.payload`, uma linha por empresa;
-- telas, PDFs, cálculos e PWA intactos.
+## Princípio central: nenhuma tela é reescrita
 
-Portanto esta etapa é o complemento do que falta, não um recomeço.
+O aplicativo continua operando sobre o estado em memória do `store.ts`, exatamente como hoje, com as mesmas funções síncronas. O que muda é apenas a camada de persistência:
 
-## O que falta e será feito
+```text
+telas (sem alteração)
+   |
+store.ts (estado em memória, API síncrona — sem alteração)
+   |
+sync por entidade (novo)  ->  tabelas relacionais (novo)
+   |
+app_data.payload (mantido como espelho/fallback)
+```
 
-1. **Equipe da empresa (`organization_members`)** com papéis dono, administrador e membro, preparada para convidar mais usuários depois.
-2. **Numeração de orçamento e relatório por empresa**, resolvida no banco e à prova de dois usuários salvando ao mesmo tempo.
-3. **Migração segura dos dados locais** (`gep_db_v3`) para a nuvem, com confirmação explícita e sem apagar nada do aparelho.
-4. **Espaço de arquivos na nuvem** para logo, fotos e assinaturas, criado e com permissões corretas; os arquivos continuam sendo gravados como hoje até a Etapa 03, exceto se algum quebrar por tamanho.
-5. **Testes de isolamento entre duas empresas**, provando que uma nunca enxerga a outra.
+Ao carregar, o app lê as tabelas e monta o mesmo objeto que hoje vem do JSON. Ao gravar, um comparador detecta o que mudou (criado, alterado, removido) e envia somente as linhas afetadas. Enquanto a etapa estiver em validação, o JSON continua sendo gravado em paralelo.
 
-## Decisão importante: como os dados operacionais ficam guardados
+## 1. Tabelas e relações
 
-Hoje clientes, serviços, orçamentos, agenda, financeiro, relatórios e modelos ficam num único registro por empresa (formato JSON), já com `organization_id` e já isolado por empresa. A alternativa seria criar uma tabela para cada entidade.
+Todas em `public`, todas com `organization_id` (FK para `organizations`), `created_at`, `updated_at`, e `id uuid` preservando o ID atual do registro quando ele já for UUID (caso contrário, coluna `legacy_id text` guarda o identificador antigo e as relações passam a apontar para o novo UUID durante o backfill).
 
-Recomendação: **manter o registro único por empresa nesta etapa**. Motivos: o aplicativo inteiro lê o estado completo de forma imediata; quebrar em tabelas obriga a reescrever todas as telas, todos os cálculos automáticos e a auditoria, com alto risco de regressão e custo muito maior. O isolamento entre empresas, que é o requisito de segurança, já está garantido do mesmo jeito nas duas opções.
+| Tabela | Campos principais | Relações |
+| --- | --- | --- |
+| `customers` | nome, telefone, whatsapp, email, documento, endereço completo, observações, frequência, arquivado | — |
+| `services` | nome, descrição, valor, tempo estimado, arquivado | — |
+| `quotes` | numero, status, prazo, observações, descrição, validade, formas de pagamento, escopo, não incluso, condições, diferencial, desconto, data/hora prevista, versão | `customer_id` -> customers |
+| `quote_items` | descrição, quantidade, valor unitário, categoria, unidade, escopo, `posicao` | `quote_id` -> quotes (cascade), `service_id` -> services |
+| `appointments` | título, data, hora início/fim, status, valor, responsável, endereço, recorrência, intervalo, observações, arquivado | `customer_id`, `service_id`, `quote_id`, `report_id` |
+| `financial_transactions` | tipo, descrição, valor, data, categoria, pago, vencimento, origem tipo, arquivado | `origin_appointment_id`, `origin_quote_id` (colunas explícitas além de origem textual) |
+| `service_reports` | numero, serviço executado, descrição, observações, status, data execução, horas, responsável, valor, campos de encerramento financeiro, assinaturas, arquivado | `appointment_id`, `customer_id`, `quote_id` |
+| `report_photos` | tipo (antes/durante/depois), `url_or_data`, posicao | `report_id` -> service_reports (cascade) |
+| `description_templates` | nome, conteúdo, favorito | — |
+| `organization_settings` | uma linha por empresa: nome, cnpj, contatos, endereço, redes, logo, tema PDF, cores, modo mensal, custos padrão (jsonb) | PK = `organization_id` |
+| `audit_logs` | entidade, entidade_id, entidade_nome, ação, campo, antes, depois, data, `user_id`, usuario (texto de exibição) | `user_id` -> auth user id |
 
-O que muda com essa escolha: a numeração sai do JSON e vai para uma tabela própria (item 2), porque essa é a única parte que realmente sofre com dois usuários simultâneos. A quebra em tabelas por entidade fica planejada como Etapa 03, quando houver mais de um usuário por empresa usando ao mesmo tempo.
+Fotos de orçamento seguem em colunas jsonb dentro de `quotes` nesta etapa (`fotos_antes`, `fotos_depois`); fotos de relatório ganham tabela própria por serem mais numerosas. Binários (logo, fotos, assinaturas) continuam como estão hoje, sem migração de arquivos nesta etapa.
 
-## Detalhes técnicos
+## 2. Regras de acesso
 
-### Banco
+Para cada tabela: acesso liberado apenas a quem pertence à empresa dona da linha, usando a verificação de membership já existente (`is_org_member`). Leitura, criação, edição e exclusão exigem que a empresa da linha seja uma empresa do usuário. `audit_logs` permite leitura e criação, sem edição. `organization_settings` permite leitura a qualquer membro e alteração a membros gerentes. Permissões de acesso (`grant`) para o papel autenticado em todas as tabelas, sem acesso anônimo. Contadores de numeração (`organization_counters`) continuam como estão.
 
-`organization_members`
-- `organization_id`, `user_id`, `role` (enum `org_role`: owner, admin, member), datas de criação/atualização, chave única por par empresa+usuário;
-- grants para `authenticated` e `service_role`; RLS ligada;
-- função `is_org_member(_org uuid)` e `has_org_role(_org uuid, _role org_role)` em `security definer` para evitar recursão nas policies;
-- leitura: membros da própria empresa; escrita: apenas owner/admin da empresa.
+## 3. Ordem de migração, por módulo
 
-`organization_counters`
-- `organization_id`, `tipo` (orcamento | relatorio), `proximo integer`, chave primária composta;
-- função `next_number(_tipo text) returns integer` em `security definer`, que faz `insert ... on conflict do update set proximo = proximo + 1 returning`, resolvendo o número atomicamente para a empresa do chamador;
-- grants + RLS iguais aos demais.
+Um módulo por vez, cada um validado antes do seguinte:
 
-`current_org_id()` passa a resolver pela participação em `organization_members`, com o `profiles.organization_id` como reserva, para não quebrar contas já criadas.
+1. Cadastros base: clientes e serviços (sem dependências).
+2. Empresa/configurações e modelos de descrição (isolados, baixo risco).
+3. Orçamentos e itens de orçamento (dependem de cliente/serviço).
+4. Agenda (depende de cliente, serviço, orçamento).
+5. Relatórios e fotos (dependem de agenda, cliente, orçamento).
+6. Financeiro (depende de origem em orçamento/agenda).
+7. Histórico/auditoria (por último, passa a registrar o usuário real).
 
-Retrocompatibilidade: uma migração popula `organization_members` com o dono de cada empresa existente e `organization_counters` com os contadores atuais lidos do JSON.
+## 4. Compatibilidade com `app_data` e `store.ts`
 
-### Aplicação
+Três fases, controladas por uma marca por empresa (`data_version` em `organization_settings`):
 
-- `src/data/context.ts`: passa a expor a empresa ativa real e o papel do usuário.
-- `src/data/cloud-sync.ts`: ganha a consulta do papel e um modo de migração; deixa de considerar os dados locais como envio automático.
-- Novo `src/data/numbering.ts`: chama `next_number` e devolve o número; `src/lib/store.ts` usa esse número ao criar orçamento e relatório, mantendo o contador local apenas como reserva quando offline.
-- Novo `src/routes/migrar-dados.tsx`: tela de confirmação da migração (mostra quantos clientes, orçamentos, agendamentos e lançamentos serão enviados, botões Importar e Começar do zero).
-- `src/routes/bem-vindo.tsx`: cria empresa, perfil e registro de dono em `organization_members`; se houver dados locais, encaminha para a tela de migração.
-- `src/routes/__root.tsx`: inclui a tela de migração entre as rotas permitidas.
-- Nova `src/routes/equipe.tsx` (lista de membros e papéis, somente leitura nesta etapa) e item na barra lateral.
-- Armazenamento: criar os espaços `logos`, `fotos` e `assinaturas`, privados, com regras que permitem ler e gravar apenas dentro da pasta da própria empresa.
+- Fase A — espelho: as tabelas são preenchidas pelo backfill; a leitura continua vindo do `payload`; cada gravação escreve nos dois lugares. Divergência aqui não afeta o usuário.
+- Fase B — leitura relacional: a leitura passa a montar o estado a partir das tabelas; o `payload` continua sendo gravado como espelho. É a fase em que a validação acontece de fato.
+- Fase C — encerramento: gravação apenas nas tabelas; o `payload` congela como último backup, sem ser apagado nesta etapa.
 
-### Migração dos dados locais
+`store.ts` não muda de assinatura. O que hoje é "salvar o bloco inteiro" passa a chamar um sincronizador que compara o estado anterior com o novo e emite as operações mínimas por tabela. Conflito entre usuários da mesma empresa é resolvido por registro (quem gravou por último vence naquele registro), o que já é um ganho grande sobre o bloco único atual, onde uma gravação sobrescreve tudo.
 
-Regra: o conteúdo do aparelho **nunca é apagado** nesta etapa.
+## 5. Repositórios a implementar primeiro
 
-1. Ao entrar com empresa já definida, o sistema compara o que existe na nuvem com o que existe no aparelho.
-2. Nuvem vazia e aparelho com dados: abre a tela de migração pedindo confirmação.
-3. Confirmado: envia o conteúdo, grava a marca `gep_db_migrado` com data e identificador da empresa, e mantém uma cópia local em `gep_db_v3_backup`.
-4. Recusado: começa vazio na nuvem, mantendo o conteúdo local intocado.
-5. Nuvem com dados: a nuvem sempre vence; nada do aparelho é enviado automaticamente.
-6. Aparelho já marcado para outra empresa: começa limpo, sem misturar contas.
+Reaproveitando os contratos da Etapa 01: `ClienteRepository` e `ServicoRepository` primeiro, depois `EmpresaRepository` e `ModeloRepository`, em seguida `OrcamentoRepository` (com itens), `AgendamentoRepository`, `RelatorioRepository`, `LancamentoRepository` e `HistoricoRepository`. Os contratos permanecem síncronos para as telas; a versão remota é assíncrona e vive atrás do sincronizador.
 
-## Ordem de implementação
+## 6. Backfill e reversão
 
-1. Migração de banco: `org_role`, `organization_members`, `organization_counters`, funções, grants, RLS, backfill dos dados existentes.
-2. Ajuste de `current_org_id()` e verificação com o analisador de segurança.
-3. Numeração via banco no store, com reserva local.
-4. Tela e lógica de migração confirmada dos dados locais.
-5. Onboarding gravando o dono em `organization_members`.
-6. Tela de equipe e item na barra lateral.
-7. Espaços de arquivos e suas regras de acesso.
-8. Testes de isolamento A/B, verificação de tipos e build.
+O backfill lê o `payload` da empresa e insere com `upsert` por ID: rodar duas vezes produz o mesmo resultado, sem duplicar. Registros com referência quebrada (orçamento apontando para cliente inexistente) são inseridos com a referência vazia e listados em um relatório de inconsistências, em vez de falhar a migração.
 
-## Testes obrigatórios
+Reversão: como o `payload` continua sendo gravado até a Fase C, voltar significa apenas retornar a marca de versão para a fase anterior. Nenhuma linha precisa ser apagada. Os backups locais (`gep_db_v3`, `gep_db_v3_backup`) permanecem intocados.
 
-- Conta A cria cliente, orçamento e lançamento; conta B (outra empresa) entra e não vê nada disso, nem por leitura direta do banco.
-- Conta B tenta gravar usando o identificador da empresa A: a gravação é recusada.
-- Dois pedidos simultâneos de número de orçamento na mesma empresa devolvem números diferentes.
-- Empresas diferentes começam a numeração de forma independente.
-- Migração: importar, recusar, entrar de novo (não repete), trocar de conta no mesmo aparelho.
-- Orçamento e relatório em PDF continuam idênticos; instalação do aplicativo continua funcionando.
+## 7. Testes obrigatórios
 
-## Riscos
+- Integridade: contagem por entidade no JSON igual à contagem nas tabelas; totais de orçamento, financeiro e relatório idênticos antes e depois.
+- Isolamento: empresa B não lê nem grava nenhuma das novas tabelas da empresa A, testado tabela por tabela.
+- Concorrência: dois usuários da mesma empresa editando registros diferentes não sobrescrevem um ao outro; editando o mesmo registro, o último vence sem corromper os demais.
+- Regressão: gerar PDF de orçamento e de relatório antes e depois e comparar; painel inicial, agenda, financeiro, histórico e instalação do aplicativo conferidos manualmente.
+- Idempotência: backfill executado duas vezes sem duplicação.
 
-| Risco | Prevenção |
-| --- | --- |
-| Contas já criadas ficarem sem empresa após mudar `current_org_id()` | Backfill na mesma migração e reserva pelo perfil |
-| Número de orçamento duplicado no modo offline | Reserva local marcada como provisória e reconciliada ao voltar a conexão |
-| Perda de dados do aparelho | Nada é apagado; cópia de segurança local e marca de migração |
-| Regras de acesso em recursão | Verificações sempre por função `security definer` |
-| Fotos grandes estourando o registro JSON | Medir o tamanho do registro no teste; se passar do limite seguro, antecipar o envio das imagens para o espaço de arquivos |
-| Aviso do analisador sobre funções `security definer` | Continua sendo intencional, necessário para as regras de acesso |
+## 8. Arquivos
 
-## Fora desta etapa
+Criar: migração de banco com as tabelas e regras de acesso; `src/data/remote/` com um arquivo por repositório; `src/data/sync/diff.ts` (comparador de estado); `src/data/sync/entity-sync.ts` (orquestrador); `src/data/backfill.ts`; `src/data/data-version.ts`.
 
-Kiwify, pagamentos, planos, teste gratuito, painel comercial, personalização de marca avançada e sincronização offline elaborada. A quebra dos dados operacionais em tabelas por entidade fica para a Etapa 03.
+Modificar: `src/data/cloud-sync.ts` (carregar das tabelas e delegar gravação ao sincronizador), `src/lib/store.ts` (apenas o ponto de persistência e o registro de auditoria com usuário real), `src/data/repositories/contracts.ts` (variantes remotas).
+
+Sem alteração: todas as rotas/telas, `src/lib/pdf.ts`, `src/lib/relatorio-pdf.ts`, `src/domain/rules.ts`, `src/types/models.ts`.
+
+## 9. Riscos e critérios de aceite
+
+Riscos: IDs antigos que não sejam UUID exigem remapeamento de relações (mitigado pela coluna `legacy_id` e por mapa de conversão no backfill); relatórios com muitas fotos podem pesar na primeira carga (mitigado carregando fotos sob demanda); volume de escritas maior que hoje (mitigado por envio em lote e agrupado).
+
+Aceite: nenhuma tela alterada visualmente; PDFs idênticos; contagens e totais conferidos; empresa B sem qualquer acesso a dados da empresa A; backfill idempotente; `payload` preservado; verificação de tipos e build sem erros.
+
+Fora do escopo: pagamentos, planos, painel comercial, personalização de marca avançada, convites de equipe, sincronização offline.
