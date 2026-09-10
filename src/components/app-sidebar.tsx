@@ -36,6 +36,7 @@ const items = [
   { title: "Agenda", url: "/agenda", icon: Calendar },
   { title: "Precificação", url: "/precificacao", icon: Calculator },
   { title: "Financeiro", url: "/financeiro", icon: Wallet },
+  { title: "Equipe", url: "/equipe", icon: Users },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
