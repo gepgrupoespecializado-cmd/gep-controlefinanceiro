@@ -83,6 +83,13 @@ function OnboardingPage() {
       );
       if (profileError) throw profileError;
 
+      const { error: memberError } = await supabase.from("organization_members").insert({
+        organization_id: org.id,
+        user_id: user.id,
+        role: "owner",
+      });
+      if (memberError && memberError.code !== "23505") throw memberError;
+
       db.updateEmpresa({
         nome: form.nome.trim(),
         cnpj: form.cnpj.trim(),

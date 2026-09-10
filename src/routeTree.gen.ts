@@ -17,10 +17,12 @@ import { Route as PrecificacaoRouteImport } from './routes/precificacao'
 import { Route as PoliticaDePrivacidadeRouteImport } from './routes/politica-de-privacidade'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as ModelosRouteImport } from './routes/modelos'
+import { Route as MigrarDadosRouteImport } from './routes/migrar-dados'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LixeiraRouteImport } from './routes/lixeira'
 import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as EmpresaRouteImport } from './routes/empresa'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
@@ -68,6 +70,11 @@ const ModelosRoute = ModelosRouteImport.update({
   path: '/modelos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MigrarDadosRoute = MigrarDadosRouteImport.update({
+  id: '/migrar-dados',
+  path: '/migrar-dados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -86,6 +93,11 @@ const HistoricoRoute = HistoricoRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipeRoute = EquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmpresaRoute = EmpresaRouteImport.update({
@@ -126,10 +138,12 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
+  '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
   '/login': typeof LoginRoute
+  '/migrar-dados': typeof MigrarDadosRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -146,10 +160,12 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
+  '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
   '/login': typeof LoginRoute
+  '/migrar-dados': typeof MigrarDadosRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -167,10 +183,12 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/empresa': typeof EmpresaRoute
+  '/equipe': typeof EquipeRoute
   '/financeiro': typeof FinanceiroRoute
   '/historico': typeof HistoricoRoute
   '/lixeira': typeof LixeiraRoute
   '/login': typeof LoginRoute
+  '/migrar-dados': typeof MigrarDadosRoute
   '/modelos': typeof ModelosRoute
   '/orcamentos': typeof OrcamentosRoute
   '/politica-de-privacidade': typeof PoliticaDePrivacidadeRoute
@@ -189,10 +207,12 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
+    | '/equipe'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
     | '/login'
+    | '/migrar-dados'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
@@ -209,10 +229,12 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
+    | '/equipe'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
     | '/login'
+    | '/migrar-dados'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
@@ -229,10 +251,12 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/empresa'
+    | '/equipe'
     | '/financeiro'
     | '/historico'
     | '/lixeira'
     | '/login'
+    | '/migrar-dados'
     | '/modelos'
     | '/orcamentos'
     | '/politica-de-privacidade'
@@ -250,10 +274,12 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   EmpresaRoute: typeof EmpresaRoute
+  EquipeRoute: typeof EquipeRoute
   FinanceiroRoute: typeof FinanceiroRoute
   HistoricoRoute: typeof HistoricoRoute
   LixeiraRoute: typeof LixeiraRoute
   LoginRoute: typeof LoginRoute
+  MigrarDadosRoute: typeof MigrarDadosRoute
   ModelosRoute: typeof ModelosRoute
   OrcamentosRoute: typeof OrcamentosRoute
   PoliticaDePrivacidadeRoute: typeof PoliticaDePrivacidadeRoute
@@ -322,6 +348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModelosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/migrar-dados': {
+      id: '/migrar-dados'
+      path: '/migrar-dados'
+      fullPath: '/migrar-dados'
+      preLoaderRoute: typeof MigrarDadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -348,6 +381,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipe': {
+      id: '/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof EquipeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/empresa': {
@@ -402,10 +442,12 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   EmpresaRoute: EmpresaRoute,
+  EquipeRoute: EquipeRoute,
   FinanceiroRoute: FinanceiroRoute,
   HistoricoRoute: HistoricoRoute,
   LixeiraRoute: LixeiraRoute,
   LoginRoute: LoginRoute,
+  MigrarDadosRoute: MigrarDadosRoute,
   ModelosRoute: ModelosRoute,
   OrcamentosRoute: OrcamentosRoute,
   PoliticaDePrivacidadeRoute: PoliticaDePrivacidadeRoute,
