@@ -17,6 +17,11 @@ import {
   sincronizarRelacional,
 } from "@/data/remote/relational-sync";
 import {
+  compararSnapshots,
+  lerRelacional,
+  type Divergencia,
+} from "@/data/remote/relational-read";
+import {
   ensureHydrated,
   getDBSnapshot,
   replaceDB,
