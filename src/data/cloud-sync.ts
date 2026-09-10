@@ -75,11 +75,16 @@ export async function loadOrgContext(): Promise<OrgContext> {
       .maybeSingle(),
   ]);
 
+  const nome = profile?.nome ?? (user.user_metadata?.["name"] as string | undefined) ?? null;
+  const email = profile?.email ?? user.email ?? null;
+  // A auditoria passa a registrar quem está usando a conta.
+  setUsuarioAtual(nome ?? email);
+
   return {
     orgId: membro?.organization_id ?? profile?.organization_id ?? null,
     userId: user.id,
-    nome: profile?.nome ?? (user.user_metadata?.["name"] as string | undefined) ?? null,
-    email: profile?.email ?? user.email ?? null,
+    nome,
+    email,
     role: (membro?.role as OrgContext["role"]) ?? null,
   };
 }
