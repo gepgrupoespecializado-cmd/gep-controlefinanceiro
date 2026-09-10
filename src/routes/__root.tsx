@@ -112,7 +112,12 @@ if (typeof window === "undefined") return;
       return;
     }
     if (location.pathname === "/bem-vindo") throw redirect({ to: "/" });
-    await initOrgSync(orgId);
+    const sync = await initOrgSync(orgId);
+    if (sync.status === "migracao_pendente") {
+      if (location.pathname !== "/migrar-dados") throw redirect({ to: "/migrar-dados" });
+      return;
+    }
+    if (location.pathname === "/migrar-dados") throw redirect({ to: "/" });
   },
   head: () => ({
     meta: [
@@ -193,7 +198,11 @@ function RootComponent() {
   }, [router]);
 
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const semLayout = pathname === "/login" || pathname === "/reset-password" || pathname === "/bem-vindo";
+  const semLayout =
+    pathname === "/login" ||
+    pathname === "/reset-password" ||
+    pathname === "/bem-vindo" ||
+    pathname === "/migrar-dados";
 
   if (semLayout) {
     return (
