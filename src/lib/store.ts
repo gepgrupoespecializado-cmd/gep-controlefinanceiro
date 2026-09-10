@@ -709,11 +709,11 @@ export const db = {
 
   /* Orçamentos */
   addOrcamento(o: Omit<Orcamento, "id" | "numero" | "criadoEm">) {
-    const numero = state.proximoOrcamento;
+    const numero = numeroDe("orcamento");
     const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString() };
     state = {
       ...state,
-      proximoOrcamento: numero + 1,
+      proximoOrcamento: Math.max(state.proximoOrcamento, numero + 1),
       orcamentos: [novo, ...state.orcamentos],
     };
     logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${String(numero).padStart(6, "0")}`, acao: "criado" });
@@ -752,11 +752,11 @@ export const db = {
   duplicarOrcamento(id: string) {
     const o = state.orcamentos.find((x) => x.id === id);
     if (!o) return;
-    const numero = state.proximoOrcamento;
+    const numero = numeroDe("orcamento");
     const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString(), status: "rascunho", arquivado: false, versao: 1 };
     state = {
       ...state,
-      proximoOrcamento: numero + 1,
+      proximoOrcamento: Math.max(state.proximoOrcamento, numero + 1),
       orcamentos: [novo, ...state.orcamentos],
     };
     logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${String(numero).padStart(6, "0")}`, acao: "criado", campo: "duplicado de", depois: `ORC-${String(o.numero).padStart(6, "0")}` });
@@ -877,7 +877,7 @@ function gerarProximoAgendamentoDe(a: Agendamento, base: Date) {
 
 export const relatorios = {
   add(r: Omit<Relatorio, "id" | "numero" | "criadoEm">): string {
-    const numero = state.proximoRelatorio;
+    const numero = numeroDe("relatorio");
     const novo: Relatorio = {
       ...r,
       id: uid(),
@@ -886,7 +886,7 @@ export const relatorios = {
     };
     state = {
       ...state,
-      proximoRelatorio: numero + 1,
+      proximoRelatorio: Math.max(state.proximoRelatorio, numero + 1),
       relatorios: [novo, ...state.relatorios],
       agendamentos: state.agendamentos.map((a) =>
         a.id === r.agendamentoId ? { ...a, relatorioId: novo.id, status: "concluido" } : a,
@@ -953,6 +953,27 @@ function sincronizarFinanceiroRelatorio(r: Relatorio) {
 /** Leitura direta do estado atual — usada pelo adaptador local (src/data/local). */
 export function getDBSnapshot(): DB {
   return state;
+}
+
+/* ---------- Numeração (contador da empresa, com reserva local) ---------- */
+
+type NumeroProvider = (tipo: "orcamento" | "relatorio") => number | null;
+let numeroProvider: NumeroProvider | null = null;
+
+/** Liga a numeração da empresa (banco). Sem provedor, vale o contador local. */
+export function setNumeroProvider(fn: NumeroProvider | null) {
+  numeroProvider = fn;
+}
+
+function numeroDe(tipo: "orcamento" | "relatorio"): number {
+  const local = tipo === "orcamento" ? state.proximoOrcamento : state.proximoRelatorio;
+  try {
+    const remoto = numeroProvider?.(tipo);
+    if (typeof remoto === "number" && remoto > 0) return remoto;
+  } catch (error) {
+    console.warn("Falha ao obter numeração da empresa.", error);
+  }
+  return local;
 }
 
 /* ---------- Ponte de sincronização (Etapa 02) ---------- */
