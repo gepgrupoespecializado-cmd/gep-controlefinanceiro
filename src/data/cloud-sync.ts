@@ -246,14 +246,14 @@ export function getOrigemLeitura(): OrigemLeitura {
   return origemLeitura;
 }
 
-async function lerVersaoDados(orgId: string): Promise<"A" | "B"> {
+async function lerVersaoDados(orgId: string): Promise<Fase> {
   const { data, error } = await supabase
     .from("organization_settings")
     .select("data_version")
     .eq("organization_id", orgId)
     .maybeSingle();
   if (error) return "A";
-  return data?.data_version === "B" ? "B" : "A";
+  return normalizarFase(data?.data_version);
 }
 
 /**
