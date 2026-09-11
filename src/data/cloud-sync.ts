@@ -23,6 +23,7 @@ import {
 } from "@/data/remote/relational-read";
 import {
   avaliarFaseC,
+  dualWriteComprovado,
   normalizarFase,
   promoverParaC,
   reverterParaB,
@@ -370,8 +371,9 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
     });
     // Em B mantém o bloco JSON espelhado; em C só as tabelas são atualizadas.
     void (async () => {
+      const marcoISO = new Date().toISOString();
       await flushImediato(orgId);
-      if (faseAtual === "B") await avaliarPromocaoC(orgId, payload);
+      if (faseAtual === "B") await avaliarPromocaoC(orgId, marcoISO);
     })();
     return { status: "pronto" };
   }
@@ -419,19 +421,41 @@ async function flushImediato(orgId: string) {
   await push(orgId, getDBSnapshot());
 }
 
+/** Bloco JSON recém-lido, usado como prova objetiva da gravação dupla. */
+async function lerBlocoRemoto(orgId: string) {
+  const { data, error } = await supabase
+    .from("app_data")
+    .select("payload, updated_at")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    payload: (data.payload ?? {}) as Partial<DB>,
+    updatedAt: (data.updated_at as string | null) ?? null,
+  };
+}
+
 /**
  * Avaliação conservadora da virada B -> C.
- * Só congela o bloco JSON quando a sessão atual comprovou tudo: leitura pelas
- * tabelas, comparação sem divergências e uma gravação dupla bem-sucedida.
+ * A conferência usa o bloco JSON lido logo depois da gravação desta sessão, e
+ * não a cópia carregada na entrada: assim a gravação dupla fica comprovada por
+ * um fato guardado no banco, e não por uma marca que só existia na memória.
  */
-async function avaliarPromocaoC(orgId: string, payload: Partial<DB> | null) {
+async function avaliarPromocaoC(orgId: string, marcoISO: string) {
   let leituraRelacionalOk = false;
   let semDivergencias = false;
+  let dualWriteObjetivo = false;
   try {
     const { db } = await lerRelacional(orgId);
     leituraRelacionalOk = true;
-    const base = payload && Object.keys(payload).length > 0 ? payload : null;
+    const remoto = await lerBlocoRemoto(orgId);
+    const base = remoto && Object.keys(remoto.payload).length > 0 ? remoto.payload : null;
     semDivergencias = !!base && compararSnapshots(db, base).length === 0;
+    dualWriteObjetivo = dualWriteComprovado({
+      marcoISO,
+      blocoAtualizadoEm: remoto?.updatedAt ?? null,
+      semDivergencias,
+    });
   } catch (erro) {
     console.warn("Conferência para a fase C não pôde ser concluída.", erro);
   }
@@ -441,7 +465,7 @@ async function avaliarPromocaoC(orgId: string, payload: Partial<DB> | null) {
     leituraRelacionalOk,
     semDivergencias,
     sessaoRealRelacional: origemLeitura === "relacional",
-    dualWriteValidado,
+    dualWriteValidado: dualWriteValidado || dualWriteObjetivo,
   });
   if (resultado.promovido) faseAtual = "C";
   else if (resultado.motivos.length) {
