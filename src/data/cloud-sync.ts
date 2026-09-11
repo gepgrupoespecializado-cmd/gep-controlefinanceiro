@@ -420,6 +420,67 @@ async function flushImediato(orgId: string) {
 }
 
 /**
+ * Avaliação conservadora da virada B -> C.
+ * Só congela o bloco JSON quando a sessão atual comprovou tudo: leitura pelas
+ * tabelas, comparação sem divergências e uma gravação dupla bem-sucedida.
+ */
+async function avaliarPromocaoC(orgId: string, payload: Partial<DB> | null) {
+  let leituraRelacionalOk = false;
+  let semDivergencias = false;
+  try {
+    const { db } = await lerRelacional(orgId);
+    leituraRelacionalOk = true;
+    const base = payload && Object.keys(payload).length > 0 ? payload : null;
+    semDivergencias = !!base && compararSnapshots(db, base).length === 0;
+  } catch (erro) {
+    console.warn("Conferência para a fase C não pôde ser concluída.", erro);
+  }
+
+  const resultado = await promoverParaC(orgId, {
+    fase: faseAtual,
+    leituraRelacionalOk,
+    semDivergencias,
+    sessaoRealRelacional: origemLeitura === "relacional",
+    dualWriteValidado,
+  });
+  if (resultado.promovido) faseAtual = "C";
+  else if (resultado.motivos.length) {
+    console.info("Empresa mantida na gravação dupla.", resultado.motivos);
+  }
+  return resultado;
+}
+
+/** Volta a empresa para a gravação dupla e atualiza o bloco de segurança. */
+export async function reverterFaseC(orgId: string) {
+  const { revertido, motivo } = await reverterParaB(orgId);
+  if (!revertido) return { revertido, motivo };
+  faseAtual = "B";
+  dualWriteValidado = false;
+  // Bloco JSON volta a receber o estado atual imediatamente.
+  await push(orgId, getDBSnapshot());
+  return { revertido: true };
+}
+
+/** Fase registrada para a empresa carregada nesta sessão. */
+export function getFaseAtual(): Fase {
+  return faseAtual;
+}
+
+/** Avaliação da virada B -> C sem gravar nada. */
+export function avaliarFaseAtual(cond: {
+  leituraRelacionalOk: boolean;
+  semDivergencias: boolean;
+}) {
+  return avaliarFaseC({
+    fase: faseAtual,
+    leituraRelacionalOk: cond.leituraRelacionalOk,
+    semDivergencias: cond.semDivergencias,
+    sessaoRealRelacional: origemLeitura === "relacional",
+    dualWriteValidado,
+  });
+}
+
+/**
  * Cópia inicial do bloco JSON para as tabelas próprias.
  * Pode ser executada quantas vezes for necessário: nada é duplicado.
  */
