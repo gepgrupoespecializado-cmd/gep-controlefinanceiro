@@ -246,14 +246,14 @@ export function getOrigemLeitura(): OrigemLeitura {
   return origemLeitura;
 }
 
-async function lerVersaoDados(orgId: string): Promise<"A" | "B"> {
+async function lerVersaoDados(orgId: string): Promise<Fase> {
   const { data, error } = await supabase
     .from("organization_settings")
     .select("data_version")
     .eq("organization_id", orgId)
     .maybeSingle();
   if (error) return "A";
-  return data?.data_version === "B" ? "B" : "A";
+  return normalizarFase(data?.data_version);
 }
 
 /**
@@ -338,24 +338,41 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   const payload = (data?.payload ?? null) as Partial<DB> | null;
   const temPayload = !!payload && Object.keys(payload).length > 0;
 
-  // Fase B: o estado vem das tabelas próprias, com o bloco JSON como reserva.
+  // A fase vale para esta sessão; a validação de gravação dupla recomeça a cada
+  // troca de empresa.
+  faseAtual = versao;
+  dualWriteValidado = false;
+  origemLeitura = "bloco_json";
+
+  // Fases B e C: o estado vem das tabelas próprias.
   let relacional: Partial<DB> | null = null;
   if (versao === "B") {
+    // Em B o bloco JSON ainda é espelho fiel, então serve de conferência.
     relacional = await carregarRelacional(orgId, payload);
-    origemLeitura = relacional ? "relacional" : "bloco_json";
-  } else {
-    origemLeitura = "bloco_json";
+  } else if (versao === "C") {
+    // Em C o bloco JSON está congelado: não serve de comparação, apenas de
+    // recuperação caso a leitura das tabelas falhe.
+    relacional = await carregarRelacional(orgId, null);
+    if (!relacional) {
+      console.warn("Leitura das tabelas falhou na fase C; voltando para a gravação dupla.");
+      const { revertido } = await reverterParaB(orgId);
+      faseAtual = revertido ? "B" : "C";
+    }
   }
 
   if (relacional) {
+    origemLeitura = "relacional";
     replaceDB(relacional);
     ativarSync(orgId);
     await iniciarNumeracao({
       orcamento: getDBSnapshot().proximoOrcamento ?? 1,
       relatorio: getDBSnapshot().proximoRelatorio ?? 1,
     });
-    // Mantém o bloco JSON espelhado (Fase B ainda escreve nos dois lugares).
-    void flushImediato(orgId);
+    // Em B mantém o bloco JSON espelhado; em C só as tabelas são atualizadas.
+    void (async () => {
+      await flushImediato(orgId);
+      if (faseAtual === "B") await avaliarPromocaoC(orgId, payload);
+    })();
     return { status: "pronto" };
   }
 
@@ -403,6 +420,67 @@ async function flushImediato(orgId: string) {
 }
 
 /**
+ * Avaliação conservadora da virada B -> C.
+ * Só congela o bloco JSON quando a sessão atual comprovou tudo: leitura pelas
+ * tabelas, comparação sem divergências e uma gravação dupla bem-sucedida.
+ */
+async function avaliarPromocaoC(orgId: string, payload: Partial<DB> | null) {
+  let leituraRelacionalOk = false;
+  let semDivergencias = false;
+  try {
+    const { db } = await lerRelacional(orgId);
+    leituraRelacionalOk = true;
+    const base = payload && Object.keys(payload).length > 0 ? payload : null;
+    semDivergencias = !!base && compararSnapshots(db, base).length === 0;
+  } catch (erro) {
+    console.warn("Conferência para a fase C não pôde ser concluída.", erro);
+  }
+
+  const resultado = await promoverParaC(orgId, {
+    fase: faseAtual,
+    leituraRelacionalOk,
+    semDivergencias,
+    sessaoRealRelacional: origemLeitura === "relacional",
+    dualWriteValidado,
+  });
+  if (resultado.promovido) faseAtual = "C";
+  else if (resultado.motivos.length) {
+    console.info("Empresa mantida na gravação dupla.", resultado.motivos);
+  }
+  return resultado;
+}
+
+/** Volta a empresa para a gravação dupla e atualiza o bloco de segurança. */
+export async function reverterFaseC(orgId: string) {
+  const { revertido, motivo } = await reverterParaB(orgId);
+  if (!revertido) return { revertido, motivo };
+  faseAtual = "B";
+  dualWriteValidado = false;
+  // Bloco JSON volta a receber o estado atual imediatamente.
+  await push(orgId, getDBSnapshot());
+  return { revertido: true };
+}
+
+/** Fase registrada para a empresa carregada nesta sessão. */
+export function getFaseAtual(): Fase {
+  return faseAtual;
+}
+
+/** Avaliação da virada B -> C sem gravar nada. */
+export function avaliarFaseAtual(cond: {
+  leituraRelacionalOk: boolean;
+  semDivergencias: boolean;
+}) {
+  return avaliarFaseC({
+    fase: faseAtual,
+    leituraRelacionalOk: cond.leituraRelacionalOk,
+    semDivergencias: cond.semDivergencias,
+    sessaoRealRelacional: origemLeitura === "relacional",
+    dualWriteValidado,
+  });
+}
+
+/**
  * Cópia inicial do bloco JSON para as tabelas próprias.
  * Pode ser executada quantas vezes for necessário: nada é duplicado.
  */
@@ -436,4 +514,7 @@ export async function stopOrgSync() {
   setUsuarioAtual(null);
   currentOrg = null;
   pending = null;
+  faseAtual = "A";
+  dualWriteValidado = false;
+  origemLeitura = "bloco_json";
 }
