@@ -514,4 +514,7 @@ export async function stopOrgSync() {
   setUsuarioAtual(null);
   currentOrg = null;
   pending = null;
+  faseAtual = "A";
+  dualWriteValidado = false;
+  origemLeitura = "bloco_json";
 }
