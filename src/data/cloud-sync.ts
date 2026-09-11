@@ -338,24 +338,41 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
   const payload = (data?.payload ?? null) as Partial<DB> | null;
   const temPayload = !!payload && Object.keys(payload).length > 0;
 
-  // Fase B: o estado vem das tabelas próprias, com o bloco JSON como reserva.
+  // A fase vale para esta sessão; a validação de gravação dupla recomeça a cada
+  // troca de empresa.
+  faseAtual = versao;
+  dualWriteValidado = false;
+  origemLeitura = "bloco_json";
+
+  // Fases B e C: o estado vem das tabelas próprias.
   let relacional: Partial<DB> | null = null;
   if (versao === "B") {
+    // Em B o bloco JSON ainda é espelho fiel, então serve de conferência.
     relacional = await carregarRelacional(orgId, payload);
-    origemLeitura = relacional ? "relacional" : "bloco_json";
-  } else {
-    origemLeitura = "bloco_json";
+  } else if (versao === "C") {
+    // Em C o bloco JSON está congelado: não serve de comparação, apenas de
+    // recuperação caso a leitura das tabelas falhe.
+    relacional = await carregarRelacional(orgId, null);
+    if (!relacional) {
+      console.warn("Leitura das tabelas falhou na fase C; voltando para a gravação dupla.");
+      const { revertido } = await reverterParaB(orgId);
+      faseAtual = revertido ? "B" : "C";
+    }
   }
 
   if (relacional) {
+    origemLeitura = "relacional";
     replaceDB(relacional);
     ativarSync(orgId);
     await iniciarNumeracao({
       orcamento: getDBSnapshot().proximoOrcamento ?? 1,
       relatorio: getDBSnapshot().proximoRelatorio ?? 1,
     });
-    // Mantém o bloco JSON espelhado (Fase B ainda escreve nos dois lugares).
-    void flushImediato(orgId);
+    // Em B mantém o bloco JSON espelhado; em C só as tabelas são atualizadas.
+    void (async () => {
+      await flushImediato(orgId);
+      if (faseAtual === "B") await avaliarPromocaoC(orgId, payload);
+    })();
     return { status: "pronto" };
   }
 
