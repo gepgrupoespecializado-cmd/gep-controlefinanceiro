@@ -45,12 +45,40 @@ export function avaliarFaseC(c: CondicoesFaseC): AvaliacaoFaseC {
   return { permitido: motivos.length === 0, motivos };
 }
 
+/**
+ * Comprovação objetiva da gravação dupla, verificável entre sessões.
+ *
+ * Não depende de memória: a prova é o bloco JSON ter sido reescrito nesta
+ * sessão (carimbo de hora igual ou posterior ao início da gravação) e o seu
+ * conteúdo bater com o que as tabelas devolvem agora.
+ */
+export function dualWriteComprovado(p: {
+  /** Momento (ISO) em que a gravação desta sessão começou. */
+  marcoISO: string;
+  /** `updated_at` do bloco JSON lido depois da gravação. */
+  blocoAtualizadoEm: string | null;
+  /** Comparação tabelas x bloco recém-lido sem divergências. */
+  semDivergencias: boolean;
+  /** Tolerância para diferença de relógio, em milissegundos. */
+  toleranciaMs?: number;
+}): boolean {
+  if (!p.semDivergencias || !p.blocoAtualizadoEm) return false;
+  const bloco = Date.parse(p.blocoAtualizadoEm);
+  const marco = Date.parse(p.marcoISO);
+  if (Number.isNaN(bloco) || Number.isNaN(marco)) return false;
+  return bloco >= marco - (p.toleranciaMs ?? 5000);
+}
+
 async function gravarFase(org: string, fase: Fase) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("organization_settings")
     .update({ data_version: fase })
-    .eq("organization_id", org);
-  return error ? error.message : null;
+    .eq("organization_id", org)
+    .select("data_version");
+  if (error) return error.message;
+  // Sem erro e sem linha alterada significa bloqueio silencioso de permissão.
+  if (!data || data.length === 0) return "nenhuma linha de configuração foi atualizada";
+  return null;
 }
 
 /**
