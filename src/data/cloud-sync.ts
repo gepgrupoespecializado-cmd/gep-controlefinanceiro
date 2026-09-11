@@ -370,8 +370,9 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
     });
     // Em B mantém o bloco JSON espelhado; em C só as tabelas são atualizadas.
     void (async () => {
+      const marcoISO = new Date().toISOString();
       await flushImediato(orgId);
-      if (faseAtual === "B") await avaliarPromocaoC(orgId, payload);
+      if (faseAtual === "B") await avaliarPromocaoC(orgId, marcoISO);
     })();
     return { status: "pronto" };
   }
