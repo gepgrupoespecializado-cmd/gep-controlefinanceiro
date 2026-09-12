@@ -12,8 +12,8 @@ export function isPublicRoute(pathname: string): boolean {
 }
 
 export async function getSessionUser() {
-  const { data } = await supabase.auth.getUser();
-  return data.user ?? null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user ?? null;
 }
 
 export async function signInWithPassword(email: string, senha: string) {
