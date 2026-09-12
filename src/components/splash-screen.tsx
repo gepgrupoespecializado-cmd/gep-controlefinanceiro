@@ -11,7 +11,7 @@ export function SplashScreen() {
       sessionStorage.setItem(SESSION_KEY, "1");
     } catch {}
     setVisible(true);
-    const t = window.setTimeout(() => setVisible(false), 1600);
+    const t = window.setTimeout(() => setVisible(false), 650);
     return () => window.clearTimeout(t);
   }, []);
 
