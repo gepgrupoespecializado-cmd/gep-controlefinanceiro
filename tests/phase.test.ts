@@ -1,11 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-const updateResult = vi.hoisted(() => ({
+const updateResult = {
   data: [{ data_version: "C" }] as Array<{ data_version: string }>,
   error: null as { message: string } | null,
-}));
+};
 
-vi.mock("@/integrations/supabase/client", () => ({
+mock.module("@/integrations/supabase/client", () => ({
   supabase: {
     from: () => ({
       update: () => ({
