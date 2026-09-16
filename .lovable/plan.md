@@ -46,27 +46,32 @@ próximo bloco independente
 
 Cada publicação deve conter somente um bloco aprovado. Uma falha em qualquer portão interrompe o processo sem afetar a versão publicada.
 
-## Ordem dos blocos
+## Ordem dos blocos e decisão de empacotamento
 
-1. **C1**: concluir a validação externa, especialmente a sessão interrompida no navegador real. Integrar e publicar sozinha.
-2. **C1-E**: tratar como pacote independente, somente depois do aceite e monitoramento da C1.
-3. **C1-F**: não integrar enquanto não houver aprovação formal. Depois de aprovada, repetir todo o ciclo como bloco independente.
-4. **C2**: iniciar somente após C1, C1-E e eventual C1-F terem pontos de restauração próprios e aceite encerrado. Nunca agrupar C1 com C2.
+1. **C1**: concluir sua validação externa, especialmente a sessão interrompida no navegador real. Não integrar ainda.
+2. **C1-E**: concluir como extensão/correção da C1, preservando a rastreabilidade do seu diff. Não há obrigação de publicação independente.
+3. **C1-F**: manter bloqueada até aprovação formal; depois, concluir sua validação e preservar a rastreabilidade do seu diff. Não há obrigação de publicação independente.
+4. **Auditoria consolidada C1 + C1-E + C1-F**: após a conclusão da C1-F, analisar os três diffs em conjunto, suas dependências e os estados intermediários que cada separação criaria.
+5. **Decisão técnica de integração**:
+   - formar um único pacote atômico de segurança C1 quando as extensões corrigirem invariantes compartilhados, dependerem da mesma alteração ou tornarem qualquer estado intermediário inseguro;
+   - permitir integração separada somente quando cada parte for funcionalmente completa, reversível, testável e segura por conta própria, sem relaxar autenticação, isolamento multiempresa, regras de acesso, sincronização ou cache;
+   - documentar a justificativa e a ordem escolhida antes de qualquer execução.
+6. **C2**: permanecer totalmente separado e bloqueado até o encerramento, publicação, monitoramento e ponto de restauração definitivo do pacote C1. Nunca agrupar C1 com C2.
 
 ## Portão anterior a cada integração
 
 Antes de alterar arquivos:
 
-1. Fixar o commit de origem e obter o diff completo do bloco, sem depender de uma branch mutável.
-2. Listar arquivos criados, alterados e removidos; separar alterações pertencentes a outros blocos.
-3. Mapear dependências de código, pacotes e ordem de aplicação.
+1. Fixar os commits de origem e obter os diffs completos de C1, C1-E e C1-F, sem depender de uma branch mutável.
+2. Listar arquivos criados, alterados e removidos em cada diff; identificar sobreposições e alterações que só funcionam quando aplicadas em conjunto.
+3. Mapear dependências de código, pacotes, ordem de aplicação e invariantes de segurança compartilhados.
 4. Comparar qualquer impacto em banco, migrations, autenticação, isolamento multiempresa e regras de acesso.
 5. Revisar sincronização A/B/C, preservação de `app_data`, dados locais e backups.
 6. Revisar rotas, redirecionamentos, inicialização e recuperação de erros.
 7. Revisar Service Worker, nome e invalidação de cache, instalação e atualização do PWA.
-8. Verificar compatibilidade com a versão publicada e definir o procedimento de rollback daquele bloco.
+8. Verificar compatibilidade com a versão publicada, simular cada estado intermediário proposto e definir o procedimento de rollback do pacote resultante.
 9. Se o diff exigir schema ou migration, interromper e apresentar um plano específico antes de qualquer aplicação.
-10. Apresentar arquivos, impacto, riscos, sequência, testes e rollback; aguardar uma segunda autorização explícita para executar.
+10. Apresentar a recomendação fundamentada entre pacote atômico e integração separada, com arquivos, impacto, riscos, sequência, testes e rollback; aguardar uma segunda autorização explícita para executar.
 
 ## Validação da C1
 
@@ -107,15 +112,16 @@ Antes de alterar arquivos:
 
 ## Critérios de aprovação
 
-A C1 somente poderá ser publicada quando:
+A C1, em pacote atômico ou partes tecnicamente independentes, somente poderá ser publicada quando:
 
-- o commit de origem e o conjunto de arquivos estiverem congelados e auditados;
-- a validação final em navegador real estiver concluída;
+- os commits de origem e os diffs individuais e consolidado estiverem congelados e auditados;
+- as validações finais de C1, C1-E e C1-F em navegador real estiverem concluídas;
+- a análise demonstrar que o formato escolhido não cria estado intermediário inseguro;
 - testes, TypeScript e build passarem sem regressão;
 - autenticação, isolamento multiempresa, sincronização, navegação e PWA passarem nos cenários definidos;
 - não houver alteração não autorizada de banco, dados ou migrations;
 - o rollback estiver documentado e praticável;
-- existir um ponto de restauração imutável anterior à integração e outro identificando a C1 aprovada;
+- existir um ponto de restauração imutável anterior à integração e outro identificando o pacote C1 aprovado;
 - houver autorização explícita para publicar após a validação da prévia.
 
 ## Estratégia de rollback
@@ -132,7 +138,8 @@ A C1 somente poderá ser publicada quando:
 ## Riscos identificados
 
 - **Branch externa indisponível no checkout atual**: impede confirmar agora o escopo real. Mitigação: integrar somente por commit/diff fixo.
-- **Mistura entre C1, C1-E e C1-F**: dificulta diagnóstico e rollback. Mitigação: pacote e publicação independentes.
+- **Separação artificial entre C1, C1-E e C1-F**: pode publicar uma correção incompleta ou criar estado intermediário inseguro. Mitigação: auditar o diff consolidado e usar pacote atômico quando houver dependência.
+- **Pacote consolidado amplo demais**: pode dificultar diagnóstico e rollback quando as partes forem realmente independentes. Mitigação: preservar diffs rastreáveis e separar somente após comprovar independência funcional e de segurança.
 - **Validação incompleta no navegador real**: testes automatizados não cobrem inicialização, cache e sessão. Mitigação: tornar essa validação um portão obrigatório.
 - **Cache/PWA antigo**: pode servir uma combinação incompatível de arquivos. Mitigação: testar atualização com cache existente e versionar a estratégia de invalidação.
 - **Regressão em autenticação ou isolamento**: impacto crítico em ambiente multiempresa. Mitigação: cenários autenticados e cruzados antes da publicação.
@@ -145,10 +152,10 @@ Realizar uma janela controlada antes de iniciar outro bloco. Conferir abertura, 
 
 ## Próximo comando recomendado
 
-Após a C1 estar formalmente concluída e validada no navegador real, enviar exatamente:
+Após C1, C1-E e C1-F estarem formalmente concluídas e validadas no navegador real, enviar exatamente:
 
 `C1 APROVADA PARA INTEGRAÇÃO`
 
-Esse comando autoriza apenas a auditoria final do pacote e a apresentação do plano exato de arquivos, impacto, riscos, sequência, testes e rollback. A execução ainda dependerá de uma segunda autorização explícita.
+Esse comando autoriza apenas a auditoria dos diffs individuais e consolidado, a decisão entre pacote atômico ou integração separada e a apresentação do plano exato de arquivos, impacto, riscos, sequência, testes e rollback. A execução ainda dependerá de uma segunda autorização explícita.
 
 **PLANEJAMENTO DE INTEGRAÇÃO CONCLUÍDO — NENHUMA ALTERAÇÃO EXECUTADA.**
