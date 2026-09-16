@@ -1,101 +1,154 @@
-# Etapa 03 — Normalização dos dados em tabelas por entidade
+# Plano de integração incremental C1
 
-Hoje toda a operação (clientes, serviços, orçamentos, agenda, financeiro, relatórios, modelos, empresa, histórico) vive dentro de um único campo `payload` na tabela `app_data`, um bloco JSON por empresa. Funciona, mas impede consulta, relatório, concorrência entre usuários e crescimento.
+## Objetivo e limites
 
-A Etapa 03 cria uma tabela para cada entidade, copia os dados existentes para elas e passa a gravar linha a linha, mantendo o bloco JSON atual intacto como rede de segurança.
+Preparar a incorporação segura das melhorias desenvolvidas externamente, preservando integralmente a versão publicada até que cada bloco seja validado, autorizado, integrado, testado e monitorado isoladamente.
 
-## Princípio central: nenhuma tela é reescrita
+Nesta etapa não haverá alteração de código, publicação, banco de dados, migrations, dados, autenticação ou configuração. C1, C1-E e C1-F não serão implementadas agora, e C2 permanecerá fora do processo.
 
-O aplicativo continua operando sobre o estado em memória do `store.ts`, exatamente como hoje, com as mesmas funções síncronas. O que muda é apenas a camada de persistência:
+O checkout atual não contém a branch `codex-preparação`. Portanto, arquivos afetados, dependências e impacto exato só poderão ser fechados quando o commit ou diff imutável de cada bloco estiver disponível.
+
+## Estrutura recomendada das publicações
 
 ```text
-telas (sem alteração)
-   |
-store.ts (estado em memória, API síncrona — sem alteração)
-   |
-sync por entidade (novo)  ->  tabelas relacionais (novo)
-   |
-app_data.payload (mantido como espelho/fallback)
+versão publicada atual preservada
+              |
+              v
+C1 concluída e validada externamente
+              |
+              v
+autorização "C1 APROVADA PARA INTEGRAÇÃO"
+              |
+              v
+auditoria do diff + plano exato de integração e rollback
+              |
+              v
+segunda autorização explícita para executar
+              |
+              v
+integração controlada em ambiente de prévia
+              |
+              v
+validação automatizada + navegador real + celular/PWA
+              |
+              v
+ponto de restauração imutável da C1
+              |
+              v
+publicação isolada da C1
+              |
+              v
+monitoramento e aceite
+              |
+              v
+próximo bloco independente
 ```
 
-Ao carregar, o app lê as tabelas e monta o mesmo objeto que hoje vem do JSON. Ao gravar, um comparador detecta o que mudou (criado, alterado, removido) e envia somente as linhas afetadas. Enquanto a etapa estiver em validação, o JSON continua sendo gravado em paralelo.
+Cada publicação deve conter somente um bloco aprovado. Uma falha em qualquer portão interrompe o processo sem afetar a versão publicada.
 
-## 1. Tabelas e relações
+## Ordem dos blocos
 
-Todas em `public`, todas com `organization_id` (FK para `organizations`), `created_at`, `updated_at`, e `id uuid` preservando o ID atual do registro quando ele já for UUID (caso contrário, coluna `legacy_id text` guarda o identificador antigo e as relações passam a apontar para o novo UUID durante o backfill).
+1. **C1**: concluir a validação externa, especialmente a sessão interrompida no navegador real. Integrar e publicar sozinha.
+2. **C1-E**: tratar como pacote independente, somente depois do aceite e monitoramento da C1.
+3. **C1-F**: não integrar enquanto não houver aprovação formal. Depois de aprovada, repetir todo o ciclo como bloco independente.
+4. **C2**: iniciar somente após C1, C1-E e eventual C1-F terem pontos de restauração próprios e aceite encerrado. Nunca agrupar C1 com C2.
 
-| Tabela | Campos principais | Relações |
-| --- | --- | --- |
-| `customers` | nome, telefone, whatsapp, email, documento, endereço completo, observações, frequência, arquivado | — |
-| `services` | nome, descrição, valor, tempo estimado, arquivado | — |
-| `quotes` | numero, status, prazo, observações, descrição, validade, formas de pagamento, escopo, não incluso, condições, diferencial, desconto, data/hora prevista, versão | `customer_id` -> customers |
-| `quote_items` | descrição, quantidade, valor unitário, categoria, unidade, escopo, `posicao` | `quote_id` -> quotes (cascade), `service_id` -> services |
-| `appointments` | título, data, hora início/fim, status, valor, responsável, endereço, recorrência, intervalo, observações, arquivado | `customer_id`, `service_id`, `quote_id`, `report_id` |
-| `financial_transactions` | tipo, descrição, valor, data, categoria, pago, vencimento, origem tipo, arquivado | `origin_appointment_id`, `origin_quote_id` (colunas explícitas além de origem textual) |
-| `service_reports` | numero, serviço executado, descrição, observações, status, data execução, horas, responsável, valor, campos de encerramento financeiro, assinaturas, arquivado | `appointment_id`, `customer_id`, `quote_id` |
-| `report_photos` | tipo (antes/durante/depois), `url_or_data`, posicao | `report_id` -> service_reports (cascade) |
-| `description_templates` | nome, conteúdo, favorito | — |
-| `organization_settings` | uma linha por empresa: nome, cnpj, contatos, endereço, redes, logo, tema PDF, cores, modo mensal, custos padrão (jsonb) | PK = `organization_id` |
-| `audit_logs` | entidade, entidade_id, entidade_nome, ação, campo, antes, depois, data, `user_id`, usuario (texto de exibição) | `user_id` -> auth user id |
+## Portão anterior a cada integração
 
-Fotos de orçamento seguem em colunas jsonb dentro de `quotes` nesta etapa (`fotos_antes`, `fotos_depois`); fotos de relatório ganham tabela própria por serem mais numerosas. Binários (logo, fotos, assinaturas) continuam como estão hoje, sem migração de arquivos nesta etapa.
+Antes de alterar arquivos:
 
-## 2. Regras de acesso
+1. Fixar o commit de origem e obter o diff completo do bloco, sem depender de uma branch mutável.
+2. Listar arquivos criados, alterados e removidos; separar alterações pertencentes a outros blocos.
+3. Mapear dependências de código, pacotes e ordem de aplicação.
+4. Comparar qualquer impacto em banco, migrations, autenticação, isolamento multiempresa e regras de acesso.
+5. Revisar sincronização A/B/C, preservação de `app_data`, dados locais e backups.
+6. Revisar rotas, redirecionamentos, inicialização e recuperação de erros.
+7. Revisar Service Worker, nome e invalidação de cache, instalação e atualização do PWA.
+8. Verificar compatibilidade com a versão publicada e definir o procedimento de rollback daquele bloco.
+9. Se o diff exigir schema ou migration, interromper e apresentar um plano específico antes de qualquer aplicação.
+10. Apresentar arquivos, impacto, riscos, sequência, testes e rollback; aguardar uma segunda autorização explícita para executar.
 
-Para cada tabela: acesso liberado apenas a quem pertence à empresa dona da linha, usando a verificação de membership já existente (`is_org_member`). Leitura, criação, edição e exclusão exigem que a empresa da linha seja uma empresa do usuário. `audit_logs` permite leitura e criação, sem edição. `organization_settings` permite leitura a qualquer membro e alteração a membros gerentes. Permissões de acesso (`grant`) para o papel autenticado em todas as tabelas, sem acesso anônimo. Contadores de numeração (`organization_counters`) continuam como estão.
+## Validação da C1
 
-## 3. Ordem de migração, por módulo
+### Automatizada
 
-Um módulo por vez, cada um validado antes do seguinte:
+- Executar os testes existentes de fase e leitura relacional, preservando toda a suíte anterior.
+- Acrescentar somente testes necessários às alterações reais da C1.
+- Executar verificação TypeScript, lint relevante e build de produção.
+- Confirmar que nenhuma migration, dado ou configuração foi alterado quando isso não fizer parte do bloco aprovado.
 
-1. Cadastros base: clientes e serviços (sem dependências).
-2. Empresa/configurações e modelos de descrição (isolados, baixo risco).
-3. Orçamentos e itens de orçamento (dependem de cliente/serviço).
-4. Agenda (depende de cliente, serviço, orçamento).
-5. Relatórios e fotos (dependem de agenda, cliente, orçamento).
-6. Financeiro (depende de origem em orçamento/agenda).
-7. Histórico/auditoria (por último, passa a registrar o usuário real).
+### Navegador real e navegação
 
-## 4. Compatibilidade com `app_data` e `store.ts`
+- Login e logout completos, recarregamento direto e retorno à página inicial.
+- Ausência de tela presa em carregamento, recuperação repetitiva ou atualização de estado antes da montagem.
+- Navegação pelas áreas principais e redirecionamentos públicos/protegidos.
+- Validação em desktop e celular, incluindo uma sessão nova e uma sessão já existente.
 
-Três fases, controladas por uma marca por empresa (`data_version` em `organization_settings`):
+### Empresa e sincronização
 
-- Fase A — espelho: as tabelas são preenchidas pelo backfill; a leitura continua vindo do `payload`; cada gravação escreve nos dois lugares. Divergência aqui não afeta o usuário.
-- Fase B — leitura relacional: a leitura passa a montar o estado a partir das tabelas; o `payload` continua sendo gravado como espelho. É a fase em que a validação acontece de fato.
-- Fase C — encerramento: gravação apenas nas tabelas; o `payload` congela como último backup, sem ser apagado nesta etapa.
+- Usuário acessa somente a própria empresa.
+- Leitura e gravação permanecem isoladas entre empresas.
+- Fases A, B e C respeitam seus bloqueios, fallback e rollback existentes.
+- Nenhuma promoção de fase é forçada e nenhum dado de negócio é usado como teste destrutivo.
+- Contagens e totais permanecem iguais antes e depois da integração.
 
-`store.ts` não muda de assinatura. O que hoje é "salvar o bloco inteiro" passa a chamar um sincronizador que compara o estado anterior com o novo e emite as operações mínimas por tabela. Conflito entre usuários da mesma empresa é resolvido por registro (quem gravou por último vence naquele registro), o que já é um ganho grande sobre o bloco único atual, onde uma gravação sobrescreve tudo.
+### PWA e cache
 
-## 5. Repositórios a implementar primeiro
+- Instalação e abertura pelo ícone continuam funcionando.
+- Atualização do Service Worker não mantém arquivos antigos incompatíveis.
+- Testar primeira visita, atualização com cache existente, recarga e comportamento offline previsto.
+- Confirmar que a publicação nova aparece sem exigir limpeza manual dos dados do usuário.
 
-Reaproveitando os contratos da Etapa 01: `ClienteRepository` e `ServicoRepository` primeiro, depois `EmpresaRepository` e `ModeloRepository`, em seguida `OrcamentoRepository` (com itens), `AgendamentoRepository`, `RelatorioRepository`, `LancamentoRepository` e `HistoricoRepository`. Os contratos permanecem síncronos para as telas; a versão remota é assíncrona e vive atrás do sincronizador.
+### Compatibilidade funcional
 
-## 6. Backfill e reversão
+- Clientes, serviços, orçamentos, agenda, financeiro, relatórios e histórico abrem sem regressão.
+- PDFs de orçamento e relatório mantêm conteúdo, paginação e compartilhamento esperados.
+- Dados locais, backups e conteúdo remoto permanecem intactos.
 
-O backfill lê o `payload` da empresa e insere com `upsert` por ID: rodar duas vezes produz o mesmo resultado, sem duplicar. Registros com referência quebrada (orçamento apontando para cliente inexistente) são inseridos com a referência vazia e listados em um relatório de inconsistências, em vez de falhar a migração.
+## Critérios de aprovação
 
-Reversão: como o `payload` continua sendo gravado até a Fase C, voltar significa apenas retornar a marca de versão para a fase anterior. Nenhuma linha precisa ser apagada. Os backups locais (`gep_db_v3`, `gep_db_v3_backup`) permanecem intocados.
+A C1 somente poderá ser publicada quando:
 
-## 7. Testes obrigatórios
+- o commit de origem e o conjunto de arquivos estiverem congelados e auditados;
+- a validação final em navegador real estiver concluída;
+- testes, TypeScript e build passarem sem regressão;
+- autenticação, isolamento multiempresa, sincronização, navegação e PWA passarem nos cenários definidos;
+- não houver alteração não autorizada de banco, dados ou migrations;
+- o rollback estiver documentado e praticável;
+- existir um ponto de restauração imutável anterior à integração e outro identificando a C1 aprovada;
+- houver autorização explícita para publicar após a validação da prévia.
 
-- Integridade: contagem por entidade no JSON igual à contagem nas tabelas; totais de orçamento, financeiro e relatório idênticos antes e depois.
-- Isolamento: empresa B não lê nem grava nenhuma das novas tabelas da empresa A, testado tabela por tabela.
-- Concorrência: dois usuários da mesma empresa editando registros diferentes não sobrescrevem um ao outro; editando o mesmo registro, o último vence sem corromper os demais.
-- Regressão: gerar PDF de orçamento e de relatório antes e depois e comparar; painel inicial, agenda, financeiro, histórico e instalação do aplicativo conferidos manualmente.
-- Idempotência: backfill executado duas vezes sem duplicação.
+## Estratégia de rollback
 
-## 8. Arquivos
+1. Registrar a revisão publicada atual como base imutável antes da integração.
+2. Preservar o pacote original da C1 e o diff efetivamente integrado.
+3. Não misturar mudanças irreversíveis de dados com a publicação de código. Se surgirem, criar plano e autorização separados.
+4. Em regressão na prévia, abandonar o bloco e manter produção intocada.
+5. Em regressão após publicação, republicar imediatamente a revisão anterior, sem editar dados de negócio.
+6. Invalidar somente o cache da versão defeituosa, preservando armazenamento local e backups.
+7. Confirmar após o rollback: login, abertura inicial, isolamento por empresa, leitura/gravação, navegação principal e PWA.
+8. Registrar o motivo da reversão antes de uma nova tentativa, sem avançar ao bloco seguinte.
 
-Criar: migração de banco com as tabelas e regras de acesso; `src/data/remote/` com um arquivo por repositório; `src/data/sync/diff.ts` (comparador de estado); `src/data/sync/entity-sync.ts` (orquestrador); `src/data/backfill.ts`; `src/data/data-version.ts`.
+## Riscos identificados
 
-Modificar: `src/data/cloud-sync.ts` (carregar das tabelas e delegar gravação ao sincronizador), `src/lib/store.ts` (apenas o ponto de persistência e o registro de auditoria com usuário real), `src/data/repositories/contracts.ts` (variantes remotas).
+- **Branch externa indisponível no checkout atual**: impede confirmar agora o escopo real. Mitigação: integrar somente por commit/diff fixo.
+- **Mistura entre C1, C1-E e C1-F**: dificulta diagnóstico e rollback. Mitigação: pacote e publicação independentes.
+- **Validação incompleta no navegador real**: testes automatizados não cobrem inicialização, cache e sessão. Mitigação: tornar essa validação um portão obrigatório.
+- **Cache/PWA antigo**: pode servir uma combinação incompatível de arquivos. Mitigação: testar atualização com cache existente e versionar a estratégia de invalidação.
+- **Regressão em autenticação ou isolamento**: impacto crítico em ambiente multiempresa. Mitigação: cenários autenticados e cruzados antes da publicação.
+- **Mudança oculta de schema ou dados**: rollback de código isolado pode não bastar. Mitigação: interromper e exigir plano específico se o diff contiver migration.
+- **Diferença entre prévia e produção**: configuração ou cache podem mudar o comportamento. Mitigação: checklist pós-publicação curto, objetivo e com reversão imediata.
 
-Sem alteração: todas as rotas/telas, `src/lib/pdf.ts`, `src/lib/relatorio-pdf.ts`, `src/domain/rules.ts`, `src/types/models.ts`.
+## Monitoramento após cada publicação
 
-## 9. Riscos e critérios de aceite
+Realizar uma janela controlada antes de iniciar outro bloco. Conferir abertura, login, erros de carregamento, falhas de navegação, sincronização, isolamento entre empresas, atualização do PWA e geração de PDFs. Qualquer regressão bloqueia a próxima etapa e aciona rollback.
 
-Riscos: IDs antigos que não sejam UUID exigem remapeamento de relações (mitigado pela coluna `legacy_id` e por mapa de conversão no backfill); relatórios com muitas fotos podem pesar na primeira carga (mitigado carregando fotos sob demanda); volume de escritas maior que hoje (mitigado por envio em lote e agrupado).
+## Próximo comando recomendado
 
-Aceite: nenhuma tela alterada visualmente; PDFs idênticos; contagens e totais conferidos; empresa B sem qualquer acesso a dados da empresa A; backfill idempotente; `payload` preservado; verificação de tipos e build sem erros.
+Após a C1 estar formalmente concluída e validada no navegador real, enviar exatamente:
 
-Fora do escopo: pagamentos, planos, painel comercial, personalização de marca avançada, convites de equipe, sincronização offline.
+`C1 APROVADA PARA INTEGRAÇÃO`
+
+Esse comando autoriza apenas a auditoria final do pacote e a apresentação do plano exato de arquivos, impacto, riscos, sequência, testes e rollback. A execução ainda dependerá de uma segunda autorização explícita.
+
+**PLANEJAMENTO DE INTEGRAÇÃO CONCLUÍDO — NENHUMA ALTERAÇÃO EXECUTADA.**
