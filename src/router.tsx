@@ -1,9 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
-import { Link, createRouter } from "@tanstack/react-router";
+import { Link, createRouter, type ErrorComponentProps } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 import { logAppError } from "./lib/safe-error";
 
-function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function DefaultErrorComponent({ error, reset }: ErrorComponentProps) {
   logAppError(error, { boundary: "default_router_error_component" });
 
   return (

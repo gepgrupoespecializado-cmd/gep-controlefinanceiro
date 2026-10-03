@@ -8,6 +8,7 @@ import {
   HeadContent,
   Scripts,
   redirect,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
@@ -22,7 +23,6 @@ import { initOrgSync, loadOrgContext } from "@/data/cloud-sync";
 import { supabase } from "@/integrations/supabase/client";
 import { registerServiceWorker } from "@/lib/pwa";
 import { InstallPrompt } from "@/components/install-prompt";
-import { SplashScreen } from "@/components/splash-screen";
 
 function NotFoundComponent() {
   return (
@@ -46,7 +46,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
   useEffect(() => {
     logAppError(error, { boundary: "tanstack_root_error_component" });
@@ -235,7 +235,6 @@ function RootComponent() {
         </div>
         <Toaster richColors position="top-right" />
         <InstallPrompt />
-        <SplashScreen />
       </SidebarProvider>
     </QueryClientProvider>
   );
