@@ -52,7 +52,8 @@ export function AppSidebar() {
   const data = useDB();
 
   async function sair() {
-    await stopOrgSync();
+    try { await stopOrgSync(); }
+    catch { return; }
     await supabase.auth.signOut();
     window.location.assign("/login");
   }
