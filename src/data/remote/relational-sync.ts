@@ -44,8 +44,7 @@ type Estado = Partial<Record<TableName, Map<string, string>>>;
 
 let orgAtual: string | null = null;
 let anterior: Estado = {};
-let rodando = false;
-let refazer = false;
+let fila: Promise<void> = Promise.resolve();
 
 export function resetRelacional() {
   orgAtual = null;
@@ -103,48 +102,43 @@ async function salvarConfiguracoes(org: string, db: DB) {
   const { error } = await supabase
     .from("organization_settings")
     .upsert(settingsRow(org, db.empresa) as never, { onConflict: "organization_id" });
-  if (error) console.warn("Não foi possível salvar as configurações da empresa.", error.message);
+  if (error) throw new Error(`Não foi possível salvar as configurações da empresa: ${error.message}`);
 }
 
 /**
  * Espelha o estado atual nas tabelas relacionais.
- * Chamadas concorrentes são serializadas: a última vence.
+ * Cada chamada aguarda sua gravação real, sem reutilizar o snapshot anterior.
  */
-export async function sincronizarRelacional(org: string, db: DB, userId: string | null) {
+export function sincronizarRelacional(org: string, db: DB, userId: string | null): Promise<void> {
+  const executar = async () => {
   if (orgAtual !== org) {
     orgAtual = org;
     anterior = {};
   }
-  if (rodando) {
-    refazer = true;
-    return;
-  }
-  rodando = true;
-  try {
-    do {
-      refazer = false;
+      const gravar = async (tabela: TableName, rows: Row[]) => {
+        if (!await aplicar(tabela, rows)) throw new Error(`Não foi possível salvar ${tabela}.`);
+      };
       // Ordem: cadastros base -> documentos -> dependentes.
-      await aplicar("customers", (db.clientes ?? []).map((c) => customerRow(org, c)));
-      await aplicar("services", (db.servicos ?? []).map((s) => serviceRow(org, s)));
-      await aplicar("quotes", (db.orcamentos ?? []).map((o) => quoteRow(org, o)));
-      await aplicar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
-      await aplicar("appointments", (db.agendamentos ?? []).map((a) => appointmentRow(org, a)));
-      await aplicar("service_reports", (db.relatorios ?? []).map((r) => reportRow(org, r)));
-      await aplicar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)));
-      await aplicar(
+      await gravar("customers", (db.clientes ?? []).map((c) => customerRow(org, c)));
+      await gravar("services", (db.servicos ?? []).map((s) => serviceRow(org, s)));
+      await gravar("quotes", (db.orcamentos ?? []).map((o) => quoteRow(org, o)));
+      await gravar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
+      await gravar("appointments", (db.agendamentos ?? []).map((a) => appointmentRow(org, a)));
+      await gravar("service_reports", (db.relatorios ?? []).map((r) => reportRow(org, r)));
+      await gravar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)));
+      await gravar(
         "financial_transactions",
         (db.lancamentos ?? []).map((l) => transactionRow(org, l)),
       );
-      await aplicar("description_templates", (db.modelos ?? []).map((m) => templateRow(org, m)));
+      await gravar("description_templates", (db.modelos ?? []).map((m) => templateRow(org, m)));
       // Auditoria nunca é apagada: só acrescenta.
       await aplicar("audit_logs", (db.historico ?? []).map((h) => auditRow(org, h, userId)), false);
       await salvarConfiguracoes(org, db);
-    } while (refazer);
-  } catch (error) {
-    console.warn("Falha ao espelhar dados nas tabelas.", error);
-  } finally {
-    rodando = false;
-  }
+  };
+  const trabalho = fila.then(executar);
+  // Uma falha não bloqueia os próximos snapshots, mas chega ao chamador.
+  fila = trabalho.catch(() => {});
+  return trabalho;
 }
 
 /** Contagem por tabela — usada para conferir a cópia inicial. */
