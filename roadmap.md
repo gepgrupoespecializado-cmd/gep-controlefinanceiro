@@ -1,5 +1,9 @@
 # Roadmap
 
+## Correção do salvamento
+- [ ] Reproduzir e corrigir perda de alterações em gravações concorrentes e saída/reentrada.
+- [ ] Validar clientes e orçamentos, falha de rede e isolamento por empresa sem alterar dados existentes.
+
 ## Etapa 03 — normalização relacional
 - [x] Migração: customers, services, quotes, quote_items, appointments, financial_transactions, service_reports, report_photos, description_templates, organization_settings, audit_logs (+RLS/grants)
 - [x] Mapeadores e sincronizador relacional (src/data/remote)

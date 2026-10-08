@@ -10,6 +10,8 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
+import { toast } from "sonner";
+import { recoverPending, type PendingChanges } from "@/data/pending-changes";
 import { iniciarNumeracao, pararNumeracao, proximoNumero } from "@/data/numbering";
 import {
   contarRelacional,
@@ -51,6 +53,26 @@ let dualWriteValidado = false;
 let pending: DB | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let flushBound = false;
+let baseline: DB | null = null;
+let writes: Promise<void> = Promise.resolve();
+let flushing: Promise<void> | null = null;
+const journalKey = (org: string) => `gep_pending_changes:${org}`;
+
+function readJournal(org: string): PendingChanges | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(journalKey(org));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as PendingChanges;
+    return value.base && value.snapshot ? value : null;
+  } catch { return null; }
+}
+
+function recoverLocal(org: string, remote: Partial<DB>) {
+  const journal = readJournal(org);
+  if (!journal) return remote;
+  return recoverPending(remote as DB, journal);
+}
 
 export type OrgContext = {
   orgId: string | null;
@@ -104,13 +126,15 @@ export async function loadOrgContext(): Promise<OrgContext> {
   };
 }
 
-async function push(orgId: string, db: DB) {
+function push(orgId: string, db: DB): Promise<void> {
+  const fase = faseAtual;
+  const execute = async () => {
   const { data } = await supabase.auth.getUser();
   const userId = data.user?.id ?? null;
   let blocoOk = false;
   // Fase C: o bloco JSON fica congelado como último backup e não recebe mais
   // gravações. Nas fases A e B ele continua sendo atualizado normalmente.
-  if (faseAtual !== "C") {
+  if (fase !== "C") {
     const { error } = await supabase.from("app_data").upsert(
       {
         organization_id: orgId,
@@ -120,39 +144,78 @@ async function push(orgId: string, db: DB) {
       },
       { onConflict: "organization_id" },
     );
-    if (error) console.warn("Não foi possível salvar na nuvem.", error.message);
+    if (error) throw new Error(`Não foi possível salvar na nuvem: ${error.message}`);
     blocoOk = !error;
   }
   // Espelho nas tabelas próprias.
   await sincronizarRelacional(orgId, db, userId);
-  if (blocoOk && faseAtual === "B") dualWriteValidado = true;
+  if (blocoOk && fase === "B" && currentOrg === orgId) dualWriteValidado = true;
+  if (currentOrg === orgId) {
+    baseline = db;
+    const journal = readJournal(orgId);
+    if (journal && JSON.stringify(journal.snapshot) === JSON.stringify(db)) {
+      localStorage.removeItem(journalKey(orgId));
+    }
+  }
+  };
+  const trabalho = writes.then(execute);
+  writes = trabalho.catch(() => {});
+  return trabalho;
 }
 
 function scheduleSave(db: DB) {
   if (!currentOrg) return;
   pending = db;
+  try {
+    const existing = readJournal(currentOrg);
+    localStorage.setItem(journalKey(currentOrg), JSON.stringify({ base: existing?.base ?? baseline ?? db, snapshot: db }));
+  } catch {
+    toast.error("Não foi possível guardar a cópia de segurança neste dispositivo. Mantenha o aplicativo aberto até salvar.");
+  }
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => void flush(), 1200);
+  timer = setTimeout(() => void flush().catch(reportSaveError), 300);
 }
 
-export async function flush() {
+function reportSaveError(error: unknown) {
+  console.warn("Salvamento pendente; a cópia local foi preservada.", error);
+  toast.error("Salvamento na nuvem pendente. Suas alterações estão neste dispositivo; tente novamente com conexão.");
+}
+
+export async function flush(): Promise<void> {
   if (timer) {
     clearTimeout(timer);
     timer = null;
   }
-  const org = currentOrg;
-  const data = pending;
-  pending = null;
-  if (org && data) await push(org, data);
+  if (flushing) {
+    await flushing;
+    if (pending) await flush();
+    return;
+  }
+  const execute = async () => {
+    await writes;
+    while (currentOrg && pending) {
+      const org = currentOrg;
+      const data = pending;
+      pending = null;
+      try { await push(org, data); }
+      catch (error) {
+        if (currentOrg === org && !pending) pending = data;
+        throw error;
+      }
+    }
+  };
+  flushing = execute();
+  try { await flushing; } finally { flushing = null; }
 }
 
 function bindFlushHandlers() {
   if (flushBound || typeof window === "undefined") return;
   flushBound = true;
   window.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") void flush();
+    if (document.visibilityState === "hidden") void flush().catch(reportSaveError);
   });
-  window.addEventListener("pagehide", () => void flush());
+  window.addEventListener("pagehide", () => void flush().catch(reportSaveError));
+  window.addEventListener("online", () => void flush().catch(reportSaveError));
 }
 
 /* ---------- Migração dos dados locais ---------- */
@@ -314,6 +377,7 @@ async function carregarRelacional(
 
 function ativarSync(orgId: string) {
   currentOrg = orgId;
+  baseline = getDBSnapshot();
   setNumeroProvider(proximoNumero);
   setPersistListener(scheduleSave);
   bindFlushHandlers();
@@ -363,7 +427,7 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
 
   if (relacional) {
     origemLeitura = "relacional";
-    replaceDB(relacional);
+    replaceDB(recoverLocal(orgId, relacional));
     ativarSync(orgId);
     await iniciarNumeracao({
       orcamento: getDBSnapshot().proximoOrcamento ?? 1,
@@ -374,13 +438,13 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
       const marcoISO = new Date().toISOString();
       await flushImediato(orgId);
       if (faseAtual === "B") await avaliarPromocaoC(orgId, marcoISO);
-    })();
+    })().catch(reportSaveError);
     return { status: "pronto" };
   }
 
   // A nuvem sempre vence quando já existe conteúdo da empresa.
   if (temPayload) {
-    replaceDB(payload);
+    replaceDB(recoverLocal(orgId, payload));
     ativarSync(orgId);
     await iniciarNumeracao({
       orcamento: getDBSnapshot().proximoOrcamento ?? 1,
@@ -391,7 +455,7 @@ export async function initOrgSync(orgId: string): Promise<SyncResult> {
     void (async () => {
       await backfillRelacional(orgId);
       if (versao === "A") await avaliarPromocao(orgId, getDBSnapshot());
-    })();
+    })().catch(reportSaveError);
     return { status: "pronto" };
   }
 
@@ -537,6 +601,7 @@ export async function stopOrgSync() {
   resetRelacional();
   setUsuarioAtual(null);
   currentOrg = null;
+  baseline = null;
   pending = null;
   faseAtual = "A";
   dualWriteValidado = false;
