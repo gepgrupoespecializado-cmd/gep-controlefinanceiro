@@ -71,7 +71,10 @@ function readJournal(org: string): PendingChanges | null {
 function recoverLocal(org: string, remote: Partial<DB>) {
   const journal = readJournal(org);
   if (!journal) return remote;
-  return recoverPending(remote as DB, journal);
+  const fullRemote = { ...journal.base, ...remote, empresa: remote.empresa ?? journal.base.empresa };
+  const recovered = recoverPending(fullRemote, journal);
+  localStorage.setItem(journalKey(org), JSON.stringify({ base: fullRemote, snapshot: recovered }));
+  return recovered;
 }
 
 export type OrgContext = {
@@ -378,6 +381,11 @@ async function carregarRelacional(
 function ativarSync(orgId: string) {
   currentOrg = orgId;
   baseline = getDBSnapshot();
+  const journal = readJournal(orgId);
+  if (journal) {
+    pending = getDBSnapshot();
+    localStorage.setItem(journalKey(orgId), JSON.stringify({ ...journal, snapshot: pending }));
+  }
   setNumeroProvider(proximoNumero);
   setPersistListener(scheduleSave);
   bindFlushHandlers();
@@ -594,7 +602,8 @@ export async function conferirRelacional(orgId: string) {
 }
 
 export async function stopOrgSync() {
-  await flush();
+  try { await flush(); }
+  catch (error) { reportSaveError(error); throw error; }
   setPersistListener(null);
   setNumeroProvider(null);
   pararNumeracao();
