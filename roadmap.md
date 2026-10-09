@@ -1,6 +1,7 @@
 # Roadmap
 
 ## Correção do salvamento
+- [ ] Investigar a nova ocorrência na versão usada e validar o envio real antes de confirmar a correção.
 - [x] Reproduzir e corrigir perda de alterações em gravações concorrentes e saída/reentrada.
 - [x] Validar clientes e orçamentos, falha de rede e isolamento por empresa sem alterar dados existentes.
 
