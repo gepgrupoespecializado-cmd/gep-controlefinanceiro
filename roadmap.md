@@ -1,5 +1,14 @@
 # Roadmap
 
+## Prontidão para venda por assinatura
+- [x] Avaliar cobrança, acesso e condições comerciais existentes, sem implementar funcionalidades.
+- [x] Executar os 32 testes existentes e conferir telas e versão publicada sem gravar dados de negócio.
+- [x] Consultar RLS, políticas de arquivos e verificação básica de segurança; documentar limites em `.lovable/avaliacao-prontidao-venda-2026-10-10.md`.
+- [ ] Validar salvamento publicado e isolamento com duas empresas de teste populadas: aguarda autorização para criar e editar dados exclusivamente de teste.
+- [ ] Concluir auditoria C1/C1-E/C1-F: aguarda os três diffs externos; C2 permanece bloqueado.
+- [ ] Definir preço, periodicidade, cancelamento, reembolso, inadimplência e suporte: aguarda decisões do responsável.
+- [ ] Implementar cobrança e acesso e testar restauração de backup: aguarda escopo e autorização específicos, fora da validação aprovada.
+
 ## Correção do salvamento
 - [x] Investigar a nova ocorrência: envio real confirmado; reproduzido cache antigo de dados no Service Worker, corrigido e validado no navegador e em 32 testes.
 - [x] Reproduzir e corrigir perda de alterações em gravações concorrentes e saída/reentrada.
