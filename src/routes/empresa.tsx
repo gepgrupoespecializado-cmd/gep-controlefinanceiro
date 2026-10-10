@@ -11,9 +11,18 @@ import {
 } from "@/components/ui/select";
 import { db, useDB, pdfTemaPreset, pdfMesInfo, type PdfTema } from "@/lib/store";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { flush, loadOrgContext } from "@/data/cloud-sync";
 
 export const Route = createFileRoute("/empresa")({
-  head: () => ({ meta: [{ title: "Empresa — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Empresa — Gestão de Serviços" },
+    { name: "description", content: "Empresa da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Empresa — Gestão de Serviços" },
+    { property: "og:description", content: "Empresa da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: EmpresaPage,
 });
 
@@ -50,9 +59,24 @@ function EmpresaPage() {
         ? form.pdfMesManual ?? mesAtual
         : null;
 
-  function salvar() {
-    db.updateEmpresa(form);
-    toast.success("Dados da empresa salvos");
+  async function salvar() {
+    const nome = form.nome.trim();
+    if (!nome) {
+      toast.error("Informe o nome da empresa.");
+      return;
+    }
+    db.updateEmpresa({ ...form, nome });
+    try {
+      const { orgId } = await loadOrgContext();
+      if (!orgId) throw new Error("Empresa não encontrada");
+      const { data: organization, error } = await supabase.from("organizations")
+        .update({ name: nome }).eq("id", orgId).select("id").single();
+      if (error || !organization) throw error ?? new Error("Nome não atualizado");
+      await flush();
+      toast.success("Dados da empresa salvos");
+    } catch {
+      toast.error("Não foi possível confirmar o salvamento. Tente novamente.");
+    }
   }
 
   function onLogo(e: React.ChangeEvent<HTMLInputElement>) {
@@ -93,7 +117,7 @@ function EmpresaPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Dados da empresa</CardTitle></CardHeader>
         <CardContent className="grid gap-3">
-          <div className="grid gap-1.5"><Label className="text-xs">Nome da empresa</Label><Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+          <div className="grid gap-1.5"><Label className="text-xs">Nome da empresa</Label><Input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5"><Label className="text-xs">CNPJ</Label><Input value={form.cnpj ?? ""} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></div>
             <div className="grid gap-1.5"><Label className="text-xs">E-mail</Label><Input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>

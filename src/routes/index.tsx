@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import {
@@ -31,9 +32,9 @@ import { NovoAtendimentoDialog } from "@/components/novo-atendimento-dialog";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard — Controle de Prestação de Serviços GEP" },
+      { title: "Dashboard — Gestão de Serviços" },
       { name: "description", content: "Visão geral do seu negócio em tempo real." },
-      { property: "og:title", content: "Dashboard — Controle de Prestação de Serviços GEP" },
+      { property: "og:title", content: "Dashboard — Gestão de Serviços" },
       { property: "og:description", content: "Visão geral do seu negócio em tempo real." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const companyName = useCompanyName();
   const db = useDB();
   const {
     now,
@@ -132,7 +134,7 @@ function Index() {
       stats,
     };
   }, [db.agendamentos, db.clientes, db.lancamentos, db.orcamentos]);
-  const empresa = db.empresa ?? { nome: "GEP Serviços Especializado", logoDataUrl: "" };
+  const empresa = db.empresa;
 
   return (
     <div className="space-y-6">
@@ -145,9 +147,9 @@ function Index() {
             <img src={empresa.logoDataUrl} alt="Logo" className="h-16 w-16 rounded-xl bg-white/95 object-contain p-1 shrink-0" />
           )}
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wider opacity-80">Controle de Prestação de Serviços GEP</p>
+            <p className="text-xs uppercase tracking-wider opacity-80">{companyName}</p>
             <h1 className="mt-1 text-2xl sm:text-3xl font-black truncate">
-              {empresa.nome || "GEP — Grupo Especializado"}
+              {companyName}
             </h1>
             <p className="mt-1 text-sm opacity-80">
               Gestão profissional de clientes, orçamentos, agenda, financeiro e precificação.

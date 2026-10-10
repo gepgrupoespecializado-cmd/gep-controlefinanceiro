@@ -287,6 +287,12 @@ export async function confirmarMigracao(orgId: string) {
 export async function descartarMigracao(orgId: string) {
   registrarMarca(orgId);
   resetDB();
+  const { data: settings, error } = await supabase.from("organization_settings")
+    .select("empresa").eq("organization_id", orgId).maybeSingle();
+  if (error) throw new Error(`Não foi possível carregar os dados da empresa: ${error.message}`);
+  if (settings?.empresa) {
+    replaceDB({ ...getDBSnapshot(), empresa: settings.empresa as unknown as DB["empresa"] });
+  }
   await ligarSync(orgId, getDBSnapshot());
 }
 

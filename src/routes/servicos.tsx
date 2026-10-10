@@ -15,7 +15,14 @@ import { brl } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/servicos")({
-  head: () => ({ meta: [{ title: "Serviços — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Serviços — Gestão de Serviços" },
+    { name: "description", content: "Serviços da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Serviços — Gestão de Serviços" },
+    { property: "og:description", content: "Serviços da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ServicosPage,
 });
 

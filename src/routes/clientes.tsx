@@ -18,7 +18,14 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes")({
-  head: () => ({ meta: [{ title: "Clientes — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Clientes — Gestão de Serviços" },
+    { name: "description", content: "Clientes da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Clientes — Gestão de Serviços" },
+    { property: "og:description", content: "Clientes da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ClientesPage,
 });
 

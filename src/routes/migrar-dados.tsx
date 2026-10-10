@@ -16,12 +16,12 @@ import {
 export const Route = createFileRoute("/migrar-dados")({
   head: () => ({
     meta: [
-      { title: "Importar dados — GEP Controle Financeiro" },
+      { title: "Importar dados — Gestão de Serviços" },
       {
         name: "description",
         content: "Envie para a nuvem os dados já cadastrados neste aparelho, com confirmação.",
       },
-      { property: "og:title", content: "Importar dados — GEP Controle Financeiro" },
+      { property: "og:title", content: "Importar dados — Gestão de Serviços" },
       { property: "og:description", content: "Leve seus cadastros deste aparelho para a sua conta." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

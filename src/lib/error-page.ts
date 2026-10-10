@@ -3,7 +3,7 @@ export function renderErrorPage(): string {
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <title>Controle de Prestação de Serviços GEP</title>
+    <title>Gestão de Serviços</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       html,body{height:100%;margin:0;background:#0b1b3d;color:#fff;font:15px/1.5 system-ui,-apple-system,sans-serif}
@@ -27,7 +27,7 @@ export function renderErrorPage(): string {
   <body>
     <div class="wrap">
       <div>
-        <div class="brand">Controle de Prestação de Serviços GEP</div>
+        <div class="brand">Gestão de Serviços</div>
         <div class="spinner" aria-hidden="true"></div>
         <p>Carregando…</p>
       </div>

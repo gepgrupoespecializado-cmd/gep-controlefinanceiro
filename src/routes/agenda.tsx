@@ -26,7 +26,14 @@ import { toast } from "sonner";
 import { ptBR } from "date-fns/locale";
 
 export const Route = createFileRoute("/agenda")({
-  head: () => ({ meta: [{ title: "Agenda — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Agenda — Gestão de Serviços" },
+    { name: "description", content: "Agenda da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Agenda — Gestão de Serviços" },
+    { property: "og:description", content: "Agenda da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: AgendaPage,
 });
 

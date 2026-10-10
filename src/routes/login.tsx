@@ -19,13 +19,13 @@ import {
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Entrar — GEP Controle Financeiro" },
+      { title: "Entrar — Gestão de Serviços" },
       {
         name: "description",
-        content: "Acesse sua conta do GEP Controle Financeiro para gerenciar clientes, orçamentos, agenda e financeiro.",
+        content: "Acesse sua conta do Gestão de Serviços para gerenciar clientes, orçamentos, agenda e financeiro.",
       },
-      { property: "og:title", content: "Entrar — GEP Controle Financeiro" },
-      { property: "og:description", content: "Acesso à sua conta do GEP Controle Financeiro." },
+      { property: "og:title", content: "Entrar — Gestão de Serviços" },
+      { property: "og:description", content: "Acesso à sua conta do Gestão de Serviços." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -107,7 +107,7 @@ function LoginPage() {
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <h1 className="text-xl font-black">GEP Controle Financeiro</h1>
+            <h1 className="text-xl font-black">Acesse sua conta</h1>
             <p className="text-sm text-muted-foreground">
               Acesse sua conta para gerenciar sua empresa.
             </p>

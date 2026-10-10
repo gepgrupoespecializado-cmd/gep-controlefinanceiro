@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield } from "lucide-react";
@@ -5,18 +6,19 @@ import { Shield } from "lucide-react";
 export const Route = createFileRoute("/politica-de-privacidade")({
   head: () => ({
     meta: [
-      { title: "Política de Privacidade — Controle de Prestação de Serviços GEP" },
-      { name: "description", content: "Como o Controle de Prestação de Serviços GEP coleta, usa e protege seus dados." },
-      { property: "og:title", content: "Política de Privacidade — Controle de Prestação de Serviços GEP" },
-      { property: "og:description", content: "Como o Controle de Prestação de Serviços GEP coleta, usa e protege seus dados." },
-      { name: "twitter:title", content: "Política de Privacidade — Controle de Prestação de Serviços GEP" },
-      { name: "twitter:description", content: "Como o Controle de Prestação de Serviços GEP coleta, usa e protege seus dados." },
+      { title: "Política de Privacidade — Gestão de Serviços" },
+      { name: "description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
+      { property: "og:title", content: "Política de Privacidade — Gestão de Serviços" },
+      { property: "og:description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
+      { name: "twitter:title", content: "Política de Privacidade — Gestão de Serviços" },
+      { name: "twitter:description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
     ],
   }),
   component: PoliticaDePrivacidade,
 });
 
 function PoliticaDePrivacidade() {
+  const companyName = useCompanyName();
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
@@ -30,7 +32,7 @@ function PoliticaDePrivacidade() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Esta página é mantida pelo responsável pelo aplicativo <strong>Controle de Prestação de Serviços GEP</strong> para
+        Esta página é mantida pelo responsável pelo aplicativo <strong>{companyName}</strong> para
         explicar como dados pessoais são tratados na plataforma. As práticas descritas aqui aplicam-se ao uso do
         aplicativo e às informações processadas por seus usuários administradores e colaboradores.
       </p>
