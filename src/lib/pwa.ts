@@ -6,9 +6,12 @@ export function registerServiceWorker() {
   if (registered || typeof window === "undefined" || !("serviceWorker" in navigator)) return;
   registered = true;
 
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
+  const register = () => {
+    void navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
       .catch((error) => logAppError(error, { boundary: "service_worker_registration" }));
-  });
+  };
+  if (document.readyState === "complete") register();
+  else window.addEventListener("load", register, { once: true });
 }

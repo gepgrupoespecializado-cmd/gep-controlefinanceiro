@@ -1,4 +1,4 @@
-const CACHE_NAME = "gep-servicos-shell-v1";
+const CACHE_NAME = "gep-servicos-shell-v2";
 const APP_SHELL = ["/", "/manifest.webmanifest", "/icon-512.png"];
 
 function offlineShell() {
@@ -23,7 +23,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("gep-servicos-shell-") && key !== CACHE_NAME).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -31,6 +31,13 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  // Authenticated data must always reach the server, never Cache Storage.
+  // Only immutable app assets and the offline navigation shell are cached.
+  if (url.origin !== self.location.origin || request.headers.has("Authorization") ||
+      url.pathname.startsWith("/api/") || url.pathname.startsWith("/rest/") ||
+      url.pathname.startsWith("/auth/") || url.pathname.startsWith("/storage/") ||
+      url.pathname.startsWith("/_server")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -44,6 +51,10 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
+
+  const staticAsset = url.pathname.startsWith("/assets/") ||
+    APP_SHELL.slice(1).includes(url.pathname);
+  if (!staticAsset) return;
 
   event.respondWith(
     caches.match(request).then((cached) => {
