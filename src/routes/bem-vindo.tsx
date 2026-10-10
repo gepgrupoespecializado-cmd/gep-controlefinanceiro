@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { db, type Empresa } from "@/lib/store";
 import type { Json } from "@/integrations/supabase/types";
+import { descartarMigracao } from "@/data/cloud-sync";
 
 export const Route = createFileRoute("/bem-vindo")({
   head: () => ({
@@ -109,6 +110,7 @@ function OnboardingPage() {
       }, { onConflict: "organization_id" });
       if (settingsError) throw settingsError;
       db.updateEmpresa(empresa);
+      await descartarMigracao(org.id);
       toast.success("Empresa criada. Bom trabalho!");
       window.location.assign("/");
     } catch {
