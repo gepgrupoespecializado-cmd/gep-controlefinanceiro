@@ -4,15 +4,29 @@ import type { DB } from '@/types/models';
 const writes: Array<{ table: string; rows: Record<string, unknown>[] }> = [];
 let block: Promise<void> | null = null;
 let fail = false;
+let failQuote = false;
+let sequence = 402;
+const savedNumbers = new Map<string, number>();
 mock.module('@/integrations/supabase/client', () => ({
   supabase: {
     from(table: string) {
       return {
-        async upsert(rows: Record<string, unknown>[] | Record<string, unknown>) {
-          if (table === 'customers' && block) await block;
-          if (table === 'customers' && fail) return { error: { message: 'offline' } };
-          writes.push({ table, rows: Array.isArray(rows) ? rows : [rows] });
-          return { error: null };
+        upsert(rows: Record<string, unknown>[] | Record<string, unknown>) {
+          const execute = async () => {
+            if (table === 'customers' && block) await block;
+            if ((table === 'customers' && fail) || (table === 'quotes' && failQuote)) return { data: null, error: { message: 'offline' } };
+            const batch = Array.isArray(rows) ? rows : [rows];
+            writes.push({ table, rows: batch });
+            const data = batch.map(row => {
+              if (table !== 'quotes') return row;
+              const key = `${row.organization_id}:${row.id}`;
+              const numero = savedNumbers.get(key) ?? (Number(row.numero) > 0 ? Number(row.numero) : ++sequence);
+              savedNumbers.set(key, numero);
+              return { id: row.id, numero };
+            });
+            return { data, error: null };
+          };
+          return { then: (resolve: (value: unknown) => unknown, reject: (reason: unknown) => unknown) => execute().then(resolve, reject), select: execute };
         },
         delete: () => ({ in: async () => ({ error: null }) }),
       };
@@ -25,9 +39,32 @@ const sample = (name: string): DB => ({
   servicos: [], orcamentos: [], agendamentos: [], relatorios: [], lancamentos: [], modelos: [], historico: [],
   proximoOrcamento: 1, proximoRelatorio: 1, empresa: { nome: 'Empresa Teste', cnpj: '', telefone: '', whatsapp: '', email: '', endereco: '', redesSociais: '', corPdf: '' },
 });
-beforeEach(() => { writes.length = 0; block = null; fail = false; resetRelacional(); });
+beforeEach(() => { writes.length = 0; block = null; fail = false; failQuote = false; sequence = 402; savedNumbers.clear(); resetRelacional(); });
 
 describe('salvamento concorrente', () => {
+  it('recebe 403 do banco, preserva 402 e reaproveita o número confirmado em snapshot concorrente', async () => {
+    const snapshot = sample('cliente-numero');
+    const quote = { id: 'quote-pending-unique', numero: 0, clienteId: 'cliente-numero', itens: [], descricaoServicos: 'Serviço', validadeDias: 7, formasPagamento: ['pix'] as const, status: 'rascunho' as const, criadoEm: '2026-10-10' };
+    snapshot.orcamentos = [{ ...quote, formasPagamento: ['pix'] }, { ...quote, id: 'quote-old-unique', numero: 402, formasPagamento: ['pix'] }];
+    const first = await sincronizarRelacional('org-number-test', snapshot, 'user');
+    expect(first.get(quote.id)).toBe(403);
+    expect(first.get('quote-old-unique')).toBe(402);
+    const edited = { ...snapshot, orcamentos: snapshot.orcamentos.map(o => ({ ...o, observacoes: 'Edição concorrente' })) };
+    const second = await sincronizarRelacional('org-number-test', edited, 'user');
+    expect(second.get(quote.id)).toBe(403);
+    expect(sequence).toBe(403);
+    expect(writes.filter(w => w.table === 'quotes').at(-1)?.rows[0]?.numero).toBe(403);
+  });
+  it('falha de orçamento não confirma número e a repetição recebe o próximo', async () => {
+    const snapshot = sample('retry-number');
+    snapshot.orcamentos = [{ id: 'quote-retry-unique', numero: 0, clienteId: 'retry-number', itens: [], descricaoServicos: '', validadeDias: 7, formasPagamento: ['pix'], status: 'rascunho', criadoEm: '2026-10-10' }];
+    failQuote = true;
+    await expect(sincronizarRelacional('org-number-retry', snapshot, 'user')).rejects.toThrow('quotes');
+    expect(sequence).toBe(402);
+    failQuote = false;
+    const numbers = await sincronizarRelacional('org-number-retry', snapshot, 'user');
+    expect(numbers.get('quote-retry-unique')).toBe(403);
+  });
   it('salva o nome cadastrado e a edição nas configurações da mesma empresa', async () => {
     const snapshot = sample('cliente');
     await sincronizarRelacional('org-a', snapshot, 'user');

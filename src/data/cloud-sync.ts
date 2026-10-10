@@ -134,6 +134,19 @@ function push(orgId: string, db: DB): Promise<void> {
   const execute = async () => {
   const { data } = await supabase.auth.getUser();
   const userId = data.user?.id ?? null;
+   const numeros = await sincronizarRelacional(orgId, db, userId);
+   const numbered = (snapshot: DB): DB => ({
+     ...snapshot,
+     orcamentos: snapshot.orcamentos.map(o => numeros.has(o.id) ? { ...o, numero: numeros.get(o.id) ?? o.numero } : o),
+     proximoOrcamento: Math.max(0, ...snapshot.orcamentos.map(o => numeros.get(o.id) ?? o.numero)) + 1,
+   });
+   db = numbered(db);
+   if (currentOrg === orgId) {
+     replaceDB(numbered(getDBSnapshot()));
+     if (pending) pending = numbered(pending);
+     const journal = readJournal(orgId);
+     if (journal) localStorage.setItem(journalKey(orgId), JSON.stringify({ base: numbered(journal.base), snapshot: numbered(journal.snapshot) }));
+   }
   let blocoOk = false;
   // Fase C: o bloco JSON fica congelado como último backup e não recebe mais
   // gravações. Nas fases A e B ele continua sendo atualizado normalmente.
@@ -150,8 +163,6 @@ function push(orgId: string, db: DB): Promise<void> {
     if (error) throw new Error(`Não foi possível salvar na nuvem: ${error.message}`);
     blocoOk = !error;
   }
-  // Espelho nas tabelas próprias.
-  await sincronizarRelacional(orgId, db, userId);
   if (blocoOk && fase === "B" && currentOrg === orgId) dualWriteValidado = true;
   if (currentOrg === orgId) {
     baseline = db;
@@ -587,9 +598,8 @@ export function avaliarFaseAtual(cond: {
  * Pode ser executada quantas vezes for necessário: nada é duplicado.
  */
 export async function backfillRelacional(orgId: string) {
-  const { data } = await supabase.auth.getUser();
   resetRelacional();
-  await sincronizarRelacional(orgId, getDBSnapshot(), data.user?.id ?? null);
+  await push(orgId, getDBSnapshot());
   return contarRelacional(orgId);
 }
 

@@ -33,34 +33,7 @@ type FotoItem = { src: string; nome: string; criadoEm: number };
 
 function tsId() { return `foto-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
-
-async function compressImage(file: File, maxW = 1280, quality = 0.7): Promise<string> {
-  const dataUrl = await readFileAsDataUrl(file);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const ratio = Math.min(1, maxW / img.width);
-      const w = Math.round(img.width * ratio);
-      const h = Math.round(img.height * ratio);
-      const c = document.createElement("canvas");
-      c.width = w; c.height = h;
-      const ctx = c.getContext("2d");
-      if (!ctx) return resolve(dataUrl);
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(c.toDataURL("image/jpeg", quality));
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
+import { compressPhoto as compressImage } from "@/lib/photo";
 
 export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   const data = useDB();
@@ -152,11 +125,12 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   async function adicionarFotos(tipo: FotoTipo, files: FileList | null) {
     if (!files || files.length === 0) return;
     const arr = Array.from(files);
-    const items = await Promise.all(arr.map(async (f) => ({
+    let items: FotoItem[];
+    try { items = await Promise.all(arr.map(async (f) => ({
       src: await compressImage(f),
       nome: f.name || `${tipo}-${tsId()}.jpg`,
       criadoEm: f.lastModified || Date.now(),
-    })));
+    }))); } catch { toast.error("Não foi possível processar a imagem."); return; }
     const setter = tipo === "antes" ? setFotosAntes : tipo === "durante" ? setFotosDurante : setFotosDepois;
     setter((prev) => [...prev, ...items]);
   }
@@ -409,7 +383,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
                       return (
                         <div key={i} className="relative group">
                           <button type="button" onClick={() => setLightbox({ list: full, idx: i })} className="block w-full">
-                            <img src={foto.src} alt={foto.nome} className="h-24 w-full rounded-lg object-cover border" />
+                            <img src={foto.src} alt={foto.nome} className="h-24 w-full max-w-full rounded-lg object-cover border" />
                           </button>
                           <p className="text-[10px] truncate text-muted-foreground mt-0.5" title={foto.nome}>{foto.nome}</p>
                           <div className="absolute top-1 right-1 flex gap-1">

@@ -11,7 +11,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { db, useDB } from "@/lib/store";
-import { dateBR, padNum } from "@/lib/format";
+import { dateBR, quoteNumber as padNum } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/lixeira")({

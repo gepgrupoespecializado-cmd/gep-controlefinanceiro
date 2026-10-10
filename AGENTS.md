@@ -5,3 +5,5 @@
 - Propagate business-table persistence errors to the sync coordinator; failed writes must remain retryable and block successful sign-out acknowledgement.
 - Service workers may cache only same-origin static assets and navigation shells, never authenticated or external data; this prevents stale reads from replacing saved business records.
 - Read company display names through useCompanyName backed by the existing company settings store; non-React document generators use the passed company settings to avoid duplicate sources.
+- Assign new quote numbers only in the quotes insert transaction; reconcile returned numbers by record ID before acknowledging snapshots, so retries and concurrent local edits retain the confirmed number.
+- Compress new service photos through the shared browser photo processor; saved photo strings remain untouched to preserve existing records.

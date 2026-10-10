@@ -352,7 +352,7 @@ export async function lerRelacional(org: string): Promise<SnapshotRelacional> {
     clientes: clientesRows.map(montarCliente),
     servicos: servicosRows.map(montarServico),
     orcamentos,
-    proximoOrcamento: contadores.orcamento,
+    proximoOrcamento: Math.max(0, ...orcamentos.map(o => o.numero)) + 1,
     agendamentos: agendamentosRows.map(montarAgendamento),
     lancamentos: lancamentosRows.map(montarLancamento),
     relatorios,

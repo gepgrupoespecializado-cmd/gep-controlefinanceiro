@@ -45,6 +45,7 @@ type Estado = Partial<Record<TableName, Map<string, string>>>;
 let orgAtual: string | null = null;
 let anterior: Estado = {};
 let fila: Promise<void> = Promise.resolve();
+const numerosConfirmados = new Map<string, Map<string, number>>();
 
 export function resetRelacional() {
   orgAtual = null;
@@ -57,7 +58,7 @@ function indexar(rows: Row[]): Map<string, string> {
   return m;
 }
 
-async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true) {
+async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, numeros?: Map<string, number>) {
   const atual = indexar(rows);
   const antes = anterior[tabela] ?? new Map<string, string>();
 
@@ -70,17 +71,30 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true) {
 
   const client = supabase as unknown as {
     from: (t: string) => {
-      upsert: (v: Row[], o?: { onConflict?: string }) => Promise<{ error: { message: string } | null }>;
+      upsert: (v: Row[], o?: { onConflict?: string }) => PromiseLike<{ data?: Row[] | null; error: { message: string } | null }> & { select: (columns: string) => PromiseLike<{ data: Row[] | null; error: { message: string } | null }> };
       delete: () => { in: (c: string, v: string[]) => Promise<{ error: { message: string } | null }> };
     };
   };
 
   for (let i = 0; i < novos.length; i += 200) {
     const lote = novos.slice(i, i + 200);
-    const { error } = await client.from(tabela).upsert(lote, { onConflict: "id" });
+    const request = client.from(tabela).upsert(lote, { onConflict: "id" });
+    const result = tabela === "quotes" ? await request.select("id, numero") : await request;
+    const { error } = result;
     if (error) {
       console.warn(`Não foi possível salvar ${tabela}.`, error.message);
       return false;
+    }
+    if (tabela === "quotes") {
+      for (const row of result.data ?? []) {
+        const id = String(row["id"]);
+        const numero = Number(row["numero"]);
+        if (!(numero > 0)) throw new Error("Número do orçamento não confirmado.");
+        numeros?.set(id, numero);
+        const original = lote.find(r => r["id"] === id);
+        if (original) atual.set(id, JSON.stringify({ ...original, numero }));
+      }
+      if ((result.data ?? []).length !== lote.length) throw new Error("Número do orçamento não confirmado.");
     }
   }
 
@@ -109,7 +123,7 @@ async function salvarConfiguracoes(org: string, db: DB) {
  * Espelha o estado atual nas tabelas relacionais.
  * Cada chamada aguarda sua gravação real, sem reutilizar o snapshot anterior.
  */
-export function sincronizarRelacional(org: string, db: DB, userId: string | null): Promise<void> {
+export function sincronizarRelacional(org: string, db: DB, userId: string | null): Promise<Map<string, number>> {
   const executar = async () => {
   if (orgAtual !== org) {
     orgAtual = org;
@@ -121,7 +135,14 @@ export function sincronizarRelacional(org: string, db: DB, userId: string | null
       // Ordem: cadastros base -> documentos -> dependentes.
       await gravar("customers", (db.clientes ?? []).map((c) => customerRow(org, c)));
       await gravar("services", (db.servicos ?? []).map((s) => serviceRow(org, s)));
-      await gravar("quotes", (db.orcamentos ?? []).map((o) => quoteRow(org, o)));
+      const numeros = numerosConfirmados.get(org) ?? new Map<string, number>();
+      numerosConfirmados.set(org, numeros);
+      const quoteRows = (db.orcamentos ?? []).map(o => {
+        const row = quoteRow(org, o);
+        const confirmed = numeros.get(String(row["id"]));
+        return confirmed ? { ...row, numero: confirmed } : row;
+      });
+      if (!await aplicar("quotes", quoteRows, true, numeros)) throw new Error("Não foi possível salvar quotes.");
       await gravar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
       await gravar("appointments", (db.agendamentos ?? []).map((a) => appointmentRow(org, a)));
       await gravar("service_reports", (db.relatorios ?? []).map((r) => reportRow(org, r)));
@@ -134,10 +155,11 @@ export function sincronizarRelacional(org: string, db: DB, userId: string | null
       // Auditoria nunca é apagada: só acrescenta.
       await aplicar("audit_logs", (db.historico ?? []).map((h) => auditRow(org, h, userId)), false);
       await salvarConfiguracoes(org, db);
+      return new Map((db.orcamentos ?? []).map(o => [o.id, numeros.get(uuidFor(org, "orcamento", o.id)) ?? o.numero]));
   };
   const trabalho = fila.then(executar);
   // Uma falha não bloqueia os próximos snapshots, mas chega ao chamador.
-  fila = trabalho.catch(() => {});
+   fila = trabalho.then(() => {}, () => {});
   return trabalho;
 }
 

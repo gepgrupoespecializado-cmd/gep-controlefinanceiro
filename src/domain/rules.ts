@@ -20,7 +20,7 @@ const lista = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]
 
 /** Numeração formatada de documentos (ORC-000001, RPS-000001). */
 export const numeroDocumento = (prefixo: string, numero: number) =>
-  `${prefixo}-${String(Number(numero) || 0).padStart(6, "0")}`;
+  `${prefixo}-${prefixo === "ORC" && numero <= 0 ? "…" : String(Number(numero) || 0).padStart(prefixo === "ORC" ? 4 : 6, "0")}`;
 
 /* ---------- Cálculos financeiros ---------- */
 

@@ -20,3 +20,5 @@ export const uid = () =>
     : Math.random().toString(36).slice(2) + Date.now().toString(36));
 
 export const padNum = (n: number, len = 6) => String(n).padStart(len, "0");
+
+export const quoteNumber = (n: number) => n > 0 ? padNum(n, 4) : "…";

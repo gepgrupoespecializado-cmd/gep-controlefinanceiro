@@ -9,7 +9,7 @@ import {
   pdfTemaPreset, totalOrcamento, validadeOrcamento,
   type Orcamento, type Cliente, type Servico, type Empresa, type PdfTema,
 } from "@/lib/store";
-import { brl, dateBR, padNum } from "@/lib/format";
+import { brl, dateBR, quoteNumber as padNum } from "@/lib/format";
 
 // Renderiza as páginas do PDF em <canvas> usando pdf.js para garantir
 // pré-visualização funcional em Android, iOS, Web e PWA (o <iframe> com

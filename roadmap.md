@@ -1,5 +1,9 @@
 # Roadmap
 
+## Numeração e fotos
+- [x] Atribuir números na inserção, preservar os oito números existentes e validar repetição/concorrência com testes isolados, sem gravar dados reais.
+- [x] Comprimir novas fotos e conferir miniaturas e PDF no navegador: 870 × 1305 px, 280.241 bytes, qualidade 0,7; fotos salvas preservadas.
+
 ## Prontidão para venda por assinatura
 - [x] Avaliar cobrança, acesso e condições comerciais existentes, sem implementar funcionalidades.
 - [x] Executar os 32 testes existentes e conferir telas e versão publicada sem gravar dados de negócio.

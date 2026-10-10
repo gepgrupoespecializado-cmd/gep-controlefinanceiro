@@ -24,7 +24,7 @@ import {
   type Lancamento,
   type Orcamento,
 } from "@/lib/store";
-import { brl } from "@/lib/format";
+import { brl, quoteNumber } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { NovoAtendimentoDialog } from "@/components/novo-atendimento-dialog";
@@ -260,7 +260,7 @@ function Index() {
                   return (
                     <li key={o.id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">ORC-{String(safeNumber(o.numero)).padStart(6, "0")}</p>
+                        <p className="truncate text-sm font-semibold">ORC-{quoteNumber(safeNumber(o.numero))}</p>
                         <p className="truncate text-xs text-muted-foreground">{cli?.nome ?? "Cliente"}</p>
                       </div>
                       <p className="text-sm font-bold tabular-nums">{brl(totalOrcamento(o))}</p>

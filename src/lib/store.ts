@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { uid } from "./format";
+import { uid, quoteNumber } from "./format";
 
 /* ---------- Types (definições em src/types/models.ts) ---------- */
 import type {
@@ -716,14 +716,14 @@ export const db = {
 
   /* Orçamentos */
   addOrcamento(o: Omit<Orcamento, "id" | "numero" | "criadoEm">) {
-    const numero = numeroDe("orcamento");
+    const numero = 0; // Definitivo somente após INSERT confirmado no banco.
     const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString() };
     state = {
       ...state,
       proximoOrcamento: Math.max(state.proximoOrcamento, numero + 1),
       orcamentos: [novo, ...state.orcamentos],
     };
-    logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${String(numero).padStart(6, "0")}`, acao: "criado" });
+    logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${quoteNumber(numero)}`, acao: "criado" });
     if (novo.status === "aprovado") criarReceitaDeOrcamento(novo);
     persist();
   },
@@ -731,11 +731,11 @@ export const db = {
     const atual = state.orcamentos.find((o) => o.id === id); if (!atual) return;
     const diffs = diffPatch(atual, patch);
     const novo = {
-      ...atual, ...patch,
+      ...atual, ...patch, numero: atual.numero,
       atualizadoEm: new Date().toISOString(),
       versao: diffs.length ? (atual.versao ?? 1) + 1 : (atual.versao ?? 1),
     };
-    const nome = `ORC-${String(atual.numero).padStart(6, "0")}`;
+    const nome = `ORC-${quoteNumber(atual.numero)}`;
     state = { ...state, orcamentos: state.orcamentos.map((o) => o.id === id ? novo : o) };
     diffs.forEach((d) => logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: nome, acao: "editado", ...d }));
     if (patch.status && patch.status !== atual.status && patch.status === "aprovado") {
@@ -747,26 +747,26 @@ export const db = {
   arquivarOrcamento(id: string, arquivado = true) {
     const o = state.orcamentos.find((x) => x.id === id); if (!o) return;
     state = { ...state, orcamentos: state.orcamentos.map((x) => x.id === id ? { ...x, arquivado } : x) };
-    logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: `ORC-${String(o.numero).padStart(6, "0")}`, acao: arquivado ? "arquivado" : "restaurado" });
+    logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: `ORC-${quoteNumber(o.numero)}`, acao: arquivado ? "arquivado" : "restaurado" });
     persist();
   },
   removeOrcamento(id: string) {
     const o = state.orcamentos.find((x) => x.id === id);
     state = { ...state, orcamentos: state.orcamentos.filter((o) => o.id !== id) };
-    if (o) logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: `ORC-${String(o.numero).padStart(6, "0")}`, acao: "excluido" });
+    if (o) logHist({ entidade: "orcamento", entidadeId: id, entidadeNome: `ORC-${quoteNumber(o.numero)}`, acao: "excluido" });
     persist();
   },
   duplicarOrcamento(id: string) {
     const o = state.orcamentos.find((x) => x.id === id);
     if (!o) return;
-    const numero = numeroDe("orcamento");
+    const numero = 0;
     const novo: Orcamento = { ...o, id: uid(), numero, criadoEm: new Date().toISOString(), status: "rascunho", arquivado: false, versao: 1 };
     state = {
       ...state,
       proximoOrcamento: Math.max(state.proximoOrcamento, numero + 1),
       orcamentos: [novo, ...state.orcamentos],
     };
-    logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${String(numero).padStart(6, "0")}`, acao: "criado", campo: "duplicado de", depois: `ORC-${String(o.numero).padStart(6, "0")}` });
+    logHist({ entidade: "orcamento", entidadeId: novo.id, entidadeNome: `ORC-${quoteNumber(numero)}`, acao: "criado", campo: "duplicado de", depois: `ORC-${quoteNumber(o.numero)}` });
     persist();
   },
 

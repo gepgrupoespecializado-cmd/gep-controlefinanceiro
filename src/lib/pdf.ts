@@ -4,7 +4,7 @@ import {
   totalOrcamento, subtotalOrcamento, validadeOrcamento, formaPagamentoLabel,
   pdfTemaPreset, resolvePdfTemaAtivo,
 } from "./store";
-import { brl, dateBR, padNum } from "./format";
+import { brl, dateBR, quoteNumber as padNum } from "./format";
 
 type RGB = [number, number, number];
 
@@ -42,6 +42,17 @@ function drawImageContain(doc: jsPDF, dataUrl: string, x: number, y: number, box
   const dx = x + (boxW - dw) / 2, dy = y + (boxH - dh) / 2;
   try { doc.addImage(dataUrl, detectFmt(dataUrl), dx, dy, dw, dh, undefined, compression); } catch {}
   return { x: dx, y: dy, w: dw, h: dh };
+}
+
+export function drawPhotoCover(doc: jsPDF, dataUrl: string, x: number, y: number, width: number, height: number) {
+  const { w, h } = imgSize(doc, dataUrl);
+  const scale = Math.max(width / w, height / h);
+  doc.saveGraphicsState();
+  try {
+    doc.rect(x, y, width, height);
+    doc.clip(); doc.discardPath();
+    doc.addImage(dataUrl, detectFmt(dataUrl), x + (width - w * scale) / 2, y + (height - h * scale) / 2, w * scale, h * scale, undefined, "FAST");
+  } finally { doc.restoreGraphicsState(); }
 }
 
 /** Marca d'água centralizada (logo da empresa) com baixa opacidade, sem distorção. */
@@ -502,7 +513,7 @@ function renderOrcamentoPDF(
         const x = M + i * (cellW + gap);
         setFill(FILL); setDraw(LINE); doc.setLineWidth(0.5);
         doc.roundedRect(x, y, cellW, cellH, 3, 3, "FD");
-        drawImageContain(doc, img, x + 2, y + 2, cellW - 4, cellH - 4, "FAST");
+        try { drawPhotoCover(doc, img, x + 2, y + 2, cellW - 4, cellH - 4); } catch {}
       });
       y += cellH + sp(10);
     }
