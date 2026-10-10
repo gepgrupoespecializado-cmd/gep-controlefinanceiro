@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -123,27 +124,27 @@ if (typeof window === "undefined") return;
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Controle de Prestação de Serviços GEP" },
+      { title: "Gestão de Serviços" },
       {
         name: "description",
         content:
           "Sistema profissional de gestão de clientes, orçamentos, agenda e financeiro para prestadores de serviços.",
       },
-      { name: "author", content: "GEP Serviços Especializado" },
+      { name: "author", content: "Gestão de Serviços" },
       { name: "theme-color", content: "#0b1b3d" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "GEP Serviços" },
-      { name: "application-name", content: "GEP Serviços" },
-      { property: "og:title", content: "Controle de Prestação de Serviços GEP" },
+      { name: "apple-mobile-web-app-title", content: "Gestão de Serviços" },
+      { name: "application-name", content: "Gestão de Serviços" },
+      { property: "og:title", content: "Gestão de Serviços" },
       {
         property: "og:description",
         content: "Gestão completa: clientes, orçamentos, agenda e financeiro.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Controle de Prestação de Serviços GEP" },
+      { name: "twitter:title", content: "Gestão de Serviços" },
       {
         name: "twitter:description",
         content: "Gestão completa: clientes, orçamentos, agenda e financeiro.",
@@ -198,6 +199,18 @@ function RootComponent() {
   }, [router]);
 
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const companyName = useCompanyName();
+  useEffect(() => {
+    if (isPublicRoute(pathname) || pathname === "/bem-vindo") return;
+    const section = document.title.split(" — ")[0];
+    document.title = `${section} — ${companyName}`;
+    for (const selector of ['meta[property="og:title"]', 'meta[name="twitter:title"]']) {
+      document.querySelector(selector)?.setAttribute("content", document.title);
+    }
+    for (const name of ["application-name", "apple-mobile-web-app-title"]) {
+      document.querySelector(`meta[name="${name}"]`)?.setAttribute("content", companyName);
+    }
+  }, [companyName, pathname]);
   const semLayout =
     pathname === "/login" ||
     pathname === "/reset-password" ||
@@ -222,7 +235,7 @@ function RootComponent() {
             <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-card/80 backdrop-blur px-3 sm:px-4">
               <SidebarTrigger />
               <div className="ml-1 min-w-0">
-                <p className="truncate text-sm font-semibold">Controle de Prestação de Serviços GEP</p>
+                <p className="truncate text-sm font-semibold">{companyName}</p>
               </div>
               <div className="ml-auto">
                 <OnlineStatus />

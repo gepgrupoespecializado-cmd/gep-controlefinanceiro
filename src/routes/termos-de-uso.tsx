@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollText } from "lucide-react";
@@ -5,18 +6,21 @@ import { ScrollText } from "lucide-react";
 export const Route = createFileRoute("/termos-de-uso")({
   head: () => ({
     meta: [
-      { title: "Termos de Uso — Controle de Prestação de Serviços GEP" },
-      { name: "description", content: "Condições de uso do sistema Controle de Prestação de Serviços GEP." },
-      { property: "og:title", content: "Termos de Uso — Controle de Prestação de Serviços GEP" },
-      { property: "og:description", content: "Condições de uso do sistema Controle de Prestação de Serviços GEP." },
-      { name: "twitter:title", content: "Termos de Uso — Controle de Prestação de Serviços GEP" },
-      { name: "twitter:description", content: "Condições de uso do sistema Controle de Prestação de Serviços GEP." },
+      { title: "Termos de Uso — Gestão de Serviços" },
+      { name: "description", content: "Condições de uso do sistema Gestão de Serviços." },
+      { property: "og:title", content: "Termos de Uso — Gestão de Serviços" },
+      { property: "og:description", content: "Condições de uso do sistema Gestão de Serviços." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Termos de Uso — Gestão de Serviços" },
+      { name: "twitter:description", content: "Condições de uso do sistema Gestão de Serviços." },
     ],
   }),
   component: TermosDeUso,
 });
 
 function TermosDeUso() {
+  const companyName = useCompanyName();
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
@@ -30,7 +34,7 @@ function TermosDeUso() {
       </div>
 
       <p className="text-sm text-muted-foreground">
-        Esta página é mantida pelo responsável pelo aplicativo <strong>Controle de Prestação de Serviços GEP</strong> para
+        Esta página é mantida pelo responsável pelo aplicativo <strong>{companyName}</strong> para
         esclarecer as condições de uso da plataforma. Leia atentamente antes de continuar utilizando os serviços.
       </p>
 
@@ -40,7 +44,7 @@ function TermosDeUso() {
         </CardHeader>
         <CardContent className="text-sm leading-relaxed text-muted-foreground space-y-3">
           <p>
-            Ao acessar ou utilizar o Controle de Prestação de Serviços GEP (doravante “Aplicativo”), você concorda em
+            Ao acessar ou utilizar o aplicativo {companyName} (doravante “Aplicativo”), você concorda em
             cumprir estes Termos de Uso e todas as leis e regulamentos aplicáveis. Se você não concordar com qualquer
             disposição deste documento, não deve utilizar o Aplicativo.
           </p>

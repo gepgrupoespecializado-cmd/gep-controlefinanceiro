@@ -9,9 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/equipe")({
   head: () => ({
     meta: [
-      { title: "Equipe — GEP Controle Financeiro" },
+      { title: "Equipe — Gestão de Serviços" },
       { name: "description", content: "Pessoas com acesso à sua empresa e seus níveis de permissão." },
-      { property: "og:title", content: "Equipe — GEP Controle Financeiro" },
+      { property: "og:title", content: "Equipe — Gestão de Serviços" },
       { property: "og:description", content: "Veja quem tem acesso aos dados da sua empresa." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,14 +8,19 @@ import { useDB } from "@/lib/store";
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
     meta: [
-      { title: "Configurações — Controle de Prestação de Serviços GEP" },
+      { title: "Configurações — Gestão de Serviços" },
       { name: "description", content: "Ajustes de empresa, identidade visual, PDFs e custos operacionais." },
+      { property: "og:title", content: "Configurações — Gestão de Serviços" },
+      { property: "og:description", content: "Ajustes da sua empresa e dos seus documentos." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ConfiguracoesPage,
 });
 
 function ConfiguracoesPage() {
+  const companyName = useCompanyName();
   const data = useDB();
 
   return (
@@ -35,7 +41,7 @@ function ConfiguracoesPage() {
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
           <div className="min-w-0">
-            <p className="font-semibold truncate">{data.empresa.nome || "GEP Serviços Especializado"}</p>
+            <p className="font-semibold truncate">{companyName}</p>
             <p className="text-xs text-muted-foreground truncate">
               Dados comerciais, logo, CNPJ, endereço, contatos, cores do sistema e configuração do PDF.
             </p>

@@ -13,9 +13,9 @@ import { mensagemAmigavel } from "@/lib/auth";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Criar nova senha — GEP Controle Financeiro" },
-      { name: "description", content: "Defina uma nova senha de acesso ao GEP Controle Financeiro." },
-      { property: "og:title", content: "Criar nova senha — GEP Controle Financeiro" },
+      { title: "Criar nova senha — Gestão de Serviços" },
+      { name: "description", content: "Defina uma nova senha de acesso ao Gestão de Serviços." },
+      { property: "og:title", content: "Criar nova senha — Gestão de Serviços" },
       { property: "og:description", content: "Defina uma nova senha de acesso à sua conta." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, FileText, Download, Copy, Share2, Eye, Pencil, Search, BookOpen, UserPlus, User, X, MessageCircle, FileOutput, ImagePlus } from "lucide-react";
@@ -28,11 +29,19 @@ import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/p
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/orcamentos")({
-  head: () => ({ meta: [{ title: "Orçamentos — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Orçamentos — Gestão de Serviços" },
+    { name: "description", content: "Orçamentos da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Orçamentos — Gestão de Serviços" },
+    { property: "og:description", content: "Orçamentos da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: OrcamentosPage,
 });
 
 function OrcamentosPage() {
+  const companyName = useCompanyName();
   const data = useDB();
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -231,7 +240,7 @@ function OrcamentosPage() {
       const txt = [
         `Olá, ${primeiroNome}. Tudo bem?`,
         "",
-        `Conforme conversamos, estou encaminhando o orçamento da GEP Serviços Especializados referente ao serviço de ${servico}.`,
+        `Conforme conversamos, estou encaminhando o orçamento da ${companyName} referente ao serviço de ${servico}.`,
         "",
         "No documento estão descritos o escopo do serviço, valor e condições da proposta.",
         "",
@@ -239,8 +248,7 @@ function OrcamentosPage() {
         "",
         "Fico à disposição para qualquer dúvida.",
         "",
-        "Eduardo",
-        "GEP Serviços Especializados",
+        companyName,
       ].join("\n");
       const tel = (cli?.whatsapp || cli?.telefone || "").replace(/\D/g, "");
       const res = await compartilharPDF({ doc, filename, titulo: `Orçamento ORC-${padNum(o.numero)}`, mensagem: txt, telefone: action === "whatsapp" ? tel : undefined });
@@ -425,9 +433,9 @@ function OrcamentosPage() {
                 />
               </div>
 
-              {/* DIFERENCIAL GEP */}
+              {/* DIFERENCIAL DA EMPRESA */}
               <div className="grid gap-1.5">
-                <Label className="text-xs font-semibold">Diferencial GEP (opcional)</Label>
+                <Label className="text-xs font-semibold">Diferencial da empresa (opcional)</Label>
                 <Textarea
                   value={diferencial}
                   onChange={(e) => setDiferencial(e.target.value.slice(0, 400))}

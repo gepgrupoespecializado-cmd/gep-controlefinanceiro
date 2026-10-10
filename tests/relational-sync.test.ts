@@ -23,11 +23,21 @@ const { sincronizarRelacional, resetRelacional } = await import('@/data/remote/r
 const sample = (name: string): DB => ({
   clientes: [{ id: name, nome: name, frequencia: 'avulso', criadoEm: '2026-10-08' }],
   servicos: [], orcamentos: [], agendamentos: [], relatorios: [], lancamentos: [], modelos: [], historico: [],
-  proximoOrcamento: 1, proximoRelatorio: 1, empresa: { nome: 'GEP', cnpj: '', telefone: '', whatsapp: '', email: '', endereco: '', redesSociais: '', corPdf: '' },
+  proximoOrcamento: 1, proximoRelatorio: 1, empresa: { nome: 'Empresa Teste', cnpj: '', telefone: '', whatsapp: '', email: '', endereco: '', redesSociais: '', corPdf: '' },
 });
 beforeEach(() => { writes.length = 0; block = null; fail = false; resetRelacional(); });
 
 describe('salvamento concorrente', () => {
+  it('salva o nome cadastrado e a edição nas configurações da mesma empresa', async () => {
+    const snapshot = sample('cliente');
+    await sincronizarRelacional('org-a', snapshot, 'user');
+    await sincronizarRelacional('org-a', { ...snapshot, empresa: { ...snapshot.empresa, nome: 'Empresa Renomeada' } }, 'user');
+    expect(writes.filter(w => w.table === 'organization_settings').map(w => w.rows[0]?.empresa)).toEqual([
+      snapshot.empresa,
+      { ...snapshot.empresa, nome: 'Empresa Renomeada' },
+    ]);
+    expect(writes.filter(w => w.table === 'organization_settings').every(w => w.rows[0]?.organization_id === 'org-a')).toBe(true);
+  });
   it('grava o novo cliente e orçamento recebidos durante uma gravação anterior e aguarda ambos', async () => {
     let release: () => void = () => {};
     block = new Promise<void>(resolve => { release = resolve; });

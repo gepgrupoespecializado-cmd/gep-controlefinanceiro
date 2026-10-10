@@ -84,8 +84,6 @@ export function gerarOrcamentoPDF(
   return renderOrcamentoPDF(orc, cliente, servicos, empresa, overrides, 1);
 }
 
-const EMPRESA_NOME = "GEP FACILITIES";
-const EMPRESA_SUB = "SERVIÇOS ESPECIALIZADOS";
 
 function renderOrcamentoPDF(
   orc: Orcamento,
@@ -95,6 +93,7 @@ function renderOrcamentoPDF(
   overrides: PdfOverrides,
   density: number,
 ) {
+  const empresaNome = empresa.nome?.trim() || "Sua empresa";
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -152,7 +151,7 @@ function renderOrcamentoPDF(
   function drawMiniHeader() {
     setFill(brand); doc.rect(0, 0, W, 4, "F");
     setText(MUTED); doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer);
-    doc.text(`${EMPRESA_NOME} · Orçamento Nº ${padNum(orc.numero)} · continuação`, M, 20);
+    doc.text(`${empresaNome} · Orçamento Nº ${padNum(orc.numero)} · continuação`, M, 20);
     setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, 26, W - M, 26);
     y = 40;
     setText(TEXT);
@@ -163,9 +162,8 @@ function renderOrcamentoPDF(
     const step = FS.footer + 3;
     setDraw(LINE); doc.setLineWidth(0.6); doc.line(M, fy - 10, W - M, fy - 10);
     doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer + 1); setText(brand);
-    doc.text(EMPRESA_NOME, W / 2, fy + 2, { align: "center" });
+    doc.text(empresaNome, W / 2, fy + 2, { align: "center" });
     doc.setFont("helvetica", "normal"); doc.setFontSize(FS.footer); setText(MUTED);
-    doc.text("Serviços Especializados", W / 2, fy + 2 + step, { align: "center" });
     const contato = [
       (empresa.telefone || empresa.whatsapp) && `Telefone/WhatsApp: ${[empresa.telefone, empresa.whatsapp].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" / ")}`,
       empresa.email && `E-mail: ${empresa.email}`,
@@ -244,16 +242,10 @@ function renderOrcamentoPDF(
   let headH = logoH;
   if (empresa.logoDataUrl) {
     drawImageContain(doc, empresa.logoDataUrl, M, headTop, 140, logoH);
-  } else {
-    // Monograma discreto quando não há logo cadastrada
-    setFill(brand); doc.roundedRect(M, headTop, logoH, logoH, 6, 6, "F");
-    setText([255, 255, 255]); doc.setFont("helvetica", "bold"); doc.setFontSize(logoH * 0.42);
-    doc.text("GEP", M + logoH / 2, headTop + logoH / 2 + logoH * 0.15, { align: "center" });
   }
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.empresa); setText(brand);
-  doc.text(EMPRESA_NOME, W - M, headTop + logoH / 2 - 2, { align: "right" });
+  doc.text(empresaNome, W - M, headTop + logoH / 2 - 2, { align: "right" });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.small); setText(MUTED);
-  doc.text(EMPRESA_SUB, W - M, headTop + logoH / 2 + FS.small + 3, { align: "right" });
   headH = logoH + sp(12);
   setDraw(LINE); doc.setLineWidth(0.7); doc.line(M, headTop + headH, W - M, headTop + headH);
   y = headTop + headH + sp(14);

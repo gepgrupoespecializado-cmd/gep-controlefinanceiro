@@ -241,7 +241,7 @@ const seed: DB = {
   agendamentos: [],
   lancamentos: [],
   empresa: {
-    nome: "GEP Serviços Especializado",
+    nome: "",
     cnpj: "",
     telefone: "",
     whatsapp: "",

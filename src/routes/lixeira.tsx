@@ -15,7 +15,14 @@ import { dateBR, padNum } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/lixeira")({
-  head: () => ({ meta: [{ title: "Lixeira — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Lixeira — Gestão de Serviços" },
+    { name: "description", content: "Lixeira da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Lixeira — Gestão de Serviços" },
+    { property: "og:description", content: "Lixeira da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: LixeiraPage,
 });
 

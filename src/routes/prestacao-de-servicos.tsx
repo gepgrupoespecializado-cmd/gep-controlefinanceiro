@@ -7,8 +7,12 @@ import { useDB } from "@/lib/store";
 export const Route = createFileRoute("/prestacao-de-servicos")({
   head: () => ({
     meta: [
-      { title: "Prestação de Serviços — Controle GEP" },
+      { title: "Prestação de Serviços — Gestão de Serviços" },
       { name: "description", content: "Central operacional para serviços, agenda e relatórios de prestação." },
+      { property: "og:title", content: "Prestação de Serviços — Gestão de Serviços" },
+      { property: "og:description", content: "Central operacional para serviços, agenda e relatórios de prestação." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PrestacaoDeServicosPage,

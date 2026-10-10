@@ -8,14 +8,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { db } from "@/lib/store";
+import { db, type Empresa } from "@/lib/store";
+import type { Json } from "@/integrations/supabase/types";
+import { descartarMigracao } from "@/data/cloud-sync";
 
 export const Route = createFileRoute("/bem-vindo")({
   head: () => ({
     meta: [
-      { title: "Bem-vindo — GEP Controle Financeiro" },
-      { name: "description", content: "Configuração inicial da sua empresa no GEP Controle Financeiro." },
-      { property: "og:title", content: "Bem-vindo — GEP Controle Financeiro" },
+      { title: "Bem-vindo — Gestão de Serviços" },
+      { name: "description", content: "Configuração inicial da sua empresa no Gestão de Serviços." },
+      { property: "og:title", content: "Bem-vindo — Gestão de Serviços" },
       { property: "og:description", content: "Configure sua empresa e comece a usar o sistema." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -43,6 +45,11 @@ function OnboardingPage() {
 
   async function concluir(e: React.FormEvent) {
     e.preventDefault();
+    const nome = form.nome.trim();
+    if (!nome) {
+      toast.error("Informe o nome da empresa.");
+      return;
+    }
     setCarregando(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -56,7 +63,7 @@ function OnboardingPage() {
       const { data: org, error: orgError } = await supabase
         .from("organizations")
         .insert({
-          name: form.nome.trim(),
+          name: nome,
           cnpj: form.cnpj.trim() || null,
           responsavel: form.responsavel.trim() || null,
           telefone: form.telefone.trim() || null,
@@ -90,13 +97,20 @@ function OnboardingPage() {
       });
       if (memberError && memberError.code !== "23505") throw memberError;
 
-      db.updateEmpresa({
-        nome: form.nome.trim(),
+      const empresa: Empresa = {
+        nome,
         cnpj: form.cnpj.trim(),
         telefone: form.telefone.trim(),
         email: form.email.trim() || (user.email ?? ""),
         endereco: `${form.cidade.trim()}${form.cidade.trim() && form.estado.trim() ? ", " : ""}${form.estado.trim()}`,
-      });
+      };
+      const { error: settingsError } = await supabase.from("organization_settings").upsert({
+        organization_id: org.id,
+        empresa: empresa as unknown as Json,
+      }, { onConflict: "organization_id" });
+      if (settingsError) throw settingsError;
+      db.updateEmpresa(empresa);
+      await descartarMigracao(org.id);
       toast.success("Empresa criada. Bom trabalho!");
       window.location.assign("/");
     } catch {
@@ -114,7 +128,7 @@ function OnboardingPage() {
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
               <Building2 className="h-6 w-6" />
             </div>
-            <h1 className="text-xl font-black">Bem-vindo ao GEP Controle Financeiro</h1>
+            <h1 className="text-xl font-black">Cadastre sua empresa</h1>
             <p className="text-sm text-muted-foreground">
               Cadastre sua empresa para começar. Seus dados ficam separados de qualquer outra conta.
             </p>

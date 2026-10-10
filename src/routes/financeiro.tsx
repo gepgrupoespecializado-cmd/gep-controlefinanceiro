@@ -26,7 +26,14 @@ import { brl, dateBR } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/financeiro")({
-  head: () => ({ meta: [{ title: "Financeiro — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Financeiro — Gestão de Serviços" },
+    { name: "description", content: "Financeiro da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Financeiro — Gestão de Serviços" },
+    { property: "og:description", content: "Financeiro da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: FinanceiroPage,
 });
 

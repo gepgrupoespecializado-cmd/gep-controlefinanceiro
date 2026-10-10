@@ -1,9 +1,10 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { useEffect, useState } from "react";
 import { Download, Smartphone, RefreshCw, CheckCircle2, Share, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { APP_VERSION, APP_NAME } from "@/lib/version";
+import { APP_VERSION } from "@/lib/version";
 
 type BIPEvent = Event & {
   prompt: () => Promise<void>;
@@ -28,6 +29,7 @@ function isStandalone() {
 }
 
 export function InstallAppCard() {
+  const companyName = useCompanyName();
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   const [installed, setInstalled] = useState(false);
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
@@ -131,7 +133,7 @@ export function InstallAppCard() {
             <Smartphone className="h-6 w-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm sm:text-base font-black">📲 Instalar aplicativo GEP</p>
+            <p className="text-sm sm:text-base font-black">📲 Instalar {companyName}</p>
             <p className="text-xs text-muted-foreground">
               Acesso rápido, ícone na tela inicial, tela cheia e uso offline.
             </p>
@@ -184,7 +186,7 @@ export function InstallAppCard() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold">3.</span>
-                <span>Confirme em <b>Adicionar</b>. O app <b>{APP_NAME}</b> aparecerá na tela inicial.</span>
+                <span>Confirme em <b>Adicionar</b>. O app <b>{companyName}</b> aparecerá na tela inicial.</span>
               </li>
             </ol>
           </div>

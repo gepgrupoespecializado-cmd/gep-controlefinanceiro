@@ -78,7 +78,7 @@ export function gerarRelatorioPDF(
   const headX = empresa.logoDataUrl ? M + 72 : M;
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.title);
-  doc.text(empresa.nome || "GEP SERVIÇOS ESPECIALIZADOS", headX, 36, { maxWidth: W - headX - M });
+  doc.text(empresa.nome?.trim() || "Sua empresa", headX, 36, { maxWidth: W - headX - M });
   doc.setFont("helvetica", "normal"); doc.setFontSize(FS.body);
   const head = [
     empresa.cnpj ? `CNPJ: ${empresa.cnpj}` : "",
@@ -241,10 +241,9 @@ export function gerarRelatorioPDF(
   // Rodapé corporativo
   const fy = H - 52;
   doc.setFont("helvetica", "bold"); doc.setFontSize(FS.footer); doc.setTextColor(brand[0], brand[1], brand[2]);
-  doc.text("GEP SERVIÇOS ESPECIALIZADOS LTDA", W / 2, fy, { align: "center" });
+  doc.text(empresa.nome?.trim() || "Sua empresa", W / 2, fy, { align: "center" });
   doc.setFont("helvetica", "normal"); doc.setTextColor(80, 80, 80);
   const footerLines = [
-    "Responsável: Eduardo Pennicha",
     "Todos os direitos reservados.",
   ];
   let ly = fy + 12;

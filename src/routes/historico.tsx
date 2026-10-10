@@ -18,7 +18,14 @@ import { dateTimeBR } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/historico")({
-  head: () => ({ meta: [{ title: "Histórico — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Histórico — Gestão de Serviços" },
+    { name: "description", content: "Histórico da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Histórico — Gestão de Serviços" },
+    { property: "og:description", content: "Histórico da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: HistoricoPage,
 });
 

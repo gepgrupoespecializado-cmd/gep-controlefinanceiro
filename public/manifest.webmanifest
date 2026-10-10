@@ -1,6 +1,6 @@
 {
-  "name": "Controle de Prestação de Serviços GEP",
-  "short_name": "GEP Serviços",
+  "name": "Gestão de Serviços",
+  "short_name": "Gestão",
   "description": "Gestão profissional de clientes, orçamentos, agenda e financeiro",
   "start_url": "/",
   "scope": "/",

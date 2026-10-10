@@ -25,3 +25,7 @@
 
 ## Fora do escopo
 Pagamentos, Kiwify/Stripe, planos, trial, painel Master, white-label, convites, offline sync.
+
+## Nome da empresa dinâmico
+- [x] Remover marca fixa dos textos, títulos, PDFs e cadastro, sem alterar dados existentes.
+- [x] Validar cadastro, edição, recarregamento e PDFs com Empresa Teste em sessão isolada com respostas simuladas; 33 testes aprovados, sem publicar ou gravar dados reais.

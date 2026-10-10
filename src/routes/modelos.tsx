@@ -15,7 +15,14 @@ import { db, useDB, type ModeloDescricao } from "@/lib/store";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/modelos")({
-  head: () => ({ meta: [{ title: "Modelos de Descrição — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Modelos de Descrição — Gestão de Serviços" },
+    { name: "description", content: "Modelos de Descrição da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Modelos de Descrição — Gestão de Serviços" },
+    { property: "og:description", content: "Modelos de Descrição da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: ModelosPage,
 });
 

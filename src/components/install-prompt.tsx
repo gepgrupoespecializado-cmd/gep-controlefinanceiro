@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { useEffect, useState } from "react";
 import { Download, Share, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ function isIOS() {
 }
 
 export function InstallPrompt() {
+  const companyName = useCompanyName();
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [show, setShow] = useState(false);
   const [iosOpen, setIosOpen] = useState(false);
@@ -100,7 +102,7 @@ export function InstallPrompt() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Adicionar à tela inicial?</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Instale o Controle de Prestação de Serviços GEP para acesso rápido e uso offline.
+                Instale {companyName} para acesso rápido e uso offline.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" onClick={install}>

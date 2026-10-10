@@ -1,3 +1,4 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ChevronLeft, ChevronRight, Download, Eye, FolderOpen, ImageIcon, Mail, Maximize2, Pen, Search, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ async function compressImage(file: File, maxW = 1280, quality = 0.7): Promise<st
 
 export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   const data = useDB();
+  const companyName = useCompanyName();
   const camRef = useRef<Record<FotoTipo, HTMLInputElement | null>>({ antes: null, durante: null, depois: null });
   const galRef = useRef<Record<FotoTipo, HTMLInputElement | null>>({ antes: null, durante: null, depois: null });
   const fileRef = useRef<Record<FotoTipo, HTMLInputElement | null>>({ antes: null, durante: null, depois: null });
@@ -286,7 +288,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
 
   function mensagemWhats() {
     return [
-      `*Relatório de Prestação de Serviço — ${data.empresa.nome || "GEP Serviços"}*`,
+      `*Relatório de Prestação de Serviço — ${companyName}*`,
       `Cliente: ${cliente?.nome ?? ""}`,
       `Serviço: ${servico?.nome || agendamento?.titulo}`,
       `Data: ${agendamento ? dateBR(agendamento.data) : ""}`,

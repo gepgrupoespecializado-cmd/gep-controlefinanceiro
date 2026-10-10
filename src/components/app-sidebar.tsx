@@ -1,6 +1,8 @@
+import { useCompanyName } from "@/hooks/use-company-name";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
+  Building2,
   Users,
   Wrench,
   FileText,
@@ -50,6 +52,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const data = useDB();
+  const companyName = useCompanyName();
 
   async function sair() {
     try { await stopOrgSync(); }
@@ -70,13 +73,13 @@ export function AppSidebar() {
             <img src={data.empresa.logoDataUrl} alt="Logo" className="h-9 w-9 shrink-0 rounded-lg object-contain bg-white border" />
           ) : (
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-[var(--primary-glow)] text-primary-foreground font-black">
-              G
+              <Building2 className="h-5 w-5" />
             </div>
           )}
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold leading-tight">Controle de Prestação</p>
-              <p className="truncate text-[10px] text-sidebar-foreground/60">de Serviços GEP</p>
+              <p className="truncate text-sm font-bold leading-tight">{companyName}</p>
+              <p className="truncate text-[10px] text-sidebar-foreground/60">Gestão de serviços</p>
             </div>
           )}
         </div>

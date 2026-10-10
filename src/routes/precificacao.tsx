@@ -9,7 +9,14 @@ import { brl } from "@/lib/format";
 import { useDB } from "@/lib/store";
 
 export const Route = createFileRoute("/precificacao")({
-  head: () => ({ meta: [{ title: "Calculadora de Precificação — GEP Controle" }] }),
+  head: () => ({ meta: [
+    { title: "Calculadora de Precificação — Gestão de Serviços" },
+    { name: "description", content: "Calculadora de Precificação da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:title", content: "Calculadora de Precificação — Gestão de Serviços" },
+    { property: "og:description", content: "Calculadora de Precificação da sua empresa no aplicativo de gestão de serviços." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: PrecificacaoPage,
 });
 
