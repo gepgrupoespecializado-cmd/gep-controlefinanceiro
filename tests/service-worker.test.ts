@@ -24,7 +24,7 @@ describe("cache do aplicativo instalado", () => {
     test(`não intercepta dados: ${url}`, () => {
       const { handlers } = worker();
       let intercepted = false;
-      handlers.fetch({ request: new Request(url, { mode: "cors" }), respondWith: () => { intercepted = true; } });
+      handlers.fetch({ request: { url, method: "GET", mode: "cors", headers: new Headers() }, respondWith: () => { intercepted = true; } });
       expect(intercepted).toBe(false);
     });
   }
