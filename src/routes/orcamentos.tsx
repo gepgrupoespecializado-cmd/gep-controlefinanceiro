@@ -24,7 +24,8 @@ import {
   DIFERENCIAL_PADRAO, ESCOPO_MODELOS,
   type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento,
 } from "@/lib/store";
-import { brl, dateBR, padNum } from "@/lib/format";
+import { brl, dateBR, quoteNumber as padNum } from "@/lib/format";
+import { compressPhoto } from "@/lib/photo";
 import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/pdf";
 import { toast } from "sonner";
 
@@ -72,22 +73,12 @@ function OrcamentosPage() {
   const [fotosAntes, setFotosAntes] = useState<string[]>([]);
   const [fotosDepois, setFotosDepois] = useState<string[]>([]);
 
-  function lerFotos(files: FileList | null, set: (f: (prev: string[]) => string[]) => void) {
+  async function lerFotos(files: FileList | null, set: (f: (prev: string[]) => string[]) => void) {
     if (!files) return;
-    Array.from(files).slice(0, 6).forEach((file) => {
-      const img = new Image();
-      const url = URL.createObjectURL(file);
-      img.onload = () => {
-        const max = 1200;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement("canvas");
-        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-        c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
-        set((prev) => [...prev, c.toDataURL("image/jpeg", 0.82)]);
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    });
+    try {
+      const photos = await Promise.all(Array.from(files).slice(0, 6).map(compressPhoto));
+      set(prev => [...prev, ...photos]);
+    } catch { toast.error("Não foi possível processar a imagem."); }
   }
 
   // Recebe rascunho vindo da Calculadora de Precificação
@@ -213,6 +204,7 @@ function OrcamentosPage() {
   async function pdf(orcId: string, action: "view" | "open" | "download" | "share" | "whatsapp") {
     const o = data.orcamentos.find((x) => x.id === orcId);
     if (!o) return;
+    if (o.numero <= 0) { toast.error("Aguarde o salvamento na nuvem para gerar o PDF."); return; }
     const faltas: string[] = [];
     if (!data.empresa.nome) faltas.push("Nome da empresa");
     if (!o.escopo?.length && !o.descricaoServicos?.trim()) faltas.push("Descrição do serviço");
@@ -517,8 +509,8 @@ function OrcamentosPage() {
                       </label>
                       <div className="grid grid-cols-3 gap-1">
                         {arr.map((f, i) => (
-                          <div key={i} className="relative aspect-[4/3] overflow-hidden rounded border bg-muted">
-                            <img src={f} alt={`${lbl} ${i + 1}`} className="h-full w-full object-cover" />
+                          <div key={i} className="relative h-24 overflow-hidden rounded border bg-muted">
+                            <img src={f} alt={`${lbl} ${i + 1}`} className="h-full w-full max-w-full object-cover" />
                             <button type="button" onClick={() => set((p) => p.filter((_, j) => j !== i))} className="absolute right-0.5 top-0.5 rounded-full bg-background/90 p-0.5"><X className="h-3 w-3" /></button>
                           </div>
                         ))}

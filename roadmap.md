@@ -1,5 +1,9 @@
 # Roadmap
 
+## Numeração e fotos
+- [ ] Atribuir números de orçamento na inserção no banco, preservar números existentes e validar repetição e concorrência.
+- [ ] Comprimir novas fotos e conferir miniaturas e PDFs, sem alterar fotos salvas.
+
 ## Prontidão para venda por assinatura
 - [x] Avaliar cobrança, acesso e condições comerciais existentes, sem implementar funcionalidades.
 - [x] Executar os 32 testes existentes e conferir telas e versão publicada sem gravar dados de negócio.

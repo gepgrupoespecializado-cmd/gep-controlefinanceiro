@@ -2,6 +2,7 @@ import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Relatorio } from "./store";
 import { relatorioStatusLabel, formaPagamentoLabel, situacaoPagamentoLabel, pdfTemaPreset, resolvePdfTemaAtivo } from "./store";
 import { brl, dateBR, padNum } from "./format";
+import { drawPhotoCover } from "./pdf";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -198,7 +199,7 @@ export function gerarRelatorioPDF(
     for (const d of g.arr) {
       if (y + cellH > BOTTOM) { doc.addPage(); y = M_TOP; col = 0; }
       const x = M + col * (cellW + 12);
-      try { doc.addImage(d, detectFmt(d), x, y, cellW, cellH, undefined, "FAST"); } catch {}
+      try { drawPhotoCover(doc, d, x, y, cellW, cellH); } catch {}
       col++;
       if (col >= 2) { col = 0; y += cellH + 8; }
     }
