@@ -7,11 +7,13 @@ export const Route = createFileRoute("/politica-de-privacidade")({
   head: () => ({
     meta: [
       { title: "Política de Privacidade — Gestão de Serviços" },
-      { name: "description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
+      { name: "description", content: "Como o aplicativo de gestão de serviços coleta, usa e protege seus dados." },
       { property: "og:title", content: "Política de Privacidade — Gestão de Serviços" },
-      { property: "og:description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
+      { property: "og:description", content: "Como o aplicativo de gestão de serviços coleta, usa e protege seus dados." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Política de Privacidade — Gestão de Serviços" },
-      { name: "twitter:description", content: "Como o Gestão de Serviços coleta, usa e protege seus dados." },
+      { name: "twitter:description", content: "Como o aplicativo de gestão de serviços coleta, usa e protege seus dados." },
     ],
   }),
   component: PoliticaDePrivacidade,

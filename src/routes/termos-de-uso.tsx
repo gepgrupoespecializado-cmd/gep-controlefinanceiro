@@ -10,6 +10,8 @@ export const Route = createFileRoute("/termos-de-uso")({
       { name: "description", content: "Condições de uso do sistema Gestão de Serviços." },
       { property: "og:title", content: "Termos de Uso — Gestão de Serviços" },
       { property: "og:description", content: "Condições de uso do sistema Gestão de Serviços." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Termos de Uso — Gestão de Serviços" },
       { name: "twitter:description", content: "Condições de uso do sistema Gestão de Serviços." },
     ],
