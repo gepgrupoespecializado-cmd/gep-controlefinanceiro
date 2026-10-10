@@ -24,6 +24,7 @@ async function reservar(tipo: NumeroTipo): Promise<number | null> {
 }
 
 async function abastecer(tipo: NumeroTipo) {
+  if (tipo === "orcamento") return;
   if (!ativo || carregando[tipo]) return;
   carregando[tipo] = true;
   try {
@@ -53,10 +54,9 @@ export async function iniciarNumeracao(base: { orcamento: number; relatorio: num
   pool.orcamento = [];
   pool.relatorio = [];
   await Promise.all([
-    supabase.rpc("seed_counter", { _tipo: "orcamento", _proximo: Math.max(base.orcamento, 1) }),
     supabase.rpc("seed_counter", { _tipo: "relatorio", _proximo: Math.max(base.relatorio, 1) }),
   ]);
-  await Promise.all([abastecer("orcamento"), abastecer("relatorio")]);
+  await abastecer("relatorio");
 }
 
 export function pararNumeracao() {
