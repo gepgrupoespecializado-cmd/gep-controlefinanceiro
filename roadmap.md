@@ -1,8 +1,8 @@
 # Roadmap
 
 ## Numeração e fotos
-- [ ] Atribuir números de orçamento na inserção no banco, preservar números existentes e validar repetição e concorrência.
-- [ ] Comprimir novas fotos e conferir miniaturas e PDFs, sem alterar fotos salvas.
+- [x] Atribuir números na inserção, preservar os oito números existentes e validar repetição/concorrência com testes isolados, sem gravar dados reais.
+- [x] Comprimir novas fotos e conferir miniaturas e PDF no navegador: 870 × 1305 px, 280.241 bytes, qualidade 0,7; fotos salvas preservadas.
 
 ## Prontidão para venda por assinatura
 - [x] Avaliar cobrança, acesso e condições comerciais existentes, sem implementar funcionalidades.

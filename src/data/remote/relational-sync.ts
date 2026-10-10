@@ -71,7 +71,7 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, n
 
   const client = supabase as unknown as {
     from: (t: string) => {
-      upsert: (v: Row[], o?: { onConflict?: string }) => PromiseLike<{ error: { message: string } | null }> & { select: (columns: string) => PromiseLike<{ data: Row[] | null; error: { message: string } | null }> };
+      upsert: (v: Row[], o?: { onConflict?: string }) => PromiseLike<{ data?: Row[] | null; error: { message: string } | null }> & { select: (columns: string) => PromiseLike<{ data: Row[] | null; error: { message: string } | null }> };
       delete: () => { in: (c: string, v: string[]) => Promise<{ error: { message: string } | null }> };
     };
   };
@@ -85,7 +85,7 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, n
       console.warn(`Não foi possível salvar ${tabela}.`, error.message);
       return false;
     }
-    if (tabela === "quotes" && "data" in result) {
+    if (tabela === "quotes") {
       for (const row of result.data ?? []) {
         const id = String(row["id"]);
         const numero = Number(row["numero"]);

@@ -598,9 +598,8 @@ export function avaliarFaseAtual(cond: {
  * Pode ser executada quantas vezes for necessário: nada é duplicado.
  */
 export async function backfillRelacional(orgId: string) {
-  const { data } = await supabase.auth.getUser();
   resetRelacional();
-  await sincronizarRelacional(orgId, getDBSnapshot(), data.user?.id ?? null);
+  await push(orgId, getDBSnapshot());
   return contarRelacional(orgId);
 }
 
