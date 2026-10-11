@@ -217,7 +217,7 @@ export function gerarRelatorioPDF(
       });
       y += rowH + 8;
     }
-    if (photos.length) y += 4;
+    if (photos.length) y += 6;
   }
 
   // ===== PAGAMENTO =====

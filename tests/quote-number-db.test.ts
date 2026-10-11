@@ -8,7 +8,9 @@ const allowed = url && new URL(url).hostname === '127.0.0.1' && new URL(url).por
 describe.skipIf(!allowed)('numeração real PostgreSQL em banco descartável', () => {
   it('mantém históricos, sequencia simultâneos, repete INSERT e preserva edição', async () => {
     if (!url || !allowed) return;
-    const db = new SQL(url, { max: 8 });
+    const parsed = new URL(url);
+    const connection = { adapter: 'postgres' as const, hostname: '127.0.0.1', port: 55439, username: parsed.username, database: parsed.pathname.slice(1), tls: false as const };
+    const db = new SQL({ ...connection, max: 8 });
     try {
       await db.unsafe(`DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated; END IF;
         IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role; END IF; END $$;
@@ -31,7 +33,7 @@ describe.skipIf(!allowed)('numeração real PostgreSQL em banco descartável', (
       await expect(db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000001',403)`).rejects.toThrow();
       const afterFailure = await db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000008','10000000-0000-0000-0000-000000000001',0) RETURNING numero`;
       expect(afterFailure[0].numero).toBe(405);
-      const fresh = new SQL(url);
+      const fresh = new SQL(connection);
       try {
         const persisted = await fresh`SELECT numero FROM public.quotes WHERE id=${ids[0]}`;
         expect(persisted[0].numero).toBe(rows[0][0].numero);
