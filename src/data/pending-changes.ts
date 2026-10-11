@@ -16,13 +16,20 @@ export function recoverPending(remote: DB, pending: PendingChanges): DB {
     // Each collection preserves its own domain type; assignments cannot mix collections.
     Object.assign(result, { [key]: [...changed, ...remote[key].filter(row => !changedIds.has(row.id) && !removed.has(row.id))] });
   }
+  // A journal may predate the INSERT acknowledgement. Replay the edited content,
+  // but never replace the database's confirmed document number with a placeholder.
+  const remoteNumbers = new Map(remote.orcamentos.map(row => [row.id, row.numero]));
+  result.orcamentos = result.orcamentos.map(row => {
+    const confirmed = remoteNumbers.get(row.id);
+    return confirmed !== undefined && confirmed > 0 ? { ...row, numero: confirmed } : row;
+  });
   result.empresa = { ...remote.empresa };
   for (const key of Object.keys(pending.snapshot.empresa) as Array<keyof DB['empresa']>) {
     if (JSON.stringify(pending.base.empresa[key]) !== JSON.stringify(pending.snapshot.empresa[key])) {
       Object.assign(result.empresa, { [key]: pending.snapshot.empresa[key] });
     }
   }
-  result.proximoOrcamento = Math.max(remote.proximoOrcamento, pending.snapshot.proximoOrcamento);
+  result.proximoOrcamento = Math.max(remote.proximoOrcamento, pending.snapshot.proximoOrcamento, ...result.orcamentos.map(row => row.numero + 1));
   result.proximoRelatorio = Math.max(remote.proximoRelatorio, pending.snapshot.proximoRelatorio);
   return result;
 }

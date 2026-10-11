@@ -6,6 +6,19 @@ function sample(): DB {
   return { clientes: [], servicos: [], orcamentos: [], agendamentos: [], lancamentos: [], relatorios: [], modelos: [], historico: [], proximoOrcamento: 1, proximoRelatorio: 1, empresa: { nome: 'GEP', cnpj: '', telefone: '', whatsapp: '', email: '', endereco: '', redesSociais: '', corPdf: '' } };
 }
 describe('recuperação após fechar antes de enviar', () => {
+  it('preserva número confirmado após fechar entre INSERT e confirmação local, sem perder edição pendente', () => {
+    const base = sample();
+    const quote = { id: 'quote-interrupted', numero: 0, clienteId: 'cliente', itens: [], descricaoServicos: 'Edição local pendente', validadeDias: 7, formasPagamento: ['pix'] as DB['orcamentos'][number]['formasPagamento'], status: 'rascunho' as const, criadoEm: '2026-10-11' };
+    const snapshot = { ...base, orcamentos: [quote] };
+    const remote = { ...base, orcamentos: [{ ...quote, numero: 405, descricaoServicos: 'Conteúdo salvo' }] };
+    const recovered = recoverPending(remote, { base, snapshot });
+    expect(recovered.orcamentos[0]?.numero).toBe(405);
+    expect(recovered.orcamentos[0]?.descricaoServicos).toBe('Edição local pendente');
+    expect(recovered.proximoOrcamento).toBe(406);
+    expect(recoverPending(remote, { base, snapshot: recovered })).toEqual(recovered);
+    const stalePositive = { ...snapshot, orcamentos: [{ ...quote, numero: 22 }] };
+    expect(recoverPending(remote, { base, snapshot: stalePositive }).orcamentos[0]?.numero).toBe(405);
+  });
   it('recupera cliente e orçamento locais sem substituir registros novos de outro dispositivo', () => {
     const base = sample();
     const snapshot = sample();
