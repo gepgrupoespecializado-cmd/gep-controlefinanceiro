@@ -13,11 +13,7 @@ const report: Relatorio = {
 
 // Small synthetic RGB images, independent of customer records or browser APIs.
 function image(width: number, height: number) {
-  const doc = new jsPDF();
-  doc.addImage({ imageData: { data: new Uint8ClampedArray(width * height * 4).fill(255), width, height }, format: 'RGBA', x: 0, y: 0, width, height });
-  const images = (doc.internal as unknown as { collections: { addImage_images: Record<string, { data: string }> } }).collections.addImage_images;
   // A minimal uncompressed BMP is accepted by jsPDF and retains the dimensions.
-  void images;
   const stride = Math.ceil(width * 3 / 4) * 4;
   const bytes = Buffer.alloc(54 + stride * height, 255);
   bytes.write('BM'); bytes.writeUInt32LE(bytes.length, 2); bytes.writeUInt32LE(54, 10);
