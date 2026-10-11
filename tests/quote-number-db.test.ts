@@ -30,7 +30,7 @@ describe.skipIf(!allowed)('numeração real PostgreSQL em banco descartável', (
       expect(edit[0].numero).toBe(rows[0][0].numero);
       const other = await db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000006','10000000-0000-0000-0000-000000000002',0) RETURNING numero`;
       expect(other[0].numero).toBe(8);
-      await expect(db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000001',403)`).rejects.toThrow();
+      await expect((async () => await db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000007','10000000-0000-0000-0000-000000000001',403)`)()).rejects.toThrow();
       const afterFailure = await db`INSERT INTO public.quotes(id,organization_id,numero) VALUES('00000000-0000-0000-0000-000000000008','10000000-0000-0000-0000-000000000001',0) RETURNING numero`;
       expect(afterFailure[0].numero).toBe(405);
       const fresh = new SQL(connection);
