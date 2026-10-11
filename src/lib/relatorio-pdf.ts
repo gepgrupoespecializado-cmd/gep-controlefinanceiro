@@ -2,7 +2,6 @@ import { jsPDF } from "jspdf";
 import type { Cliente, Empresa, Relatorio } from "./store";
 import { relatorioStatusLabel, formaPagamentoLabel, situacaoPagamentoLabel, pdfTemaPreset, resolvePdfTemaAtivo } from "./store";
 import { brl, dateBR, padNum } from "./format";
-import { drawPhotoCover } from "./pdf";
 
 function hexToRgb(hex: string): [number, number, number] {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -190,21 +189,35 @@ export function gerarRelatorioPDF(
   ];
   for (const g of fotosGrupos) {
     if (g.arr.length === 0) continue;
-    if (y > BOTTOM - 160) { doc.addPage(); y = M_TOP; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
-    doc.text(g.titulo, M, y); y += 20;
     const cellW = (W - M * 2 - 12) / 2;
-    const cellH = cellW * 0.72;
-    let col = 0;
-    for (const d of g.arr) {
-      if (y + cellH > BOTTOM) { doc.addPage(); y = M_TOP; col = 0; }
-      const x = M + col * (cellW + 12);
-      try { drawPhotoCover(doc, d, x, y, cellW, cellH); } catch {}
-      col++;
-      if (col >= 2) { col = 0; y += cellH + 8; }
+    const maxH = cellW * 0.72;
+    const photos = g.arr.flatMap(data => {
+      try {
+        const props = doc.getImageProperties(data);
+        const scale = Math.min(cellW / props.width, maxH / props.height);
+        return [{ data, width: props.width * scale, height: props.height * scale }];
+      } catch { return []; }
+    });
+    let heading = true;
+    for (let i = 0; i < photos.length; i += 2) {
+      const row = photos.slice(i, i + 2);
+      const rowH = Math.max(...row.map(photo => photo.height));
+      if (y + (heading ? 20 : 0) + rowH > BOTTOM) {
+        ensure(BOTTOM - y + 1);
+        heading = true;
+      }
+      if (heading) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle);
+        doc.text(g.titulo, M, y); y += 20;
+        heading = false;
+      }
+      row.forEach((photo, col) => {
+        const x = M + col * (cellW + 12) + (cellW - photo.width) / 2;
+        doc.addImage(photo.data, detectFmt(photo.data), x, y, photo.width, photo.height, undefined, "FAST");
+      });
+      y += rowH + 8;
     }
-    if (col !== 0) y += cellH + 8;
-    y += 6;
+    if (photos.length) y += 6;
   }
 
   // ===== PAGAMENTO =====
