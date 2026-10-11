@@ -10,7 +10,8 @@ describe.skipIf(!allowed)('numeração real PostgreSQL em banco descartável', (
     if (!url || !allowed) return;
     const db = new SQL(url, { max: 8 });
     try {
-      await db.unsafe(`CREATE ROLE authenticated; CREATE ROLE service_role;
+      await db.unsafe(`DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated; END IF;
+        IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role; END IF; END $$;
         CREATE FUNCTION public.is_org_member(uuid) RETURNS boolean LANGUAGE sql AS 'SELECT true';
         CREATE TABLE public.quotes (id uuid PRIMARY KEY, organization_id uuid NOT NULL, numero integer, observacoes text);
         INSERT INTO public.quotes VALUES ('00000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001',402,'histórico'),
