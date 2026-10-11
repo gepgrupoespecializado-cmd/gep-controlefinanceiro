@@ -1,5 +1,10 @@
 # Roadmap
 
+## Correção pontual do relatório e numeração
+- [x] Corrigir apenas proporção, alinhamento e paginação das fotos no relatório, preservando o restante do modelo.
+- [x] Preservar número confirmado na recuperação local e acrescentar unicidade por empresa; concorrência, edição, reconexão e históricos validados em PostgreSQL descartável, sem gravações reais.
+- [x] Validar PDFs com 0, 1, 3 e 15 fotos e descrição longa: 15 páginas inspecionadas, fotos sem cortes e pagamento sem sobreposição; 44 testes comuns e 1 integração aprovados.
+
 ## Numeração e fotos
 - [x] Atribuir números na inserção, preservar os oito números existentes e validar repetição/concorrência com testes isolados, sem gravar dados reais.
 - [x] Comprimir novas fotos e conferir miniaturas e PDF no navegador: 870 × 1305 px, 280.241 bytes, qualidade 0,7; fotos salvas preservadas.

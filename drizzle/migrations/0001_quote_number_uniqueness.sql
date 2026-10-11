@@ -1,0 +1,2 @@
+CREATE UNIQUE INDEX quotes_org_numero_uidx ON public.quotes (organization_id, numero);
+COMMENT ON INDEX public.quotes_org_numero_uidx IS 'Uma numeração de orçamento por empresa, preservando números históricos e o trigger transacional existente.';

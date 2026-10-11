@@ -8,6 +8,13 @@
       "when": 1791665010764,
       "tag": "0000_quote_number_on_insert",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791738232142,
+      "tag": "0001_quote_number_uniqueness",
+      "breakpoints": true
     }
   ]
 }
