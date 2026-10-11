@@ -1,5 +1,10 @@
 # Roadmap
 
+## Correção pontual do relatório e numeração
+- [ ] Corrigir apenas proporção, alinhamento e paginação das fotos no relatório, preservando o restante do modelo.
+- [ ] Investigar e corrigir a sequência persistente existente sem renumerar históricos; validar concorrência, edição e recarregamento.
+- [ ] Validar PDFs sem fotos, com uma e várias fotos, inclusive pagamento e múltiplas páginas.
+
 ## Numeração e fotos
 - [x] Atribuir números na inserção, preservar os oito números existentes e validar repetição/concorrência com testes isolados, sem gravar dados reais.
 - [x] Comprimir novas fotos e conferir miniaturas e PDF no navegador: 870 × 1305 px, 280.241 bytes, qualidade 0,7; fotos salvas preservadas.
