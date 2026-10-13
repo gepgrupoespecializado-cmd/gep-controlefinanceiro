@@ -71,7 +71,9 @@ export function InstallPrompt() {
   const dismiss = () => {
     try {
       localStorage.setItem(DISMISS_KEY, String(Date.now()));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     setShow(false);
     setIosOpen(false);
   };
@@ -100,7 +102,8 @@ export function InstallPrompt() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Adicionar à tela inicial?</p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Instale o Controle de Prestação de Serviços GEP para acesso rápido e uso offline.
+                Instale o Controle de Prestação de Serviços GEP para acesso rápido. É necessária
+                conexão para abrir os módulos.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" onClick={install}>

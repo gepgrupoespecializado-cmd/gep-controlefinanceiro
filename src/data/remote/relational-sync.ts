@@ -11,6 +11,7 @@
  * modo que rodar duas vezes não duplica nada.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { SyncScope } from "../cloud-sync";
 import type { DB } from "@/types/models";
 import {
   appointmentRow,
@@ -46,8 +47,12 @@ let orgAtual: string | null = null;
 let anterior: Estado = {};
 let rodando = false;
 let refazer = false;
+let generation = 0;
 
 export function resetRelacional() {
+  generation++;
+  rodando = false;
+  refazer = false;
   orgAtual = null;
   anterior = {};
 }
@@ -58,7 +63,13 @@ function indexar(rows: Row[]): Map<string, string> {
   return m;
 }
 
-async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true) {
+async function aplicar(
+  scope: SyncScope,
+  tabela: TableName,
+  rows: Row[],
+  apagarRemovidos = true,
+) {
+  scope.assertCurrent();
   const atual = indexar(rows);
   const antes = anterior[tabela] ?? new Map<string, string>();
 
@@ -69,16 +80,24 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true) {
   const removidos: string[] = [];
   for (const id of antes.keys()) if (!atual.has(id)) removidos.push(id);
 
+  type Result = PromiseLike<{ error: { message: string } | null }> & {
+    abortSignal: (signal: AbortSignal) => Result;
+  };
   const client = supabase as unknown as {
     from: (t: string) => {
-      upsert: (v: Row[], o?: { onConflict?: string }) => Promise<{ error: { message: string } | null }>;
-      delete: () => { in: (c: string, v: string[]) => Promise<{ error: { message: string } | null }> };
+      upsert: (v: Row[], o?: { onConflict?: string }) => Result;
+      delete: () => { in: (c: string, v: string[]) => Result };
     };
   };
 
   for (let i = 0; i < novos.length; i += 200) {
     const lote = novos.slice(i, i + 200);
-    const { error } = await client.from(tabela).upsert(lote, { onConflict: "id" });
+    scope.assertCurrent();
+    const { error } = await client
+      .from(tabela)
+      .upsert(lote, { onConflict: "id" })
+      .abortSignal(scope.signal);
+    scope.assertCurrent();
     if (error) {
       console.warn(`Não foi possível salvar ${tabela}.`, error.message);
       return false;
@@ -87,34 +106,71 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true) {
 
   if (apagarRemovidos && removidos.length) {
     for (let i = 0; i < removidos.length; i += 200) {
-      const { error } = await client.from(tabela).delete().in("id", removidos.slice(i, i + 200));
+      scope.assertCurrent();
+      const { error } = await client
+        .from(tabela)
+        .delete()
+        .in("id", removidos.slice(i, i + 200))
+        .abortSignal(scope.signal);
+      scope.assertCurrent();
       if (error) {
-        console.warn(`Não foi possível remover registros de ${tabela}.`, error.message);
+        console.warn(
+          `Não foi possível remover registros de ${tabela}.`,
+          error.message,
+        );
         return false;
       }
     }
   }
 
+  scope.assertCurrent();
   anterior[tabela] = atual;
   return true;
 }
 
-async function salvarConfiguracoes(org: string, db: DB) {
+async function salvarConfiguracoes(org: string, db: DB, scope: SyncScope) {
+  scope.assertCurrent();
   const { error } = await supabase
     .from("organization_settings")
-    .upsert(settingsRow(org, db.empresa) as never, { onConflict: "organization_id" });
-  if (error) console.warn("Não foi possível salvar as configurações da empresa.", error.message);
+    .upsert(settingsRow(org, db.empresa) as never, {
+      onConflict: "organization_id",
+    })
+    .abortSignal(scope.signal);
+  scope.assertCurrent();
+  if (error)
+    console.warn(
+      "Não foi possível salvar as configurações da empresa.",
+      error.message,
+    );
 }
 
 /**
  * Espelha o estado atual nas tabelas relacionais.
  * Chamadas concorrentes são serializadas: a última vence.
  */
-export async function sincronizarRelacional(org: string, db: DB, userId: string | null) {
+export async function sincronizarRelacional(
+  org: string,
+  db: DB,
+  userId: string | null,
+  parentScope: SyncScope,
+) {
+  parentScope.assertCurrent();
   if (orgAtual !== org) {
+    resetRelacional();
     orgAtual = org;
     anterior = {};
   }
+  const started = generation;
+  const isCurrent = () => started === generation && parentScope.isCurrent();
+  const scope: SyncScope = {
+    ...parentScope,
+    isCurrent,
+    assertCurrent: () => {
+      parentScope.assertCurrent();
+      if (started !== generation)
+        throw new Error("Sincronização relacional substituída.");
+    },
+  };
   if (rodando) {
     refazer = true;
     return;
@@ -124,31 +180,72 @@ export async function sincronizarRelacional(org: string, db: DB, userId: string 
     do {
       refazer = false;
       // Ordem: cadastros base -> documentos -> dependentes.
-      await aplicar("customers", (db.clientes ?? []).map((c) => customerRow(org, c)));
-      await aplicar("services", (db.servicos ?? []).map((s) => serviceRow(org, s)));
-      await aplicar("quotes", (db.orcamentos ?? []).map((o) => quoteRow(org, o)));
-      await aplicar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
-      await aplicar("appointments", (db.agendamentos ?? []).map((a) => appointmentRow(org, a)));
-      await aplicar("service_reports", (db.relatorios ?? []).map((r) => reportRow(org, r)));
-      await aplicar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)));
       await aplicar(
+        scope,
+        "customers",
+        (db.clientes ?? []).map((c) => customerRow(org, c)),
+      );
+      await aplicar(
+        scope,
+        "services",
+        (db.servicos ?? []).map((s) => serviceRow(org, s)),
+      );
+      await aplicar(
+        scope,
+        "quotes",
+        (db.orcamentos ?? []).map((o) => quoteRow(org, o)),
+      );
+      await aplicar(
+        scope,
+        "quote_items",
+        (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)),
+      );
+      await aplicar(
+        scope,
+        "appointments",
+        (db.agendamentos ?? []).map((a) => appointmentRow(org, a)),
+      );
+      await aplicar(
+        scope,
+        "service_reports",
+        (db.relatorios ?? []).map((r) => reportRow(org, r)),
+      );
+      await aplicar(
+        scope,
+        "report_photos",
+        (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)),
+      );
+      await aplicar(
+        scope,
         "financial_transactions",
         (db.lancamentos ?? []).map((l) => transactionRow(org, l)),
       );
-      await aplicar("description_templates", (db.modelos ?? []).map((m) => templateRow(org, m)));
+      await aplicar(
+        scope,
+        "description_templates",
+        (db.modelos ?? []).map((m) => templateRow(org, m)),
+      );
       // Auditoria nunca é apagada: só acrescenta.
-      await aplicar("audit_logs", (db.historico ?? []).map((h) => auditRow(org, h, userId)), false);
-      await salvarConfiguracoes(org, db);
+      await aplicar(
+        scope,
+        "audit_logs",
+        (db.historico ?? []).map((h) => auditRow(org, h, userId)),
+        false,
+      );
+      await salvarConfiguracoes(org, db, scope);
+      scope.assertCurrent();
     } while (refazer);
   } catch (error) {
-    console.warn("Falha ao espelhar dados nas tabelas.", error);
+    if (scope.isCurrent())
+      console.warn("Falha ao espelhar dados nas tabelas.", error);
   } finally {
-    rodando = false;
+    if (scope.isCurrent()) rodando = false;
   }
 }
 
 /** Contagem por tabela — usada para conferir a cópia inicial. */
-export async function contarRelacional(org: string) {
+export async function contarRelacional(org: string, scope: SyncScope) {
+  scope.assertCurrent();
   const tabelas: TableName[] = [
     "customers",
     "services",
@@ -163,16 +260,23 @@ export async function contarRelacional(org: string) {
   ];
   const saida: Record<string, number> = {};
   for (const t of tabelas) {
-    const { count } = await (supabase as unknown as {
-      from: (n: string) => {
-        select: (c: string, o: { count: "exact"; head: true }) => {
-          eq: (c: string, v: string) => Promise<{ count: number | null }>;
+    scope.assertCurrent();
+    const { count } = await (
+      supabase as unknown as {
+        from: (n: string) => {
+          select: (
+            c: string,
+            o: { count: "exact"; head: true },
+          ) => {
+            eq: (c: string, v: string) => Promise<{ count: number | null }>;
+          };
         };
-      };
-    })
+      }
+    )
       .from(t)
       .select("id", { count: "exact", head: true })
       .eq("organization_id", org);
+    scope.assertCurrent();
     saida[t] = count ?? 0;
   }
   return saida;

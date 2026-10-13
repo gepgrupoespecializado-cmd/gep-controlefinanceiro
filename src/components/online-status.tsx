@@ -27,7 +27,11 @@ export function OnlineStatus() {
           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
           : "bg-red-500/15 text-red-600 dark:text-red-400"
       }`}
-      title={online ? "Conectado — dados salvos localmente" : "Offline — app continua funcionando"}
+      title={
+        online
+          ? "Conectado — dados salvos localmente"
+          : "Sem conexão — reconecte-se para abrir os módulos"
+      }
     >
       {online ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
       {online ? "Online" : "Offline"}

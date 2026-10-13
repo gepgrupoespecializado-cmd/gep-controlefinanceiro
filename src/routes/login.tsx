@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -22,7 +22,8 @@ export const Route = createFileRoute("/login")({
       { title: "Entrar — GEP Controle Financeiro" },
       {
         name: "description",
-        content: "Acesse sua conta do GEP Controle Financeiro para gerenciar clientes, orçamentos, agenda e financeiro.",
+        content:
+          "Acesse sua conta do GEP Controle Financeiro para gerenciar clientes, orçamentos, agenda e financeiro.",
       },
       { property: "og:title", content: "Entrar — GEP Controle Financeiro" },
       { property: "og:description", content: "Acesso à sua conta do GEP Controle Financeiro." },
@@ -34,7 +35,6 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [nome, setNome] = useState("");
@@ -49,7 +49,7 @@ function LoginPage() {
       toast.error(mensagemAmigavel(error.message));
       return;
     }
-    void navigate({ to: "/" });
+    // Root auth observer owns the navigation after SIGNED_IN.
   }
 
   async function criarConta(e: React.FormEvent) {
@@ -66,7 +66,7 @@ function LoginPage() {
       return;
     }
     if (data.session) {
-      void navigate({ to: "/" });
+      // Root auth observer owns the navigation after SIGNED_IN.
       return;
     }
     toast.success("Conta criada. Confirme o e-mail enviado para concluir o acesso.");
@@ -96,7 +96,7 @@ function LoginPage() {
       return;
     }
     if (result.redirected) return;
-    void navigate({ to: "/" });
+    // Root auth observer owns the navigation after SIGNED_IN.
   }
 
   return (
@@ -123,11 +123,23 @@ function LoginPage() {
               <form className="space-y-3 pt-3" onSubmit={entrar}>
                 <div className="space-y-1.5">
                   <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="senha">Senha</Label>
-                  <Input id="senha" type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
+                  <Input
+                    id="senha"
+                    type="password"
+                    required
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                  />
                 </div>
                 <Button className="w-full" type="submit" disabled={carregando}>
                   {carregando ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar"}
@@ -146,11 +158,22 @@ function LoginPage() {
               <form className="space-y-3 pt-3" onSubmit={criarConta}>
                 <div className="space-y-1.5">
                   <Label htmlFor="nome">Seu nome</Label>
-                  <Input id="nome" required value={nome} onChange={(e) => setNome(e.target.value)} />
+                  <Input
+                    id="nome"
+                    required
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email-novo">E-mail</Label>
-                  <Input id="email-novo" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input
+                    id="email-novo"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="senha-nova">Senha</Label>
@@ -175,14 +198,25 @@ function LoginPage() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          <Button variant="outline" className="w-full" onClick={entrarComGoogle} disabled={carregando}>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={entrarComGoogle}
+            disabled={carregando}
+          >
             Continuar com Google
           </Button>
 
           <p className="text-center text-[11px] text-muted-foreground">
             Ao continuar você concorda com os{" "}
-            <Link to="/termos-de-uso" className="underline underline-offset-2">termos de uso</Link> e a{" "}
-            <Link to="/politica-de-privacidade" className="underline underline-offset-2">política de privacidade</Link>.
+            <Link to="/termos-de-uso" className="underline underline-offset-2">
+              termos de uso
+            </Link>{" "}
+            e a{" "}
+            <Link to="/politica-de-privacidade" className="underline underline-offset-2">
+              política de privacidade
+            </Link>
+            .
           </p>
         </CardContent>
       </Card>

@@ -27,6 +27,7 @@ import {
 import { useDB } from "@/lib/store";
 import { supabase } from "@/integrations/supabase/client";
 import { stopOrgSync } from "@/data/cloud-sync";
+import { cleanPwaSession } from "@/lib/pwa";
 
 const items = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -52,9 +53,25 @@ export function AppSidebar() {
   const data = useDB();
 
   async function sair() {
-    await stopOrgSync();
-    await supabase.auth.signOut();
-    window.location.assign("/login");
+    // Invalidate locally and across tabs before cache cleanup or HTTP sign-out.
+    stopOrgSync();
+    try {
+      await cleanPwaSession();
+      const { error } = await supabase.auth.signOut();
+      if (error)
+        console.warn(
+          "Logout remoto não confirmado; sessão local bloqueada.",
+          error,
+        );
+    } catch (error) {
+      console.warn(
+        "Logout remoto não confirmado; sessão local bloqueada.",
+        error,
+      );
+    } finally {
+      await cleanPwaSession();
+      window.location.assign("/login");
+    }
   }
 
   function handleNavigate() {
@@ -66,7 +83,11 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-3">
           {data.empresa.logoDataUrl ? (
-            <img src={data.empresa.logoDataUrl} alt="Logo" className="h-9 w-9 shrink-0 rounded-lg object-contain bg-white border" />
+            <img
+              src={data.empresa.logoDataUrl}
+              alt="Logo"
+              className="h-9 w-9 shrink-0 rounded-lg object-contain bg-white border"
+            />
           ) : (
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-[var(--primary-glow)] text-primary-foreground font-black">
               G
@@ -74,8 +95,12 @@ export function AppSidebar() {
           )}
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold leading-tight">Controle de Prestação</p>
-              <p className="truncate text-[10px] text-sidebar-foreground/60">de Serviços GEP</p>
+              <p className="truncate text-sm font-bold leading-tight">
+                Controle de Prestação
+              </p>
+              <p className="truncate text-[10px] text-sidebar-foreground/60">
+                de Serviços GEP
+              </p>
             </div>
           )}
         </div>
@@ -93,7 +118,11 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link to={item.url} className="flex items-center gap-2" onClick={handleNavigate}>
+                      <Link
+                        to={item.url}
+                        className="flex items-center gap-2"
+                        onClick={handleNavigate}
+                      >
                         <item.icon className="h-4 w-4 shrink-0" />
                         {!collapsed && <span>{item.title}</span>}
                       </Link>
@@ -114,7 +143,11 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild isActive={active}>
-                      <Link to={item.url} className="flex items-center gap-2" onClick={handleNavigate}>
+                      <Link
+                        to={item.url}
+                        className="flex items-center gap-2"
+                        onClick={handleNavigate}
+                      >
                         <item.icon className="h-4 w-4 shrink-0" />
                         {!collapsed && <span>{item.title}</span>}
                       </Link>
@@ -129,7 +162,10 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={sair} className="flex items-center gap-2">
+                <SidebarMenuButton
+                  onClick={sair}
+                  className="flex items-center gap-2"
+                >
                   <LogOut className="h-4 w-4 shrink-0" />
                   {!collapsed && <span>Sair</span>}
                 </SidebarMenuButton>

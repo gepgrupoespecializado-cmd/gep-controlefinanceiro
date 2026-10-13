@@ -1,62 +1,135 @@
-const CACHE_NAME = "gep-servicos-shell-v1";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icon-512.png"];
+const POLICY_VERSION = 2;
+const CACHE_NAME = "gep-static-v2";
+const PUBLIC_FILES = new Map([
+  ["/manifest.webmanifest", ["application/manifest+json", "application/json"]],
+  ["/icon-512.png", ["image/png"]],
+]);
 
-function offlineShell() {
-  return new Response(
-    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Controle de Prestação de Serviços GEP</title><style>body{font:15px/1.5 system-ui,-apple-system,sans-serif;margin:0;min-height:100vh;display:grid;place-items:center;background:#fafafa;color:#111;padding:24px}.card{max-width:520px;width:100%;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:24px;box-shadow:0 10px 30px #0001}h1{margin:0 0 8px;font-size:22px}p{margin:0 0 16px;color:#4b5563}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}a{display:block;text-align:center;text-decoration:none;color:#fff;background:#0b1b3d;border-radius:10px;padding:10px}</style></head><body><div class="card"><h1>Modo offline ativo</h1><p>Não foi possível atualizar a tela agora, mas você ainda pode acessar as áreas principais quando o cache local estiver disponível.</p><div class="grid"><a href="/">Home</a><a href="/clientes">Clientes</a><a href="/orcamentos">Orçamentos</a><a href="/financeiro">Financeiro</a></div></div></body></html>`,
-    { headers: { "content-type": "text/html; charset=utf-8" } },
+function isOldGepCache(name) {
+  return name !== CACHE_NAME && /^(gep-servicos-shell-v\d+|gep-static-v\d+)$/.test(name);
+}
+
+async function cleanLegacyCaches() {
+  const names = await caches.keys();
+  await Promise.all(names.filter(isOldGepCache).map((name) => caches.delete(name)));
+}
+
+function publicRequest(request) {
+  const url = new URL(request.url);
+  return (
+    request.method === "GET" &&
+    request.mode !== "navigate" &&
+    url.origin === self.location.origin &&
+    !url.search &&
+    PUBLIC_FILES.has(url.pathname) &&
+    !["authorization", "apikey", "range"].some((header) => request.headers.has(header))
   );
 }
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => undefined));
-  self.skipWaiting();
-});
+function publicResponse(response, url) {
+  const type = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  return (
+    response.status === 200 &&
+    response.type === "basic" &&
+    !response.redirected &&
+    response.url === url.href &&
+    PUBLIC_FILES.get(url.pathname).includes(type) &&
+    !/\b(private|no-store|no-cache)\b/i.test(response.headers.get("cache-control") || "") &&
+    !response.headers.has("vary") &&
+    !response.headers.has("set-cookie")
+  );
+}
 
-self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
+function offlineShell() {
+  return new Response(
+    '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sem conexão</title></head><body><main><h1>Sem conexão</h1><p>Conecte-se à internet e tente novamente.</p></main></body></html>',
+    {
+      status: 503,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+    },
+  );
+}
+
+async function staticFile(request) {
+  const url = new URL(request.url);
+  let cache;
+  try {
+    cache = await caches.open(CACHE_NAME);
+    const hit = await cache.match(url.href);
+    if (hit && publicResponse(hit, url)) return hit;
+    if (hit) await cache.delete(url.href);
+  } catch {
+    /* Storage unavailable: use the network only. */
   }
+  // Never populate the public cache from a credentialed request.
+  const response = await fetch(url.href, {
+    credentials: "omit",
+    cache: "no-store",
+    redirect: "error",
+  });
+  if (cache && publicResponse(response, url)) {
+    try {
+      await cache.put(url.href, response.clone());
+    } catch {
+      /* Network response remains usable. */
+    }
+  }
+  return response;
+}
+
+self.addEventListener("install", (event) => {
+  // Security update: replace the unsafe worker without forcing page reloads.
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      try {
+        await cleanLegacyCaches();
+      } catch {
+        /* Retried by the policy handshake. */
+      }
+      await self.clients.claim();
+    })(),
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (!["GEP_PWA_POLICY", "GEP_PWA_CLEAN"].includes(event.data?.type)) return;
+  event.waitUntil(
+    (async () => {
+      try {
+        await cleanLegacyCaches();
+        event.ports[0]?.postMessage({ policy: POLICY_VERSION, clean: true });
+      } catch {
+        event.ports[0]?.postMessage({ policy: POLICY_VERSION, clean: false });
+      }
+    })(),
   );
 });
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
-
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => undefined);
-          return response;
-        })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match("/")).then((cached) => cached || offlineShell())),
+  if (!/^https?:$/.test(new URL(request.url).protocol)) return;
+  // Retry cleanup: an old worker may have completed an in-flight write.
+  event.waitUntil(cleanLegacyCaches().catch(() => undefined));
+  if (publicRequest(request)) {
+    const response = staticFile(request);
+    event.respondWith(response);
+    event.waitUntil(
+      response.then(
+        () => undefined,
+        () => undefined,
+      ),
     );
     return;
   }
-
+  // Auth, APIs, navigation and every non-allowlisted resource never touch cache.
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => undefined);
-          }
-          return response;
-        })
-        .catch(() => cached || new Response("", { status: 504, statusText: "Offline" }));
+    fetch(request, { cache: "no-store" }).catch((error) => {
+      if (request.mode === "navigate") return offlineShell();
+      throw error;
     }),
   );
 });
