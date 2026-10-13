@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { stripTypeScriptTypes } from "node:module";
+import * as nodeModule from "node:module";
 import { test } from "node:test";
 import vm from "node:vm";
+
+const stripTypeScriptTypes =
+  nodeModule.stripTypeScriptTypes ??
+  ((code) => {
+    if (typeof Bun !== "undefined" && Bun.Transpiler) {
+      return new Bun.Transpiler({ loader: "ts" }).transformSync(code);
+    }
+    return code;
+  });
 
 const origin = "https://gep.example";
 const swSource = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");

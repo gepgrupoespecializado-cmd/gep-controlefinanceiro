@@ -4,13 +4,17 @@ export const brl = (n: number) =>
     currency: "BRL",
   });
 
-export const dateBR = (iso: string | Date) => {
+export const dateBR = (iso?: string | Date | null) => {
+  if (!iso) return "—";
   const d = typeof iso === "string" ? new Date(iso) : iso;
+  if (!d || isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("pt-BR");
 };
 
-export const dateTimeBR = (iso: string | Date) => {
+export const dateTimeBR = (iso?: string | Date | null) => {
+  if (!iso) return "—";
   const d = typeof iso === "string" ? new Date(iso) : iso;
+  if (!d || isNaN(d.getTime())) return "—";
   return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 };
 
