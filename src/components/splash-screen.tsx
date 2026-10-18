@@ -9,7 +9,9 @@ export function SplashScreen() {
     try {
       if (sessionStorage.getItem(SESSION_KEY)) return;
       sessionStorage.setItem(SESSION_KEY, "1");
-    } catch {}
+    } catch {
+      /* ignore sessionStorage error */
+    }
     setVisible(true);
     const t = window.setTimeout(() => setVisible(false), 650);
     return () => window.clearTimeout(t);

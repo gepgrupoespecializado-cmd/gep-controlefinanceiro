@@ -30,7 +30,9 @@ function imgSize(doc: jsPDF, dataUrl: string): { w: number; h: number } {
   try {
     const p = doc.getImageProperties(dataUrl);
     if (p.width > 0 && p.height > 0) return { w: p.width, h: p.height };
-  } catch {}
+  } catch {
+    /* fallback dimensões */
+  }
   return { w: 1, h: 1 };
 }
 
@@ -40,7 +42,11 @@ function drawImageContain(doc: jsPDF, dataUrl: string, x: number, y: number, box
   const scale = Math.min(boxW / w, boxH / h);
   const dw = w * scale, dh = h * scale;
   const dx = x + (boxW - dw) / 2, dy = y + (boxH - dh) / 2;
-  try { doc.addImage(dataUrl, detectFmt(dataUrl), dx, dy, dw, dh, undefined, compression); } catch {}
+  try {
+    doc.addImage(dataUrl, detectFmt(dataUrl), dx, dy, dw, dh, undefined, compression);
+  } catch {
+    /* ignore image drawing error */
+  }
   return { x: dx, y: dy, w: dw, h: dh };
 }
 
@@ -58,7 +64,9 @@ function aplicarMarcaDagua(doc: jsPDF, empresa: Empresa) {
     anyDoc.setGState(new anyDoc.GState({ opacity: 0.06 }));
     drawImageContain(doc, empresa.logoDataUrl, (W - size) / 2, (H - size) / 2, size, size, "FAST");
     anyDoc.setGState(new anyDoc.GState({ opacity: 1 }));
-  } catch {}
+  } catch {
+    /* ignore watermark error */
+  }
 }
 
 /**

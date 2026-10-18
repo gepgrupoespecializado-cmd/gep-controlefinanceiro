@@ -15,7 +15,21 @@ import { brl, dateBR, padNum } from "@/lib/format";
 // pré-visualização funcional em Android, iOS, Web e PWA (o <iframe> com
 // blob PDF não abre inline em navegadores móveis).
 async function renderPdfPreview(blob: Blob, container: HTMLDivElement) {
-  const pdfjs: any = await import("pdfjs-dist");
+  const pdfjs = (await import("pdfjs-dist")) as unknown as {
+    version: string;
+    GlobalWorkerOptions: { workerSrc: string };
+    getDocument: (src: { data: ArrayBuffer }) => {
+      promise: Promise<{
+        numPages: number;
+        getPage: (n: number) => Promise<{
+          getViewport: (opts: { scale: number }) => { width: number; height: number };
+          render: (ctx: { canvasContext: CanvasRenderingContext2D; viewport: unknown }) => {
+            promise: Promise<void>;
+          };
+        }>;
+      }>;
+    };
+  };
   // Worker via CDN (compatível com Vite/edge sem custom bundling)
   const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;

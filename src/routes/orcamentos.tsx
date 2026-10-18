@@ -95,7 +95,9 @@ function OrcamentosPage() {
         if (cliHandoff) setClienteId(cliHandoff);
         setOpen(true);
         toast.success("Valor da calculadora pronto — selecione o cliente para finalizar");
-      } catch {}
+      } catch {
+        /* ignora rascunho inválido */
+      }
       sessionStorage.removeItem("gep_precificacao_draft");
       sessionStorage.removeItem("gep_novo_atendimento_cliente");
       return;
@@ -107,7 +109,6 @@ function OrcamentosPage() {
       sessionStorage.removeItem("gep_novo_atendimento_cliente");
       toast.success("Cliente selecionado — monte o orçamento");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function resetForm() {
