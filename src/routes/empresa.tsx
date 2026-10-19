@@ -65,17 +65,39 @@ function EmpresaPage() {
       toast.error("Informe o nome da empresa.");
       return;
     }
+    const nomeOriginal = data.empresa.nome?.trim() ?? "";
+    const alterouNome = nome !== nomeOriginal;
     db.updateEmpresa({ ...form, nome });
     try {
-      const { orgId } = await loadOrgContext();
+      const { orgId, role } = await loadOrgContext();
       if (!orgId) throw new Error("Empresa não encontrada");
-      const { data: organization, error } = await supabase.from("organizations")
-        .update({ name: nome }).eq("id", orgId).select("id").single();
-      if (error || !organization) throw error ?? new Error("Nome não atualizado");
+
+      let nomeSemPermissao = false;
+      if (alterouNome && role !== "owner") {
+        const dadosSemRenomear = { ...form, nome: nomeOriginal };
+        db.updateEmpresa(dadosSemRenomear);
+        setForm(dadosSemRenomear);
+        nomeSemPermissao = true;
+      } else if (alterouNome) {
+        const { data: organization, error } = await supabase
+          .from("organizations")
+          .update({ name: nome })
+          .eq("id", orgId)
+          .select("id")
+          .single();
+        if (error || !organization) throw error ?? new Error("Nome não atualizado");
+      }
+
       await flush();
-      toast.success("Dados da empresa salvos");
+      if (nomeSemPermissao) {
+        toast.warning("As demais alterações foram salvas, mas só o proprietário pode alterar o nome da organização.");
+      } else {
+        toast.success("Dados da empresa salvos");
+      }
     } catch {
-      toast.error("Não foi possível confirmar o salvamento. Tente novamente.");
+      toast.error("Não foi possível confirmar o salvamento na nuvem.", {
+        description: "As alterações permanecem neste aparelho. Verifique a conexão e tente novamente.",
+      });
     }
   }
 

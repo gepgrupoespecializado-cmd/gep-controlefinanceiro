@@ -451,7 +451,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="grid gap-1.5">
                 <Label className="text-xs">Data do recebimento</Label>
                 <Input type="date" value={dataPag} onChange={(e) => setDataPag(e.target.value)} />
