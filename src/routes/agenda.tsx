@@ -174,11 +174,11 @@ function AgendaPage() {
       <Card key={a.id} className="overflow-hidden">
         <div className={`h-1 ${dotClass}`} />
         <CardContent className="p-4">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} title={cli ? freqLabel[cli.frequencia] : ""} />
-                <p className="truncate font-semibold">{a.titulo}</p>
+                <p className="min-w-0 max-w-full truncate font-semibold">{a.titulo}</p>
                 <span className={`h-2 w-2 rounded-full ${statusColor[a.status]}`} title={statusAgendaLabel[a.status]} />
                 <Badge variant="outline" className="text-[10px] h-5">{statusAgendaLabel[a.status]}</Badge>
                 {cli && <Badge variant="outline" className="text-[10px] h-5">{freqLabel[cli.frequencia]}</Badge>}
@@ -204,7 +204,7 @@ function AgendaPage() {
                 </Button>
               )}
             </div>
-            <div className="flex items-start gap-1">
+            <div className="flex w-full flex-wrap items-center justify-between gap-1 sm:w-auto sm:flex-nowrap sm:justify-start">
               <Select value={a.status} onValueChange={(v) => mudarStatus(a, v as AgendaStatus)}>
                 <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -401,15 +401,15 @@ function AgendaPage() {
               </Select>
             </div>
             <div className="grid gap-1.5"><Label className="text-xs">Título *</Label><Input value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="grid gap-1.5"><Label className="text-xs">Data</Label><Input type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
-              <div className="grid gap-1.5"><Label className="text-xs">Início</Label><Input type="time" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></div>
-              <div className="grid gap-1.5"><Label className="text-xs">Término</Label><Input type="time" value={form.horaFim} onChange={(e) => setForm({ ...form, horaFim: e.target.value })} /></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid gap-1.5"><Label className="text-xs">Data</Label><Input type="date" className="min-w-0 w-full" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label className="text-xs">Início</Label><Input type="time" className="min-w-0 w-full" value={form.hora} onChange={(e) => setForm({ ...form, hora: e.target.value })} /></div>
+              <div className="grid gap-1.5"><Label className="text-xs">Término</Label><Input type="time" className="min-w-0 w-full" value={form.horaFim} onChange={(e) => setForm({ ...form, horaFim: e.target.value })} /></div>
             </div>
             <div className="grid gap-1.5"><Label className="text-xs">Responsável</Label><Input value={form.responsavel} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} placeholder="Técnico responsável" /></div>
             <div className="grid gap-1.5"><Label className="text-xs">Endereço do atendimento</Label><Input value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })} placeholder="Será preenchido com o endereço do cliente" /></div>
             <div className="grid gap-1.5"><Label className="text-xs">Observações</Label><Textarea value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid gap-1.5">
                 <Label className="text-xs">Recorrência (retorno automático)</Label>
                 <Select value={form.recorrencia} onValueChange={(v) => setForm({ ...form, recorrencia: v as Recorrencia })}>

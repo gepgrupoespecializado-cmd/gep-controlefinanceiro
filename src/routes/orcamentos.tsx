@@ -19,7 +19,7 @@ import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
 import { ListaEditavel } from "@/components/lista-editavel";
 import {
-  db, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel,
+  db, getDBSnapshot, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel,
   UNIDADES_ORCAMENTO, VALIDADE_OPCOES, CONDICOES_PADRAO, NAO_INCLUSO_SUGESTOES,
   DIFERENCIAL_PADRAO, ESCOPO_MODELOS,
   type Orcamento, type OrcamentoItem, type OrcamentoStatus, type FormaPagamento,
@@ -28,6 +28,7 @@ import { brl, dateBR, quoteNumber as padNum } from "@/lib/format";
 import { compressPhoto } from "@/lib/photo";
 import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/pdf";
 import { toast } from "sonner";
+import { flush } from "@/data/cloud-sync";
 
 export const Route = createFileRoute("/orcamentos")({
   head: () => ({ meta: [
@@ -202,9 +203,26 @@ function OrcamentosPage() {
   const total = Math.max(0, subtotal - (desconto || 0));
 
   async function pdf(orcId: string, action: "view" | "open" | "download" | "share" | "whatsapp") {
-    const o = data.orcamentos.find((x) => x.id === orcId);
+    let o = data.orcamentos.find((x) => x.id === orcId);
     if (!o) return;
-    if (o.numero <= 0) { toast.error("Aguarde o salvamento na nuvem para gerar o PDF."); return; }
+    if (o.numero <= 0) {
+      try {
+        await flush();
+      } catch {
+        toast.error("Não foi possível confirmar o salvamento do orçamento.", {
+          description: "O orçamento continua salvo neste aparelho. Verifique a conexão e tente novamente.",
+        });
+        return;
+      }
+      const atualizado = getDBSnapshot().orcamentos.find((x) => x.id === orcId);
+      if (!atualizado || atualizado.numero <= 0) {
+        toast.error("Ainda não foi possível confirmar o número do orçamento.", {
+          description: "Aguarde a sincronização e tente gerar o PDF novamente.",
+        });
+        return;
+      }
+      o = atualizado;
+    }
     const faltas: string[] = [];
     if (!data.empresa.nome) faltas.push("Nome da empresa");
     if (!o.escopo?.length && !o.descricaoServicos?.trim()) faltas.push("Descrição do serviço");
