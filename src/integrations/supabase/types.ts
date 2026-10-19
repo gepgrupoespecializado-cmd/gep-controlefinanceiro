@@ -131,10 +131,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "appointments_customer_id_fkey"
-            columns: ["customer_id"]
+            columns: ["organization_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "appointments_organization_id_fkey"
@@ -145,24 +145,24 @@ export type Database = {
           },
           {
             foreignKeyName: "appointments_quote_id_fkey"
-            columns: ["quote_id"]
+            columns: ["organization_id", "quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "appointments_report_fkey"
-            columns: ["report_id"]
+            columns: ["organization_id", "report_id"]
             isOneToOne: false
             referencedRelation: "service_reports"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "appointments_service_id_fkey"
-            columns: ["service_id"]
+            columns: ["organization_id", "service_id"]
             isOneToOne: false
             referencedRelation: "services"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -420,17 +420,17 @@ export type Database = {
           },
           {
             foreignKeyName: "financial_transactions_origin_appointment_id_fkey"
-            columns: ["origin_appointment_id"]
+            columns: ["organization_id", "origin_appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "financial_transactions_origin_quote_id_fkey"
-            columns: ["origin_quote_id"]
+            columns: ["organization_id", "origin_quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -678,17 +678,17 @@ export type Database = {
           },
           {
             foreignKeyName: "quote_items_quote_id_fkey"
-            columns: ["quote_id"]
+            columns: ["organization_id", "quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quote_items_service_id_fkey"
-            columns: ["service_id"]
+            columns: ["organization_id", "service_id"]
             isOneToOne: false
             referencedRelation: "services"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -780,10 +780,10 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "quotes_customer_id_fkey"
-            columns: ["customer_id"]
+            columns: ["organization_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quotes_organization_id_fkey"
@@ -832,10 +832,10 @@ export type Database = {
           },
           {
             foreignKeyName: "report_photos_report_id_fkey"
-            columns: ["report_id"]
+            columns: ["organization_id", "report_id"]
             isOneToOne: false
             referencedRelation: "service_reports"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -951,17 +951,17 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "service_reports_appointment_id_fkey"
-            columns: ["appointment_id"]
+            columns: ["organization_id", "appointment_id"]
             isOneToOne: false
             referencedRelation: "appointments"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "service_reports_customer_id_fkey"
-            columns: ["customer_id"]
+            columns: ["organization_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "service_reports_organization_id_fkey"
@@ -972,10 +972,10 @@ export type Database = {
           },
           {
             foreignKeyName: "service_reports_quote_id_fkey"
-            columns: ["quote_id"]
+            columns: ["organization_id", "quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
