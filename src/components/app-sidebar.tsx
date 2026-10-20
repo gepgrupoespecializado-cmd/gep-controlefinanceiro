@@ -1,4 +1,7 @@
 import { useCompanyName } from "@/hooks/use-company-name";
+import { useQuery } from "@tanstack/react-query";
+import { ACCESS_STATE_QUERY_KEY } from "@/lib/access-control";
+import { getMyAccessState } from "@/lib/admin-access.functions";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -53,6 +56,15 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const data = useDB();
   const companyName = useCompanyName();
+  const accessQuery = useQuery({
+    queryKey: ACCESS_STATE_QUERY_KEY,
+    queryFn: () => getMyAccessState(),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const visibleItems = accessQuery.data?.isAdmin
+    ? [...items, { title: "Acessos", url: "/admin/acessos", icon: ShieldCheck }]
+    : items;
 
   async function sair() {
     try { await stopOrgSync(); }
@@ -89,7 +101,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const active =
                   item.url === "/"
                     ? pathname === "/"

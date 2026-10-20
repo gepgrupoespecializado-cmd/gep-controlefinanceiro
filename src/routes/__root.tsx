@@ -20,6 +20,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { OnlineStatus } from "@/components/online-status";
 import { installGlobalErrorHandlers, logAppError } from "@/lib/safe-error";
 import { getSessionUser, isPublicRoute } from "@/lib/auth";
+import { ACCESS_STATE_QUERY_KEY, isWaitingForAccess, type MyAccessState } from "@/lib/access-control";
+import { bootstrapOwnerAccess, getMyAccessState } from "@/lib/admin-access.functions";
 import { initOrgSync, loadOrgContext } from "@/data/cloud-sync";
 import { supabase } from "@/integrations/supabase/client";
 import { registerServiceWorker } from "@/lib/pwa";
@@ -92,8 +94,8 @@ function SafeHomeFallback({ onRetry }: { onRetry: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   ssr: false,
-  beforeLoad: async ({ location }) => {
-if (typeof window === "undefined") return;
+  beforeLoad: async ({ location, context }) => {
+    if (typeof window === "undefined") return;
 
     const user = await getSessionUser();
     const publica = isPublicRoute(location.pathname);
@@ -102,8 +104,31 @@ if (typeof window === "undefined") return;
       if (!publica) throw redirect({ to: "/login" });
       return;
     }
-    if (location.pathname === "/login") {
-      throw redirect({ to: "/" });
+    if (location.pathname === "/login") throw redirect({ to: "/" });
+
+    let accessState: MyAccessState | null = null;
+    try {
+      await bootstrapOwnerAccess();
+      accessState = await context.queryClient.fetchQuery({
+        queryKey: ACCESS_STATE_QUERY_KEY,
+        queryFn: () => getMyAccessState(),
+        staleTime: 0,
+      });
+    } catch {
+      accessState = null;
+    }
+
+    if (!accessState || isWaitingForAccess(accessState)) {
+      if (location.pathname !== "/aguardando-acesso") {
+        throw redirect({ to: "/aguardando-acesso" });
+      }
+      return;
+    }
+    if (location.pathname === "/aguardando-acesso") throw redirect({ to: "/" });
+
+    if (location.pathname.startsWith("/admin")) {
+      if (!accessState.isAdmin) throw redirect({ to: "/" });
+      return;
     }
     if (publica) return;
 
@@ -193,10 +218,37 @@ function RootComponent() {
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      queryClient.removeQueries({ queryKey: ACCESS_STATE_QUERY_KEY });
       void router.invalidate();
     });
     return () => data.subscription.unsubscribe();
-  }, [router]);
+  }, [queryClient, router]);
+
+  useEffect(() => {
+    let active = true;
+    const checkAccess = async () => {
+      const user = await getSessionUser();
+      if (!user) return;
+      try {
+        const previous = queryClient.getQueryData<MyAccessState>(ACCESS_STATE_QUERY_KEY);
+        const next = await getMyAccessState();
+        if (!active) return;
+        queryClient.setQueryData(ACCESS_STATE_QUERY_KEY, next);
+        if (previous && (previous.status !== next.status || previous.isAdmin !== next.isAdmin)) {
+          void router.invalidate();
+        }
+      } catch {
+        // Database RLS still blocks the account; keep the current screen until retry.
+      }
+    };
+    const interval = window.setInterval(() => void checkAccess(), 30_000);
+    window.addEventListener("focus", checkAccess);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", checkAccess);
+    };
+  }, [queryClient, router]);
 
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const companyName = useCompanyName();
@@ -215,7 +267,8 @@ function RootComponent() {
     pathname === "/login" ||
     pathname === "/reset-password" ||
     pathname === "/bem-vindo" ||
-    pathname === "/migrar-dados";
+    pathname === "/migrar-dados" ||
+    pathname === "/aguardando-acesso";
 
   if (semLayout) {
     return (

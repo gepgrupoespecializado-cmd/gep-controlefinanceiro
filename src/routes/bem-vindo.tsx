@@ -84,7 +84,6 @@ function OnboardingPage() {
           nome: form.responsavel.trim() || (user.user_metadata?.["name"] as string | undefined) || null,
           email: form.email.trim() || user.email || null,
           telefone: form.telefone.trim() || null,
-          role: "owner",
         },
         { onConflict: "user_id" },
       );

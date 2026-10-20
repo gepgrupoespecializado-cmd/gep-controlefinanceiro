@@ -583,7 +583,7 @@ export type Database = {
           last_seen_at: string | null
           nome: string | null
           organization_id: string | null
-          role: string
+          role: string | null
           telefone: string | null
           user_id: string
         }
@@ -594,7 +594,7 @@ export type Database = {
           last_seen_at?: string | null
           nome?: string | null
           organization_id?: string | null
-          role?: string
+          role?: string | null
           telefone?: string | null
           user_id: string
         }
@@ -605,7 +605,7 @@ export type Database = {
           last_seen_at?: string | null
           nome?: string | null
           organization_id?: string | null
-          role?: string
+          role?: string | null
           telefone?: string | null
           user_id?: string
         }
@@ -1026,6 +1026,84 @@ export type Database = {
           },
         ]
       }
+      acessos: {
+        Row: {
+          created_at: string
+          email: string | null
+          liberado_em: string | null
+          observacao: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          liberado_em?: string | null
+          observacao?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          liberado_em?: string | null
+          observacao?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_access_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          email_snapshot: string | null
+          id: string
+          new_status: string | null
+          observacao: string | null
+          previous_status: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          email_snapshot?: string | null
+          id?: string
+          new_status?: string | null
+          observacao?: string | null
+          previous_status?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          email_snapshot?: string | null
+          id?: string
+          new_status?: string | null
+          observacao?: string | null
+          previous_status?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      emails_pre_liberados: {
+        Row: {
+          criado_em: string
+          email: string
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1052,6 +1130,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_preliberar_email: {
+        Args: { _email: string; _observacao?: string | null }
+        Returns: string
+      }
+      admin_remover_email_pre_liberado: {
+        Args: { _email: string }
+        Returns: boolean
+      }
+      admin_set_access_status: {
+        Args: { _observacao?: string | null; _status: string; _target_user_id: string }
+        Returns: boolean
+      }
+      configure_app_owner: {
+        Args: { _owner_user_id: string }
+        Returns: undefined
+      }
+      get_my_access_state: {
+        Args: never
+        Returns: { is_admin: boolean; status: string }[]
+      }
+      is_acesso_ativo: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       current_org_id: { Args: never; Returns: string }
       has_org_role: {
         Args: { _org: string; _role: Database["public"]["Enums"]["org_role"] }
