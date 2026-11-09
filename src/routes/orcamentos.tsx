@@ -26,7 +26,7 @@ import {
 } from "@/lib/store";
 import { brl, dateBR, quoteNumber as padNum } from "@/lib/format";
 import { compressPhoto } from "@/lib/photo";
-import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF, nomeArquivoOrcamento } from "@/lib/pdf";
 import { toast } from "sonner";
 import { flush } from "@/data/cloud-sync";
 

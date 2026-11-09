@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Download, Share2, RefreshCw, ExternalLink } from "lucide-react";
-import { gerarOrcamentoPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, nomeArquivoOrcamento } from "@/lib/pdf";
 import {
   pdfTemaPreset, totalOrcamento, validadeOrcamento,
   type Orcamento, type Cliente, type Servico, type Empresa, type PdfTema,
