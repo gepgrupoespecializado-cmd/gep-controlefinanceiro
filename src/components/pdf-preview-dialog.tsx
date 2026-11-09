@@ -112,7 +112,7 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
     const doc = gerarOrcamentoPDF(orcamento, cliente, servicos, empresa, {
       temaPdf: tema, corPdf: cor, corSecundariaPdf: corSec,
     });
-    baixarPDF(doc, `ORC-${padNum(orcamento.numero)}.pdf`);
+    baixarPDF(doc, nomeArquivoOrcamento(orcamento));
   }
 
   async function compartilhar() {
@@ -129,7 +129,7 @@ export function PdfPreviewDialog({ open, onOpenChange, orcamento, cliente, servi
     ].filter(Boolean).join("\n");
     await compartilharPDF({
       doc,
-      filename: `ORC-${padNum(orcamento.numero)}.pdf`,
+      filename: nomeArquivoOrcamento(orcamento),
       titulo: `Orçamento ORC-${padNum(orcamento.numero)}`,
       mensagem: txt,
       telefone: cliente?.whatsapp,

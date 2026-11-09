@@ -238,7 +238,7 @@ function OrcamentosPage() {
     if (action === "view") { setPreviewId(orcId); return; }
     // Sempre gera a partir dos dados mais recentes (nunca reaproveita versão antiga)
     const doc = gerarOrcamentoPDF(o, cli, data.servicos, data.empresa);
-    const filename = `ORC-${padNum(o.numero)}.pdf`;
+    const filename = nomeArquivoOrcamento(o);
     if (action === "download") baixarPDF(doc, filename);
     else if (action === "open") abrirPDF(doc);
     else {
