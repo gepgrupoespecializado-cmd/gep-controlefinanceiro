@@ -92,8 +92,20 @@ export function gerarOrcamentoPDF(
   // As fontes são fixas (nunca reduzidas para caber em uma página). Quando o
   // conteúdo ultrapassa o espaço disponível, a paginação automática cria
   // páginas adicionais mantendo o padrão visual.
-  void overrides;
-  return renderModeloDourado(orc, cliente, servicos, empresa);
+  return renderModeloDourado(orc, cliente, servicos, empresa, overrides);
+}
+
+/** Cores do modelo: segue a marcação (tema/cor) da empresa ou da pré-visualização; dourado como padrão. */
+function resolverCoresModelo(empresa: Empresa, overrides: PdfOverrides): { principal: RGB; claro: RGB; fundo: RGB } {
+  const modoMensal = !overrides.temaPdf && (empresa.pdfMesModo === "auto" || empresa.pdfMesModo === "manual");
+  const temMarcacao = modoMensal || !!overrides.temaPdf || !!overrides.corPdf || !!empresa.corPdf || !!empresa.temaPdf;
+  if (!temMarcacao) return { principal: [184, 134, 11], claro: [230, 194, 96], fundo: [247, 241, 228] };
+  const tema = resolvePdfTemaAtivo(empresa, overrides.temaPdf);
+  const preset = pdfTemaPreset[tema] ?? pdfTemaPreset.azul_escuro;
+  const principal = hexToRgb(modoMensal ? preset.principal : (overrides.corPdf ?? empresa.corPdf ?? preset.principal));
+  const sec = modoMensal ? preset.secundaria : (overrides.corSecundariaPdf ?? empresa.corSecundariaPdf ?? preset.secundaria);
+  const claro = sec ? hexToRgb(sec) : lighten(principal, 0.4);
+  return { principal, claro, fundo: lighten(principal, 0.9) };
 }
 
 export { renderOrcamentoPDF as renderOrcamentoPDFModerno };
@@ -107,10 +119,11 @@ export function nomeArquivoOrcamento(orc: Orcamento): string {
 }
 
 /** Modelo oficial: cabeçalho dourado, barras de seção e página única A4. */
-function renderModeloDourado(orc: Orcamento, cliente: Cliente | undefined, servicos: Servico[], empresa: Empresa) {
-  const GOLD: RGB = [184, 134, 11];
-  const GOLD_LIGHT: RGB = [230, 194, 96];
-  const CREAM: RGB = [247, 241, 228];
+function renderModeloDourado(orc: Orcamento, cliente: Cliente | undefined, servicos: Servico[], empresa: Empresa, overrides: PdfOverrides = {}) {
+  const cores = resolverCoresModelo(empresa, overrides);
+  const GOLD: RGB = cores.principal;
+  const GOLD_LIGHT: RGB = cores.claro;
+  const CREAM: RGB = cores.fundo;
   const TEXT: RGB = [30, 30, 30];
   const MUTED: RGB = [110, 110, 110];
   const nome = (empresa.nome?.trim() || "Sua empresa").toUpperCase();
