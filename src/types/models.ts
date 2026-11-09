@@ -242,6 +242,8 @@ export interface Empresa {
   email?: string;
   endereco?: string;
   redesSociais?: string;
+  /** Nome do responsável exibido no rodapé do PDF. */
+  responsavel?: string;
   logoDataUrl?: string;
   temaPdf?: PdfTema;
   corPdf?: string; // hex, ex: "#0b1b3d"

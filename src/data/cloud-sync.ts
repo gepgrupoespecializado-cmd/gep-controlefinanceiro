@@ -190,9 +190,52 @@ function scheduleSave(db: DB) {
   timer = setTimeout(() => void flush().catch(reportSaveError), 300);
 }
 
+const BACKOFF = [5000, 15000, 30000, 60000];
+let tentativas = 0;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+const SYNC_TOAST = "gep-sync-status";
+
+function motivoErro(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error ?? "");
+  const m = msg.toLowerCase();
+  if (typeof navigator !== "undefined" && !navigator.onLine) return "sem conexão";
+  if (m.includes("jwt") || m.includes("session") || m.includes("401")) return "sessão expirada, entre novamente";
+  if (m.includes("row-level security") || m.includes("permission") || m.includes("403")) return "permissão negada";
+  if (m.includes("failed to fetch") || m.includes("network")) return "sem conexão";
+  return "erro ao gravar na nuvem";
+}
+
+function agendarRetentativa() {
+  if (retryTimer || typeof window === "undefined") return;
+  const espera = BACKOFF[Math.min(tentativas, BACKOFF.length - 1)];
+  tentativas++;
+  retryTimer = setTimeout(() => { retryTimer = null; void tentarAgora(); }, espera);
+}
+
+export async function tentarAgora() {
+  if (!currentOrg) return;
+  if (!pending) {
+    const j = readJournal(currentOrg);
+    if (j) pending = j.snapshot;
+  }
+  if (!pending) return;
+  toast.loading("Sincronizando…", { id: SYNC_TOAST });
+  try { await supabase.auth.getSession(); } catch { /* segue */ }
+  try {
+    await flush();
+    tentativas = 0;
+    toast.success("Salvo na nuvem ✓", { id: SYNC_TOAST, duration: 2500 });
+  } catch (error) { reportSaveError(error); }
+}
+
 function reportSaveError(error: unknown) {
   console.warn("Salvamento pendente; a cópia local foi preservada.", error);
-  toast.error("Salvamento na nuvem pendente. Suas alterações estão neste dispositivo; tente novamente com conexão.");
+  toast.error(`Pendente: ${motivoErro(error)}. Suas alterações estão guardadas neste dispositivo.`, {
+    id: SYNC_TOAST,
+    duration: Infinity,
+    action: { label: "Tentar novamente agora", onClick: () => void tentarAgora() },
+  });
+  agendarRetentativa();
 }
 
 export async function flush(): Promise<void> {
@@ -229,7 +272,10 @@ function bindFlushHandlers() {
     if (document.visibilityState === "hidden") void flush().catch(reportSaveError);
   });
   window.addEventListener("pagehide", () => void flush().catch(reportSaveError));
-  window.addEventListener("online", () => void flush().catch(reportSaveError));
+  window.addEventListener("online", () => { tentativas = 0; void tentarAgora(); });
+  window.addEventListener("focus", () => { if (currentOrg && readJournal(currentOrg)) void tentarAgora(); });
+  setInterval(() => { if (currentOrg && readJournal(currentOrg) && !flushing) void tentarAgora(); }, 30000);
+  setTimeout(() => { if (currentOrg && readJournal(currentOrg)) void tentarAgora(); }, 3000);
 }
 
 /* ---------- Migração dos dados locais ---------- */

@@ -26,7 +26,7 @@ import {
 } from "@/lib/store";
 import { brl, dateBR, quoteNumber as padNum } from "@/lib/format";
 import { compressPhoto } from "@/lib/photo";
-import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF } from "@/lib/pdf";
+import { gerarOrcamentoPDF, baixarPDF, compartilharPDF, abrirPDF, nomeArquivoOrcamento } from "@/lib/pdf";
 import { toast } from "sonner";
 import { flush } from "@/data/cloud-sync";
 
@@ -238,7 +238,7 @@ function OrcamentosPage() {
     if (action === "view") { setPreviewId(orcId); return; }
     // Sempre gera a partir dos dados mais recentes (nunca reaproveita versão antiga)
     const doc = gerarOrcamentoPDF(o, cli, data.servicos, data.empresa);
-    const filename = `ORC-${padNum(o.numero)}.pdf`;
+    const filename = nomeArquivoOrcamento(o);
     if (action === "download") baixarPDF(doc, filename);
     else if (action === "open") abrirPDF(doc);
     else {

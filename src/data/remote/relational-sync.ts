@@ -144,8 +144,26 @@ export function sincronizarRelacional(org: string, db: DB, userId: string | null
       });
       if (!await aplicar("quotes", quoteRows, true, numeros)) throw new Error("Não foi possível salvar quotes.");
       await gravar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
-      await gravar("appointments", (db.agendamentos ?? []).map((a) => appointmentRow(org, a)));
-      await gravar("service_reports", (db.relatorios ?? []).map((r) => reportRow(org, r)));
+      // Agendamentos e relatórios se referenciam mutuamente. Gravamos o
+      // agendamento sem o vínculo, depois o relatório e, por fim, o vínculo,
+      // descartando referências a registros inexistentes (evita violação de FK).
+      const apptRows = (db.agendamentos ?? []).map((a) => appointmentRow(org, a));
+      const repRowsRaw = (db.relatorios ?? []).map((r) => reportRow(org, r));
+      const apptIds = new Set(apptRows.map(r => String(r["id"])));
+      const repIds = new Set(repRowsRaw.map(r => String(r["id"])));
+      const jaGravados = anterior.service_reports ?? new Map<string, string>();
+      await gravar("appointments", apptRows.map(r => {
+        const rid = r["report_id"] as string | null;
+        return rid && !jaGravados.has(rid) ? { ...r, report_id: null } : r;
+      }));
+      await gravar("service_reports", repRowsRaw.map(r => {
+        const aid = r["appointment_id"] as string | null;
+        return aid && !apptIds.has(aid) ? { ...r, appointment_id: null } : r;
+      }));
+      await gravar("appointments", apptRows.map(r => {
+        const rid = r["report_id"] as string | null;
+        return rid && !repIds.has(rid) ? { ...r, report_id: null } : r;
+      }));
       await gravar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)));
       await gravar(
         "financial_transactions",

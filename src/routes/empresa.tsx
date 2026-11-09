@@ -142,6 +142,7 @@ function EmpresaPage() {
           <div className="grid gap-1.5"><Label className="text-xs">Nome da empresa</Label><Input required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="grid gap-1.5"><Label className="text-xs">CNPJ</Label><Input value={form.cnpj ?? ""} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></div>
+            <div className="grid gap-1.5"><Label className="text-xs">Responsável (rodapé do PDF)</Label><Input value={form.responsavel ?? ""} onChange={(e) => setForm({ ...form, responsavel: e.target.value })} /></div>
             <div className="grid gap-1.5"><Label className="text-xs">E-mail</Label><Input type="email" value={form.email ?? ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
