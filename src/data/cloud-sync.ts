@@ -272,7 +272,10 @@ function bindFlushHandlers() {
     if (document.visibilityState === "hidden") void flush().catch(reportSaveError);
   });
   window.addEventListener("pagehide", () => void flush().catch(reportSaveError));
-  window.addEventListener("online", () => void flush().catch(reportSaveError));
+  window.addEventListener("online", () => { tentativas = 0; void tentarAgora(); });
+  window.addEventListener("focus", () => { if (currentOrg && readJournal(currentOrg)) void tentarAgora(); });
+  setInterval(() => { if (currentOrg && readJournal(currentOrg) && !flushing) void tentarAgora(); }, 30000);
+  setTimeout(() => { if (currentOrg && readJournal(currentOrg)) void tentarAgora(); }, 3000);
 }
 
 /* ---------- Migração dos dados locais ---------- */
