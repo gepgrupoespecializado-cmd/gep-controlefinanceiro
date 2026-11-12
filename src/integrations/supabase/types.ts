@@ -57,6 +57,9 @@ export type Database = {
           id: string
           intervalo_dias: number | null
           legacy_id: string | null
+          lembrete_enviado_em: string | null
+          lembrete_referencia: string | null
+          lembrete_status: string
           observacoes: string | null
           organization_id: string
           quote_id: string | null
@@ -85,6 +88,9 @@ export type Database = {
           id?: string
           intervalo_dias?: number | null
           legacy_id?: string | null
+          lembrete_enviado_em?: string | null
+          lembrete_referencia?: string | null
+          lembrete_status?: string
           observacoes?: string | null
           organization_id: string
           quote_id?: string | null
@@ -113,6 +119,9 @@ export type Database = {
           id?: string
           intervalo_dias?: number | null
           legacy_id?: string | null
+          lembrete_enviado_em?: string | null
+          lembrete_referencia?: string | null
+          lembrete_status?: string
           observacoes?: string | null
           organization_id?: string
           quote_id?: string | null

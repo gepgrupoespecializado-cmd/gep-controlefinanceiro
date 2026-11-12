@@ -1,9 +1,16 @@
 import { useCompanyName } from "@/hooks/use-company-name";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Building2 } from "lucide-react";
+import { Building2, BellRing } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { configLembretes, montarMensagem, MODELO_LEMBRETE_PADRAO } from "@/lib/lembretes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useDB } from "@/lib/store";
+import { db, useDB } from "@/lib/store";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -51,6 +58,46 @@ function ConfiguracoesPage() {
           </Button>
         </CardContent>
       </Card>
+      <LembretesConfig />
     </div>
+  );
+}
+
+function LembretesConfig() {
+  const data = useDB();
+  const nome = useCompanyName();
+  const cfg = configLembretes(data.empresa);
+  const [modelo, setModelo] = useState(cfg.modelo);
+  const salvar = (patch: Partial<typeof cfg>) => db.updateEmpresa({ lembretes: { ...cfg, ...patch } });
+  const previa = montarMensagem(modelo, { nome_cliente: "Maria Silva", data: "sexta-feira, 13/11/2026", horario: "09:00", local: "Rua das Flores, 120 - Centro", nome_empresa: nome });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2"><BellRing className="h-4 w-4" />Lembretes de agendamento</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor="lem-ativo">Ativar lembretes</Label>
+          <Switch id="lem-ativo" checked={cfg.ativo} onCheckedChange={(v) => salvar({ ativo: v })} />
+        </div>
+        <div className="grid gap-1 sm:max-w-xs">
+          <Label htmlFor="lem-hora">Horário do aviso (dia anterior)</Label>
+          <Input id="lem-hora" type="time" value={cfg.horaAviso} onChange={(e) => e.target.value && salvar({ horaAviso: e.target.value })} />
+        </div>
+        <div className="grid gap-1">
+          <Label htmlFor="lem-modelo">Modelo da mensagem</Label>
+          <Textarea id="lem-modelo" rows={9} value={modelo} onChange={(e) => setModelo(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Variáveis: {"{nome_cliente}"}, {"{data}"}, {"{horario}"}, {"{local}"}, {"{nome_empresa}"}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => { salvar({ modelo }); toast.success("Modelo salvo"); }}>Salvar modelo</Button>
+            <Button size="sm" variant="outline" onClick={() => setModelo(MODELO_LEMBRETE_PADRAO)}>Restaurar padrão</Button>
+          </div>
+        </div>
+        <div className="grid gap-1">
+          <Label>Pré-visualização</Label>
+          <div className="rounded-lg border bg-muted p-3 text-sm whitespace-pre-wrap break-words">{previa}</div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

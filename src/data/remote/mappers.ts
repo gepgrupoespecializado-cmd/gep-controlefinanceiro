@@ -176,6 +176,9 @@ export function appointmentRow(org: string, a: Agendamento): Row {
     endereco: a.endereco ?? null,
     recorrencia: a.recorrencia ?? null,
     intervalo_dias: a.intervaloDias ?? null,
+    lembrete_status: a.lembreteStatus ?? "pendente",
+    lembrete_enviado_em: a.lembreteEnviadoEm ?? null,
+    lembrete_referencia: a.lembreteReferencia ?? null,
     arquivado: !!a.arquivado,
   };
 }

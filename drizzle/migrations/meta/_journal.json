@@ -15,6 +15,13 @@
       "when": 1791738232142,
       "tag": "0001_quote_number_uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794459691248,
+      "tag": "0002_appointment_reminders",
+      "breakpoints": true
     }
   ]
 }

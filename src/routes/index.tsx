@@ -26,6 +26,7 @@ import {
 } from "@/lib/store";
 import { brl, quoteNumber } from "@/lib/format";
 import { AlertasPagamento } from "@/components/alertas-pagamento";
+import { LembretesAmanha } from "@/components/lembretes-amanha";
 import { ComponentErrorBoundary } from "@/components/component-error-boundary";
 import { NovoAtendimentoDialog } from "@/components/novo-atendimento-dialog";
 
@@ -244,6 +245,7 @@ function Index() {
       </ComponentErrorBoundary>
 
       <ComponentErrorBoundary name="Alertas de pagamento">
+        <LembretesAmanha />
         <AlertasPagamento limite={5} titulo="🔔 Alertas de pagamento" />
       </ComponentErrorBoundary>
 

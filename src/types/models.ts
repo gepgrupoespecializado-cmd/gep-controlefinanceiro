@@ -157,6 +157,11 @@ export interface Agendamento {
   relatorioId?: string;
   arquivado?: boolean;
   atualizadoEm?: string;
+  /** Status do lembrete ao cliente (vale só para a referência abaixo). */
+  lembreteStatus?: "pendente" | "enviado";
+  lembreteEnviadoEm?: string;
+  /** Data|horário do agendamento quando o lembrete foi enviado; reagendar invalida. */
+  lembreteReferencia?: string;
 }
 
 export type RelatorioStatus = "sucesso" | "observacoes" | "retorno";
@@ -253,6 +258,7 @@ export interface Empresa {
   /** Mês selecionado manualmente (1-12) quando pdfMesModo = "manual". */
   pdfMesManual?: number;
   /** Configuração de Custos da Empresa — usada na Calculadora de Precificação. */
+  lembretes?: { ativo: boolean; horaAviso: string; modelo?: string };
   custosPadrao?: {
     valorHora?: number;
     margemLucro?: number; // %

@@ -8,3 +8,4 @@
 - Assign new quote numbers only in the quotes insert transaction; reconcile returned numbers by record ID before acknowledging snapshots, so retries and concurrent local edits retain the confirmed number.
 - Preserve database-confirmed quote numbers during journal replay and enforce organization-number uniqueness in the database; interrupted acknowledgements must not regress persistent document identity.
 - Compress new service photos through the shared browser photo processor; saved photo strings remain untouched to preserve existing records.
+- Appointment reminder rules live in src/lib/lembretes.ts (Brasília timezone); "sent" is valid only while lembreteReferencia matches the current date|time, so rescheduling re-opens the reminder without extra writes.

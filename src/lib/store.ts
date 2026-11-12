@@ -417,6 +417,9 @@ function normalizeAgendamento(a: Record<string, unknown>, now: string): Agendame
     relatorioId: asOptionalString(a.relatorioId),
     arquivado: asBoolean(a.arquivado, false),
     atualizadoEm: asOptionalString(a.atualizadoEm),
+    lembreteStatus: a.lembreteStatus === "enviado" ? "enviado" : "pendente",
+    lembreteEnviadoEm: asOptionalString(a.lembreteEnviadoEm),
+    lembreteReferencia: asOptionalString(a.lembreteReferencia),
   };
 }
 
@@ -515,6 +518,11 @@ function normalizeEmpresa(value: unknown): Empresa {
     corPdf: asString(empresa.corPdf, seed.empresa.corPdf),
     corSecundariaPdf: asOptionalString(empresa.corSecundariaPdf),
     pdfMesModo: valid(empresa.pdfMesModo, PDF_MES_MODOS, "off"),
+    lembretes: isRecord(empresa.lembretes) ? {
+      ativo: asBoolean(empresa.lembretes.ativo, true),
+      horaAviso: /^\d{2}:\d{2}$/.test(String(empresa.lembretes.horaAviso)) ? String(empresa.lembretes.horaAviso) : "17:00",
+      modelo: asOptionalString(empresa.lembretes.modelo),
+    } : undefined,
     pdfMesManual: (() => {
       const n = asNumber(empresa.pdfMesManual, 0);
       return n >= 1 && n <= 12 ? Math.floor(n) : undefined;

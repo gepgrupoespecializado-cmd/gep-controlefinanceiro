@@ -173,6 +173,9 @@ function montarAgendamento(r: Row): Agendamento {
     recorrencia: (txt(r["recorrencia"]) ?? undefined) as Agendamento["recorrencia"],
     intervaloDias: num(r["intervalo_dias"]),
     relatorioId: refLogica(r["report_legacy_id"], r["report_id"]),
+    lembreteStatus: r["lembrete_status"] === "enviado" ? "enviado" : "pendente",
+    lembreteEnviadoEm: txt(r["lembrete_enviado_em"]),
+    lembreteReferencia: txt(r["lembrete_referencia"]),
     arquivado: !!r["arquivado"],
   };
 }
