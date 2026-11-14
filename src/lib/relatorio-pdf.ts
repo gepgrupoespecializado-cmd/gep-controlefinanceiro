@@ -46,6 +46,7 @@ export function gerarRelatorioPDF(
   r: Relatorio,
   cliente: Cliente | undefined,
   empresa: Empresa,
+  fotosPreparadas?: { antes: string[]; depois: string[] },
 ) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
@@ -181,11 +182,54 @@ export function gerarRelatorioPDF(
     y += 8;
   }
 
-  // Registro fotográfico
+  // Registro fotográfico — ANTES e DEPOIS lado a lado, em quadrados iguais
+  const antesQ = (fotosPreparadas?.antes ?? r.fotosAntes).filter(Boolean);
+  const depoisQ = (fotosPreparadas?.depois ?? r.fotosDepois).filter(Boolean);
+  if (antesQ.length || depoisQ.length) {
+    const gap = 16;
+    const lado = (W - M * 2 - gap) / 2;
+    const labelH = 18;
+    const rows = Math.max(antesQ.length, depoisQ.length);
+    let heading = true;
+    for (let i = 0; i < rows; i++) {
+      if (y + (heading ? 20 : 0) + labelH + lado > BOTTOM) { ensure(BOTTOM - y + 1); heading = true; }
+      if (heading) {
+        doc.setFont("helvetica", "bold"); doc.setFontSize(FS.subtitle); doc.setTextColor(0, 0, 0);
+        doc.text("FOTOS ANTES E DEPOIS", M, y); y += 20;
+        heading = false;
+      }
+      ([["ANTES", antesQ[i]], ["DEPOIS", depoisQ[i]]] as const).forEach(([rot, img], col) => {
+        const x = M + col * (lado + gap);
+        doc.setFont("times", "bold"); doc.setFontSize(11); doc.setTextColor(brand[0], brand[1], brand[2]);
+        doc.text(rot, x + lado / 2, y + 11, { align: "center", charSpace: 1.5 });
+        const iy = y + labelH;
+        doc.setFillColor(246, 246, 246); doc.rect(x, iy, lado, lado, "F");
+        let ok = false;
+        if (img) {
+          try {
+            const p = doc.getImageProperties(img);
+            const sc = Math.max(lado / p.width, lado / p.height);
+            doc.saveGraphicsState();
+            doc.rect(x, iy, lado, lado); doc.clip(); doc.discardPath();
+            doc.addImage(img, detectFmt(img), x + (lado - p.width * sc) / 2, iy + (lado - p.height * sc) / 2, p.width * sc, p.height * sc, undefined, "NONE");
+            doc.restoreGraphicsState();
+            ok = true;
+          } catch { /* exibe espaço neutro */ }
+        }
+        if (!ok) {
+          doc.setFont("helvetica", "italic"); doc.setFontSize(11); doc.setTextColor(140, 140, 140);
+          doc.text("Foto não informada", x + lado / 2, iy + lado / 2, { align: "center" });
+        }
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.5); doc.rect(x, iy, lado, lado, "S");
+      });
+      doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "normal");
+      y += labelH + lado + 10;
+    }
+    y += 6;
+  }
+
   const fotosGrupos: { titulo: string; arr: string[] }[] = [
-    { titulo: "FOTOS ANTES", arr: r.fotosAntes },
     { titulo: "FOTOS DURANTE", arr: r.fotosDurante },
-    { titulo: "FOTOS DEPOIS", arr: r.fotosDepois },
   ];
   for (const g of fotosGrupos) {
     if (g.arr.length === 0) continue;

@@ -18,6 +18,7 @@ import {
 } from "@/lib/store";
 import { SignaturePad } from "@/components/signature-pad";
 import { gerarRelatorioPDF } from "@/lib/relatorio-pdf";
+import { fotosQuadradas } from "@/lib/foto-quadrada";
 import { abrirPDF, baixarPDF, compartilharPDF } from "@/lib/pdf";
 import { brl, dateBR, padNum } from "@/lib/format";
 import { toast } from "sonner";
@@ -247,18 +248,19 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
     return novoId;
   }
 
-  function pdfDoc(): { doc: ReturnType<typeof gerarRelatorioPDF>; filename: string } | null {
+  async function pdfDoc(): Promise<{ doc: ReturnType<typeof gerarRelatorioPDF>; filename: string } | null> {
     if (!validarParaPDF()) return null;
     const r = montarRelatorio();
     if (!r) return null;
     salvar(true);
     const final = { ...r, numero: existente?.numero ?? data.proximoRelatorio };
-    const doc = gerarRelatorioPDF(final, cliente, data.empresa);
+    const [antes, depois] = await Promise.all([fotosQuadradas(final.fotosAntes), fotosQuadradas(final.fotosDepois)]);
+    const doc = gerarRelatorioPDF(final, cliente, data.empresa, { antes, depois });
     return { doc, filename: `RPS-${padNum(final.numero)}.pdf` };
   }
 
-  function visualizar() { const r = pdfDoc(); if (r) abrirPDF(r.doc); }
-  function baixar() { const r = pdfDoc(); if (r) baixarPDF(r.doc, r.filename); }
+  async function visualizar() { const r = await pdfDoc(); if (r) abrirPDF(r.doc); }
+  async function baixar() { const r = await pdfDoc(); if (r) baixarPDF(r.doc, r.filename); }
 
   function mensagemWhats() {
     return [
@@ -273,7 +275,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   }
 
   async function enviarWhats(numero?: string) {
-    const r = pdfDoc();
+    const r = await pdfDoc();
     if (!r) return;
     const tel = (numero || cliente?.whatsapp || cliente?.telefone || "").replace(/\D/g, "");
     const res = await compartilharPDF({ doc: r.doc, filename: r.filename, titulo: "Relatório de Serviço", mensagem: mensagemWhats(), telefone: tel });
@@ -291,7 +293,7 @@ export function RelatorioDialog({ open, onOpenChange, agendamento }: Props) {
   }
 
   async function compartilhar() {
-    const r = pdfDoc();
+    const r = await pdfDoc();
     if (!r) return;
     const tel = (cliente?.whatsapp || cliente?.telefone || "").replace(/\D/g, "");
     await compartilharPDF({ doc: r.doc, filename: r.filename, titulo: "Relatório de Serviço", mensagem: mensagemWhats(), telefone: tel });
