@@ -17,6 +17,7 @@ import {
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ClienteFormDialog } from "@/components/cliente-form-dialog";
 import { PdfPreviewDialog } from "@/components/pdf-preview-dialog";
+import { OrcamentoImagemButton } from "@/components/orcamento-imagem";
 import { ListaEditavel } from "@/components/lista-editavel";
 import {
   db, getDBSnapshot, useDB, totalOrcamento, statusOrcLabel, validadeOrcamento, formaPagamentoLabel,
@@ -675,6 +676,7 @@ function OrcamentosPage() {
                     <Button size="sm" variant="outline" onClick={() => abrirEdicao(o)}><Pencil className="h-3.5 w-3.5" />Editar</Button>
                     <Button size="sm" variant="outline" onClick={() => pdf(o.id, "share")}><Share2 className="h-3.5 w-3.5" />Compartilhar</Button>
                     <Button size="sm" variant="outline" onClick={() => pdf(o.id, "whatsapp")}><MessageCircle className="h-3.5 w-3.5" />WhatsApp</Button>
+                    <OrcamentoImagemButton orcamento={o} cliente={data.clientes.find((c) => c.id === o.clienteId)} empresa={data.empresa} />
                     <Button size="sm" variant="outline" onClick={() => pdf(o.id, "download")}><Download className="h-3.5 w-3.5" />Baixar PDF</Button>
                     <Button size="sm" variant="outline" onClick={() => { db.duplicarOrcamento(o.id); toast.success("Duplicado"); }}><Copy className="h-3.5 w-3.5" />Duplicar</Button>
                     <ConfirmDelete
