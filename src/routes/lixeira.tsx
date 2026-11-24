@@ -110,14 +110,14 @@ function Row({ items, onRestore, onDelete }: {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Excluir permanentemente?</AlertDialogTitle>
+                    <AlertDialogTitle>Tem certeza? Esta ação não pode ser desfeita</AlertDialogTitle>
                     <AlertDialogDescription>
                       "{it.titulo}" será removido definitivamente e não poderá ser recuperado.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => onDelete(it.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
+                    <AlertDialogAction onClick={() => { if (window.confirm(`Confirmar exclusão definitiva de "${it.titulo}"?`)) onDelete(it.id); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Excluir</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

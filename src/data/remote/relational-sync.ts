@@ -67,7 +67,12 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, n
     if (antes.get(id) !== json) novos.push(JSON.parse(json) as Row);
   }
   const removidos: string[] = [];
-  for (const id of antes.keys()) if (!atual.has(id)) removidos.push(id);
+  // Só apaga de verdade o que já estava na Lixeira (arquivado) e foi excluído
+  // manualmente; um estado local incompleto nunca remove dados do servidor.
+  for (const [id, json] of antes) {
+    if (atual.has(id)) continue;
+    try { if ((JSON.parse(json) as Row)["arquivado"] === true) removidos.push(id); } catch { /* ignora */ }
+  }
 
   const client = supabase as unknown as {
     from: (t: string) => {

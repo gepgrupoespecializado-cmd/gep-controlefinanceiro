@@ -418,6 +418,11 @@ async function avaliarPromocao(orgId: string, payload: Partial<DB>) {
  * Devolve null quando a leitura falha ou fica visivelmente incompleta perto do
  * bloco JSON — nesse caso quem chama usa o bloco JSON como alternativa.
  */
+export function contarRegistros(d: Partial<DB>): number {
+  const n = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+  return n(d.clientes) + n(d.orcamentos) + n(d.agendamentos) + n(d.servicos) + n(d.lancamentos) + n(d.relatorios);
+}
+
 async function carregarRelacional(
   orgId: string,
   payload: Partial<DB> | null,
@@ -427,6 +432,12 @@ async function carregarRelacional(
     if (payload && Object.keys(payload).length > 0) {
       const divergencias = compararSnapshots(db, payload);
       if (divergencias.length) {
+        // Nunca troca uma fonte maior por uma menor: se as tabelas guardam
+        // registros que o bloco JSON perdeu, as tabelas vencem.
+        if (contarRegistros(db) >= contarRegistros(payload)) {
+          console.warn("Bloco de segurança incompleto; usando as tabelas.", divergencias);
+          return db;
+        }
         console.warn(
           "Dados das tabelas diferem do bloco de segurança; usando o bloco de segurança.",
           divergencias,
