@@ -58,7 +58,7 @@ function indexar(rows: Row[]): Map<string, string> {
   return m;
 }
 
-async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, numeros?: Map<string, number>) {
+async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, numeros?: Map<string, number>, paisAtuais?: Set<string>, colunaPai?: string) {
   const atual = indexar(rows);
   const antes = anterior[tabela] ?? new Map<string, string>();
 
@@ -71,7 +71,12 @@ async function aplicar(tabela: TableName, rows: Row[], apagarRemovidos = true, n
   // manualmente; um estado local incompleto nunca remove dados do servidor.
   for (const [id, json] of antes) {
     if (atual.has(id)) continue;
-    try { if ((JSON.parse(json) as Row)["arquivado"] === true) removidos.push(id); } catch { /* ignora */ }
+    try {
+      const r = JSON.parse(json) as Row;
+      // Item/foto removido de um orçamento/relatório que continua existindo.
+      const filhoDeEdicao = !!colunaPai && !!paisAtuais && paisAtuais.has(String(r[colunaPai]));
+      if (r["arquivado"] === true || filhoDeEdicao) removidos.push(id);
+    } catch { /* ignora */ }
   }
 
   const client = supabase as unknown as {
@@ -148,7 +153,8 @@ export function sincronizarRelacional(org: string, db: DB, userId: string | null
         return confirmed ? { ...row, numero: confirmed } : row;
       });
       if (!await aplicar("quotes", quoteRows, true, numeros)) throw new Error("Não foi possível salvar quotes.");
-      await gravar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)));
+      if (!await aplicar("quote_items", (db.orcamentos ?? []).flatMap((o) => quoteItemRows(org, o)), true, undefined,
+        new Set(quoteRows.map(r => String(r["id"]))), "quote_id")) throw new Error("Não foi possível salvar quote_items.");
       // Agendamentos e relatórios se referenciam mutuamente. Gravamos o
       // agendamento sem o vínculo, depois o relatório e, por fim, o vínculo,
       // descartando referências a registros inexistentes (evita violação de FK).
@@ -169,7 +175,8 @@ export function sincronizarRelacional(org: string, db: DB, userId: string | null
         const rid = r["report_id"] as string | null;
         return rid && !repIds.has(rid) ? { ...r, report_id: null } : r;
       }));
-      await gravar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)));
+      if (!await aplicar("report_photos", (db.relatorios ?? []).flatMap((r) => reportPhotoRows(org, r)), true, undefined,
+        repIds, "report_id")) throw new Error("Não foi possível salvar report_photos.");
       await gravar(
         "financial_transactions",
         (db.lancamentos ?? []).map((l) => transactionRow(org, l)),
